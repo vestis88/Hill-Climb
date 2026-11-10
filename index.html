@@ -9,6 +9,10 @@
     <!-- Safari tints its top bar with this; match the sky so the top edge blends in. -->
     <meta name="theme-color" content="#7fb6e6" />
     <title>Ridgeline</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./icon-180.png" />
+    <link rel="icon" type="image/png" href="./icon-192.png" />
+    <meta name="apple-mobile-web-app-title" content="Ridgeline" />
     <style>
       /* iPad can report a screen height that stops short of the home bar, leaving a strip of
          page background visible. A solid ground colour (never white) makes any such strip blend
@@ -113,6 +117,7 @@
     <div id="garage" class="screen hidden"></div>
     <div id="results" class="screen hidden"></div>
     <div id="tune" class="screen hidden"></div>
+    <div id="settings" class="screen hidden"></div>
     <div id="rotate">Rotate your device to landscape</div>
     <script type="module" src="/src/main.ts"></script>
   </body>

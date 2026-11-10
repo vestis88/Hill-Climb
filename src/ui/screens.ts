@@ -24,6 +24,7 @@ export interface GarageView {
   onBuy(id: UpgradeId): void
   onDrive(): void
   onTune(): void
+  onSettings(): void
 }
 
 export function showGarage(el: HTMLElement, v: GarageView): void {
@@ -52,7 +53,7 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
     <div class="label">${v.vehicleName} upgrades</div>
     <div class="cards">${UPGRADES.map(card).join('')}</div>
     <div class="choices">${v.environments.map((c) => choice('env', c)).join('')}</div>
-    ${v.tuning ? '<div class="actions"><button class="small" data-act="tune">Tuning</button></div>' : ''}`
+    <div class="actions"><button class="small" data-act="settings">Settings</button>${v.tuning ? '<button class="small" data-act="tune">Tuning</button>' : ''}</div>`
   el.onclick = (e) => {
     const b = (e.target as HTMLElement).closest('button')
     if (!b || b.disabled) return
@@ -63,6 +64,7 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
     }
     else if (b.dataset.act === 'drive') v.onDrive()
     else if (b.dataset.act === 'tune') v.onTune()
+    else if (b.dataset.act === 'settings') v.onSettings()
   }
 }
 

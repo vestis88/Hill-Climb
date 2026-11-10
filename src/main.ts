@@ -2,13 +2,15 @@ import { ENVIRONMENTS, environment, heightFor } from './data/environments'
 import { PickupField } from './data/track'
 import { VEHICLES, vehicleEntry } from './data/vehicles'
 import { applyUpgrades, BASE_LEVELS, FULL_LEVELS, MAX_LEVEL, price, type UpgradeId } from './data/upgrades'
+import { Sound } from './audio/sound'
 import { createInput } from './input/input'
 import { GameRenderer, type Popup } from './render/game'
-import { levelsFor, loadSave, writeSave } from './save/save'
+import { emptySave, levelsFor, loadSave, writeSave } from './save/save'
 import { Run } from './sim/run'
 import type { SimState } from './sim/types'
 import { STEP } from './sim/world'
 import { showGarage, showResults } from './ui/screens'
+import { loadSettings, saveSettings, showSettings } from './ui/settings'
 import { loadTuning, showTuning, tuningEnabled, type DriveAs } from './ui/tuning'
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement
@@ -16,15 +18,21 @@ const canvas = $('game') as HTMLCanvasElement
 const garageEl = $('garage')
 const resultsEl = $('results')
 const tuneEl = $('tune')
+const settingsEl = $('settings')
 const endRunBtn = $('endRun')
 
-const controls = createInput(canvas)
+const settings = loadSettings()
+const sound = new Sound()
+sound.setVolume(settings.volume, settings.sound)
+const controls = createInput(canvas, () => settings.swapPedals)
+// Safari only allows sound after a tap; any first touch or click unlocks it.
+for (const type of ['pointerdown', 'keydown']) window.addEventListener(type, () => sound.unlock(), { capture: true })
 const renderer = new GameRenderer(canvas)
 const save = loadSave()
 const tuning = loadTuning()
 let driveAs: DriveAs = 'mine'
 
-type Mode = 'garage' | 'driving' | 'ending' | 'results' | 'tuning'
+type Mode = 'garage' | 'driving' | 'ending' | 'results' | 'tuning' | 'settings'
 let mode: Mode = 'garage'
 let run = newRun()
 let prev: SimState = run.sim.state()
@@ -69,6 +77,7 @@ function show(m: Mode): void {
   garageEl.classList.toggle('hidden', m !== 'garage')
   resultsEl.classList.toggle('hidden', m !== 'results')
   tuneEl.classList.toggle('hidden', m !== 'tuning')
+  settingsEl.classList.toggle('hidden', m !== 'settings')
   endRunBtn.classList.toggle('hidden', m !== 'driving')
   controls.reset()
 }
@@ -93,6 +102,7 @@ function openGarage(): void {
     onBuy: buy,
     onDrive: startRun,
     onTune: openTuning,
+    onSettings: openSettings,
   })
   show('garage')
 }
@@ -124,6 +134,26 @@ function buy(id: UpgradeId): void {
   save.levels[VEHICLE_ID] = { ...levels, [id]: levels[id] + 1 }
   writeSave(save)
   openGarage()
+}
+
+function openSettings(): void {
+  showSettings(
+    settingsEl,
+    settings,
+    () => {
+      saveSettings(settings)
+      sound.setVolume(settings.volume, settings.sound)
+    },
+    () => {
+      Object.assign(save, emptySave())
+      writeSave(save)
+      run = newRun()
+      prev = next = run.sim.state()
+      renderer.resetCamera(next)
+    },
+    openGarage,
+  )
+  show('settings')
 }
 
 function openTuning(): void {
@@ -174,7 +204,16 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden && mode === 'driving') finishRun()
 })
 
+let wasAirborne = false
 function handleEvents(): void {
+  const s = run.sim.state()
+  if (wasAirborne && !s.airborne) sound.land(Math.abs(run.sim.vehicle.chassis.getLinearVelocity().y) / 15)
+  wasAirborne = s.airborne
+  for (const e of run.events) {
+    if (e.kind === 'coin') sound.coin()
+    else if (e.kind === 'fuel') sound.fuel()
+    else if (e.kind === 'flip' || e.kind === 'milestone' || e.kind === 'air') sound.fanfare()
+  }
   for (const e of run.events) {
     if (e.kind === 'coin') {
       popups.push({ text: `+${e.value}`, at: { x: e.x, y: e.y }, age: 0 })
@@ -205,6 +244,7 @@ function frame(now: number): void {
       accumulator -= STEP
     }
     if (mode === 'driving' && run.status !== 'running') {
+      if (run.status === 'crashed') sound.crash()
       // Let the crash or the final roll show for a moment before the results.
       mode = 'ending'
       endTimer = 1.2
@@ -213,6 +253,7 @@ function frame(now: number): void {
     if (mode === 'ending' && (endTimer -= dt) <= 0) finishRun()
   }
   popups = popups.filter((p) => (p.age += dt) < (p.at ? 0.9 : 1.6))
+  sound.engine(next.rpm, controls.input.gas && run.fuel > 0, mode === 'driving')
   renderer.draw({
     prev,
     next,
@@ -227,10 +268,16 @@ function frame(now: number): void {
     runCoins: run.totalCoins,
     popups,
     showPedals: mode === 'driving',
+    swapPedals: settings.swapPedals,
     driver: { lean: run.sway.lean, ragdoll: run.ragdoll?.poses() ?? null },
     showHud: mode === 'driving' || mode === 'ending' || mode === 'results',
   })
   requestAnimationFrame(frame)
+}
+
+// Offline play and home-screen install (published builds only).
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  navigator.serviceWorker.register('./sw.js').catch(() => undefined)
 }
 
 openGarage()

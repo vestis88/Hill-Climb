@@ -37,6 +37,8 @@ export interface View {
   runCoins: number
   popups: Popup[]
   showPedals: boolean
+  /** Gas pedal on the left instead of the right. */
+  swapPedals: boolean
   /** Distance, fuel and coin counter; hidden behind full-screen menus. */
   showHud: boolean
   /** Driver lean while driving, or the ragdoll's body parts after a crash. */
@@ -331,10 +333,10 @@ export class GameRenderer {
       row++
     }
 
-    if (view.showPedals) this.drawPedals(view.input)
+    if (view.showPedals) this.drawPedals(view.input, view.swapPedals)
   }
 
-  private drawPedals(input: Input): void {
+  private drawPedals(input: Input, swap: boolean): void {
     const { ctx, width, height: h, safe } = this
     const pw = 96
     const ph = 110
@@ -359,8 +361,10 @@ export class GameRenderer {
       this.outlinedText(label, 0, ph / 2 - 16, 14, colour)
       ctx.restore()
     }
-    pedal(Math.max(20, safe.left), input.brake, '#ff8080', 'BRAKE')
-    pedal(width - pw - Math.max(20, safe.right), input.gas, '#7dff9a', 'GAS')
+    const leftX = Math.max(20, safe.left)
+    const rightX = width - pw - Math.max(20, safe.right)
+    pedal(swap ? rightX : leftX, input.brake, '#ff8080', 'BRAKE')
+    pedal(swap ? leftX : rightX, input.gas, '#7dff9a', 'GAS')
     ctx.textBaseline = 'top'
   }
 }

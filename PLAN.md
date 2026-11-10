@@ -167,9 +167,9 @@ so the rest stay consistent. All art is original.
 
 | ID | Task |
 |---|---|
-| M1 | Audio: synthesised engine sound pitched by rpm, tyre, impact, coin, UI; music optional. Unlock on first touch |
-| M2 | PWA: manifest, icons, offline service worker, full-screen home-screen launch, rotate overlay, safe areas |
-| M3 | Settings: volume, pedal size and side swap, reset save |
+| M1 (done) | Audio: synthesised engine sound pitched by rpm, tyre, impact, coin, UI; music optional. Unlock on first touch |
+| M2 (done) | PWA: manifest, icons, offline service worker, full-screen home-screen launch, rotate overlay, safe areas |
+| M3 (done) | Settings: volume, pedal size and side swap, reset save |
 | M4 | Performance pass on a real iPhone: chunk culling, particle caps, canvas resolution |
 | M5 (done) | Deployment to GitHub Pages: every push to `main` runs the checks and publishes the build |
 
