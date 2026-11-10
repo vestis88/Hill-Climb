@@ -161,7 +161,7 @@ so the rest stay consistent. All art is original.
 | G4 (done) | Terrain rendering (ground fill, surface strip, props) and parallax backgrounds per environment | G1, T1, T2 |
 | G5 (done) | Particles: dust, exhaust, landing puffs, coin sparkle | G1 |
 | G6 (done) | HUD: fuel gauge, distance, coins, rpm/boost dials, pedals, stunt pop-ups | G1, P5 |
-| G7 | Menus: title, garage with upgrade cards, vehicle and environment select, results screen | G1, U1, U3 |
+| G7 (done) | Menus: title, garage with upgrade cards, vehicle and environment select, results screen | G1, U1, U3 |
 
 ### Phase 4: misc (parallel, tier C)
 
@@ -170,7 +170,7 @@ so the rest stay consistent. All art is original.
 | M1 (done) | Audio: synthesised engine sound pitched by rpm, tyre, impact, coin, UI; music optional. Unlock on first touch |
 | M2 (done) | PWA: manifest, icons, offline service worker, full-screen home-screen launch, rotate overlay, safe areas |
 | M3 (done) | Settings: volume, pedal size and side swap, reset save |
-| M4 | Performance pass on a real iPhone: chunk culling, particle caps, canvas resolution |
+| M4 (done: steady 60 fps at 1x resolution with a 4x CPU slowdown; automatic resolution drop if frames run slow) | Performance pass on a real iPhone: chunk culling, particle caps, canvas resolution |
 | M5 (done) | Deployment to GitHub Pages: every push to `main` runs the checks and publishes the build |
 
 ## 5. Next steps after the first version

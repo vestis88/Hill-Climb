@@ -60,6 +60,10 @@ export class GameRenderer {
   private wasAirborne = false
   /** Safe-area insets (notch, home bar, rounded corners), CSS pixels. */
   private safe = { top: 0, right: 0, bottom: 0, left: 0 }
+  /** Highest pixel density to draw at; lowered automatically if frames run slow. */
+  private maxDpr = 2
+  private slowFrames = 0
+  private avgDt = 1 / 60
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!
@@ -68,7 +72,7 @@ export class GameRenderer {
   }
 
   private resize(): void {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    const dpr = Math.min(window.devicePixelRatio || 1, this.maxDpr)
     this.width = this.canvas.clientWidth
     this.height = this.canvas.clientHeight
     this.canvas.width = Math.round(this.width * dpr)
@@ -99,6 +103,7 @@ export class GameRenderer {
     const { ctx, width, height: h } = this
     const { prev, next, alpha, height, env } = view
     this.time += view.dt
+    this.adaptResolution(view.dt)
     const chassis = lerpPose(prev.chassis, next.chassis, alpha)
 
     // Camera: looks ahead, and pulls back as speed builds.
@@ -131,6 +136,22 @@ export class GameRenderer {
 
     drawWeather(ctx, env, width, h, this.camX, this.time)
     if (view.showHud) this.drawHud(view)
+  }
+
+  /**
+   * If frames average longer than about 19 ms for two seconds, draw at a lower pixel
+   * density (2 → 1.5 → 1). Keeps older devices smooth; never goes back up during a session.
+   */
+  private adaptResolution(dt: number): void {
+    if (this.maxDpr <= 1 || dt <= 0 || dt > 0.25) return
+    // Smoothed frame time, so alternating fast and slow frames still count as slow.
+    this.avgDt += (dt - this.avgDt) * 0.05
+    this.slowFrames = this.avgDt > 0.019 ? this.slowFrames + 1 : 0
+    if (this.slowFrames > 120) {
+      this.maxDpr = this.maxDpr > 1.5 ? 1.5 : 1
+      this.slowFrames = 0
+      this.resize()
+    }
   }
 
   private drawSigns(height: HeightFn, left: number, right: number): void {
