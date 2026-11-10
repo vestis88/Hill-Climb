@@ -10,6 +10,17 @@ land on your head. Coins you pick up along the way pay for upgrades, and
 upgrades let you get further on the next run. There are no ads and nothing to
 buy: every coin is earned by driving.
 
+### Environments
+
+| Environment | Unlock | What is different |
+|---|---|---|
+| Green Meadows | free | Rolling grassy hills |
+| Crater Fields | 4,000 coins | Low gravity (about 40%), big crests, long floaty jumps |
+| Frost Pass | 10,000 coins | Icy ground with far less grip, steeper and bumpier |
+
+Every environment is endless and the same every run: the hills grow taller
+and steeper with distance, up to a limit, so there is always further to go.
+
 ### The run
 
 - **Fuel** drains while you drive, a little faster with the gas held. Fuel cans

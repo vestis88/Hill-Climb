@@ -1,4 +1,4 @@
-import type { Pickup } from '../data/track'
+import type { Pickup, PickupSource } from '../data/track'
 import type { HeightFn, Input, SimState, VehicleSpec } from './types'
 import { Sim, STEP } from './world'
 
@@ -33,7 +33,9 @@ export type RunEvent =
 export interface RunOptions {
   vehicle: VehicleSpec
   height: HeightFn
-  pickups: Pickup[]
+  gravity?: number
+  groundFriction?: number
+  pickups: PickupSource
   /** Best distance so far on this track; milestones beyond it pay a bonus. */
   bestDistance: number
 }
@@ -44,7 +46,6 @@ const wrapAngle = (a: number) => a - TAU * Math.round(a / TAU)
 /** One run: wraps the physics with fuel, coins, stunts and the end of the run. Deterministic. */
 export class Run {
   readonly sim: Sim
-  readonly taken: boolean[]
   fuel = 1
   status: RunStatus = 'running'
   coins = { track: 0, air: 0, flips: 0, milestones: 0 }
@@ -56,8 +57,9 @@ export class Run {
   private nextMilestone: number
 
   constructor(readonly options: RunOptions) {
-    this.sim = new Sim({ vehicle: options.vehicle, height: options.height })
-    this.taken = options.pickups.map(() => false)
+    const { vehicle, height, gravity, groundFriction } = options
+    this.sim = new Sim({ vehicle, height, gravity, groundFriction })
+    options.pickups.ensure(60)
     const every = RULES.milestoneEvery
     this.nextMilestone = Math.floor(options.bestDistance / every) * every + every
   }
@@ -98,17 +100,18 @@ export class Run {
   }
 
   private collect(s: SimState): void {
-    const { pickups } = this.options
+    const pickups = this.options.pickups.items
+    this.options.pickups.ensure(s.chassis.x + 60)
     const head = this.sim.vehicle.headPosition()
     const r2 = RULES.pickupRadius * RULES.pickupRadius
     const near = (p: Pickup, q: { x: number; y: number }) => (p.x - q.x) ** 2 + (p.y - q.y) ** 2 < r2
     const points = [s.chassis, head, ...s.wheels]
     for (let i = 0; i < pickups.length; i++) {
       const p = pickups[i]
-      if (this.taken[i] || p.x < s.chassis.x - 4) continue
+      if (p.taken || p.x < s.chassis.x - 4) continue
       if (p.x > s.chassis.x + 4) break
       if (!points.some((q) => near(p, q))) continue
-      this.taken[i] = true
+      p.taken = true
       if (p.kind === 'coin') {
         this.coins.track += p.value
         this.events.push({ kind: 'coin', value: p.value, x: p.x, y: p.y })

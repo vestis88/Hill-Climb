@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { layPickups, type Pickup } from '../src/data/track'
+import { fixedPickups, PickupField, type Pickup } from '../src/data/track'
 import { runabout } from '../src/data/vehicles'
 import { Run, RULES } from '../src/sim/run'
 import { flat, testHills } from '../src/sim/terrain'
@@ -16,25 +16,25 @@ function drive(run: Run, input: Input | (() => Input), seconds: number) {
 describe('run rules', () => {
   it('collects coins it drives through and pays their value', () => {
     const pickups: Pickup[] = [10, 11.3, 12.6].map((x) => ({ kind: 'coin', x, y: 0.9, value: 5 }))
-    const run = new Run({ vehicle: runabout, height: flat, pickups, bestDistance: 1000 })
+    const run = new Run({ vehicle: runabout, height: flat, pickups: fixedPickups(pickups), bestDistance: 1000 })
     drive(run, GAS, 5)
     expect(run.coins.track).toBe(15)
-    expect(run.taken).toEqual([true, true, true])
+    expect(pickups.map((p) => p.taken)).toEqual([true, true, true])
   })
 
   it('runs out of fuel and ends the run once stopped; a fuel can refills the tank', () => {
-    const run = new Run({ vehicle: runabout, height: flat, pickups: [], bestDistance: 1e9 })
+    const run = new Run({ vehicle: runabout, height: flat, pickups: fixedPickups([]), bestDistance: 1e9 })
     drive(run, GAS, RULES.fuelSecondsOnGas + RULES.outOfFuelTimeout + 2)
     expect(run.status).toBe('outOfFuel')
 
-    const refuel = new Run({ vehicle: runabout, height: flat, pickups: [{ kind: 'fuel', x: 30, y: 0.9, value: 0 }], bestDistance: 1e9 })
+    const refuel = new Run({ vehicle: runabout, height: flat, pickups: fixedPickups([{ kind: 'fuel', x: 30, y: 0.9, value: 0 }]), bestDistance: 1e9 })
     refuel.fuel = 0.2
     drive(refuel, GAS, 6)
     expect(refuel.fuel).toBeGreaterThan(0.9)
   })
 
   it('ends the run when the driver lands on their head', () => {
-    const run = new Run({ vehicle: runabout, height: flat, pickups: [], bestDistance: 1e9 })
+    const run = new Run({ vehicle: runabout, height: flat, pickups: fixedPickups([]), bestDistance: 1e9 })
     // Spin nose-up in the air and keep spinning: lands on the roof.
     run.sim.vehicle.chassis.setPosition({ x: 0, y: 6 })
     for (const w of run.sim.vehicle.wheels) w.setPosition({ x: w.getPosition().x, y: w.getPosition().y + 5 })
@@ -43,7 +43,7 @@ describe('run rules', () => {
   })
 
   it('pays for air time and a landed flip', () => {
-    const run = new Run({ vehicle: runabout, height: flat, pickups: [], bestDistance: 1e9 })
+    const run = new Run({ vehicle: runabout, height: flat, pickups: fixedPickups([]), bestDistance: 1e9 })
     const chassis = run.sim.vehicle.chassis
     const lift = 30
     chassis.setPosition({ x: 0, y: chassis.getPosition().y + lift })
@@ -60,17 +60,24 @@ describe('run rules', () => {
   })
 
   it('pays a milestone bonus only beyond the best distance so far', () => {
-    const first = new Run({ vehicle: runabout, height: flat, pickups: [], bestDistance: 0 })
+    const first = new Run({ vehicle: runabout, height: flat, pickups: fixedPickups([]), bestDistance: 0 })
     drive(first, GAS, 25)
     expect(first.coins.milestones).toBe(RULES.milestoneBonus(1) + RULES.milestoneBonus(2))
-    const again = new Run({ vehicle: runabout, height: flat, pickups: [], bestDistance: 150 })
+    const again = new Run({ vehicle: runabout, height: flat, pickups: fixedPickups([]), bestDistance: 150 })
     drive(again, GAS, 25)
     expect(again.coins.milestones).toBe(RULES.milestoneBonus(2))
   })
 
   it('lays the same coins and fuel cans every time, with fuel cans further apart further out', () => {
-    const a = layPickups(testHills, 4000)
-    expect(layPickups(testHills, 4000)).toEqual(a)
+    const lay = () => {
+      const field = new PickupField(testHills)
+      field.ensure(2000)
+      field.ensure(4000)
+      return field.items
+    }
+    const a = lay()
+    expect(lay()).toEqual(a)
+    for (let i = 1; i < a.length; i++) expect(a[i].x).toBeGreaterThan(a[i - 1].x)
     const fuel = a.filter((p) => p.kind === 'fuel').map((p) => p.x)
     for (let i = 2; i < fuel.length; i++) expect(fuel[i] - fuel[i - 1]).toBeGreaterThan(fuel[i - 1] - fuel[i - 2])
     expect(a.filter((p) => p.kind === 'coin').length).toBeGreaterThan(200)

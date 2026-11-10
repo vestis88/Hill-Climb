@@ -7,6 +7,14 @@ export interface Pickup {
   y: number
   /** Coins for a coin; unused for fuel. */
   value: number
+  taken?: boolean
+}
+
+/** Something that supplies pickups along the track, in order of x. */
+export interface PickupSource {
+  readonly items: Pickup[]
+  /** Make sure pickups exist up to toX. */
+  ensure(toX: number): void
 }
 
 /** Coin value by distance: further out is worth more. */
@@ -18,23 +26,47 @@ export function coinValue(x: number): number {
 }
 
 /**
- * Deterministic pickups for a track: fuel cans further apart the further you
- * get, and groups of five coins in between. Same seed, same layout.
+ * Endless, deterministic pickups: fuel cans further apart the further you get, and
+ * groups of five coins in between. Generated lazily as the car advances; each run
+ * gets its own field so "taken" flags never leak between runs.
  */
-export function layPickups(height: HeightFn, length: number, seed = 1): Pickup[] {
-  const random = rng(seed)
-  const pickups: Pickup[] = []
+export class PickupField implements PickupSource {
+  readonly items: Pickup[] = []
+  private readonly random: () => number
+  private nextCoinX = 25
+  private nextFuelX = 140
+  private fuelCount = 0
+  private lastFuelX = -Infinity
 
-  const fuelXs: number[] = []
-  for (let x = 140, k = 0; x < length; k++, x += 160 + 35 * k) fuelXs.push(x)
-  for (const x of fuelXs) pickups.push({ kind: 'fuel', x, y: height(x) + 0.9, value: 0 })
+  constructor(
+    private readonly height: HeightFn,
+    seed = 1,
+  ) {
+    this.random = rng(seed)
+  }
 
-  for (let x = 25; x < length - 10; x += 35 + random() * 30) {
-    if (fuelXs.some((f) => Math.abs(f - x) < 12)) continue
-    for (let i = 0; i < 5; i++) {
-      const cx = x + i * 1.3
-      pickups.push({ kind: 'coin', x: cx, y: height(cx) + 0.9, value: coinValue(cx) })
+  ensure(toX: number): void {
+    while (Math.min(this.nextCoinX, this.nextFuelX) < toX) {
+      if (this.nextFuelX <= this.nextCoinX) {
+        const x = this.nextFuelX
+        this.items.push({ kind: 'fuel', x, y: this.height(x) + 0.9, value: 0 })
+        this.lastFuelX = x
+        this.fuelCount++
+        this.nextFuelX = x + 160 + 35 * this.fuelCount
+      } else {
+        const x = this.nextCoinX
+        this.nextCoinX = x + 35 + this.random() * 30
+        if (x - this.lastFuelX < 12 || this.nextFuelX - x < 12) continue
+        for (let i = 0; i < 5; i++) {
+          const cx = x + i * 1.3
+          this.items.push({ kind: 'coin', x: cx, y: this.height(cx) + 0.9, value: coinValue(cx) })
+        }
+      }
     }
   }
-  return pickups.sort((a, b) => a.x - b.x)
+}
+
+/** A fixed list of pickups, for tests. */
+export function fixedPickups(items: Pickup[]): PickupSource {
+  return { items, ensure: () => undefined }
 }

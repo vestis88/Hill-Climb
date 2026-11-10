@@ -52,3 +52,20 @@ export const runaboutFull: VehicleSpec = {
   wheels: runabout.wheels.map((w) => ({ ...w, friction: 0.9, damping: 0.9 })),
   engine: { ...runabout.engine, maxTorque: 24, torqueFalloff: 0.15, maxWheelSpeed: 46, frontShare: 0.3 },
 }
+
+/** A vehicle the player can own: its base (worst) and fully upgraded specs. */
+export interface VehicleEntry {
+  id: string
+  name: string
+  blurb: string
+  /** Coins to unlock; 0 means owned from the start. */
+  price: number
+  base: VehicleSpec
+  full: VehicleSpec
+}
+
+export const VEHICLES: VehicleEntry[] = [
+  { id: 'runabout', name: 'Runabout', blurb: 'Small, light, easy to handle', price: 0, base: runabout, full: runaboutFull },
+]
+
+export const vehicleEntry = (id: string) => VEHICLES.find((v) => v.id === id) ?? VEHICLES[0]
