@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runabout, runaboutFull } from '../src/data/vehicles'
+import { runabout, runaboutFull, VEHICLES } from '../src/data/vehicles'
 import { applyUpgrades, BASE_LEVELS, FULL_LEVELS, MAX_LEVEL, price, type Levels, type UpgradeId } from '../src/data/upgrades'
 import { flat } from '../src/sim/terrain'
 import type { Input, VehicleSpec } from '../src/sim/types'
@@ -92,8 +92,38 @@ describe('upgrades', () => {
     expect(climb(runaboutFull, 40)).toBeGreaterThan(30)
   })
 
+})
+
+describe.each(VEHICLES)('every vehicle: $name', (entry) => {
+  const at = (levels: Partial<Levels>) => applyUpgrades(entry.base, entry.full, { ...BASE_LEVELS, ...levels })
+
+  it('settles upright on its wheels at rest', () => {
+    const sim = new Sim({ vehicle: entry.base, height: flat })
+    run(sim, NONE, 180)
+    expect(Math.abs(sim.state().chassis.angle)).toBeLessThan(0.1)
+    expect(sim.state().wheelContacts.every(Boolean)).toBe(true)
+  })
+
+  it('level 1 is the base spec and the top level the full spec', () => {
+    expect(at({})).toEqual(entry.base)
+    expect(at(FULL_LEVELS)).toEqual(entry.full)
+  })
+
+  it('engine raises top speed; tyres, drivetrain and the full set climb better', () => {
+    expect(topSpeed(at({ engine: MAX_LEVEL }))).toBeGreaterThan(topSpeed(entry.base) * 1.5)
+    // Grip only limits on steep slopes, so compare there.
+    const base = climb(entry.base, 30)
+    expect(climb(at({ tyres: MAX_LEVEL }), 30)).toBeGreaterThan(base + 1)
+    expect(climb(at({ drivetrain: MAX_LEVEL }), 30)).toBeGreaterThan(base + 1)
+    expect(climb(entry.full, 30)).toBeGreaterThan(climb(entry.base, 30) + 20)
+  })
+
+  it('suspension gives cleaner landings', () => {
+    expect(landingBounce(at({ suspension: MAX_LEVEL }))).toBeLessThan(landingBounce(entry.base))
+  })
+
   it('never flips over backwards from a standstill on flat ground, whatever the upgrades', () => {
-    // Kids hold the gas; that alone must not flip the car. Hills still need skill.
+    // Kids hold the gas; that alone must not flip the vehicle. Hills still need skill.
     const ids: UpgradeId[] = ['engine', 'tyres', 'suspension', 'drivetrain']
     const combos: Partial<Levels>[] = [{}, FULL_LEVELS, ...ids.map((id) => ({ [id]: MAX_LEVEL }))]
     combos.push({ engine: MAX_LEVEL, drivetrain: MAX_LEVEL }, { engine: MAX_LEVEL, tyres: MAX_LEVEL, drivetrain: MAX_LEVEL })
