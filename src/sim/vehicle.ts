@@ -88,14 +88,33 @@ export class Vehicle {
       }
     })
 
-    // Pedals also pitch the chassis: full strength in the air, reduced on the ground.
+    // Pedals also pitch the chassis.
     if (gas || brake) {
-      const grounded = this.wheelContacts().some(Boolean)
-      const factor = grounded ? airControl.groundFactor : 1
+      const dir = gas ? 1 : -1
       const spin = this.chassis.getAngularVelocity()
-      if (gas && spin < airControl.maxSpin) this.chassis.applyTorque(airControl.gasTorque * factor, true)
-      if (brake && spin > -airControl.maxSpin) this.chassis.applyTorque(-airControl.brakeTorque * factor, true)
+      if (this.wheelContacts().some(Boolean)) {
+        // On the ground: a light push that helps wheelies and nose-downs.
+        if (spin * dir < airControl.spinRate) this.chassis.applyTorque(dir * airControl.groundTorque, true)
+      } else {
+        // In the air: steer the spin towards a fixed rate. It responds almost at once
+        // and then holds that rate, instead of building up speed the longer the pedal is held.
+        const target = dir * airControl.spinRate
+        if ((target - spin) * dir > 0) {
+          this.chassis.applyTorque(this.rigInertia() * airControl.spinResponse * (target - spin), true)
+        }
+      }
     }
+  }
+
+  /** Rotational inertia of the whole rig (chassis plus wheels) about the chassis centre of mass. */
+  private rigInertia(): number {
+    const c = this.chassis.getWorldCenter()
+    let inertia = this.chassis.getInertia()
+    for (const wheel of this.wheels) {
+      const d = Vec2.sub(wheel.getWorldCenter(), c)
+      inertia += wheel.getInertia() + wheel.getMass() * Vec2.dot(d, d)
+    }
+    return inertia
   }
 
   /** Mean driven wheel spin as a share of top wheel speed, 0..1. */

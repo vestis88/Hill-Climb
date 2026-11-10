@@ -41,7 +41,7 @@ describe('runabout handling', () => {
       for (let i = 0; i < restSteps; i++) sim.step(NONE)
       let maxPitch = 0
       run(sim, GAS, 6, () => (maxPitch = Math.max(maxPitch, sim.state().chassis.angle)))
-      expect(maxPitch, `rest ${restSteps} steps`).toBeGreaterThan(0.08)
+      expect(maxPitch, `rest ${restSteps} steps`).toBeGreaterThan(0.05)
       expect(maxPitch, `rest ${restSteps} steps`).toBeLessThan(0.6)
     }
   })
@@ -66,12 +66,39 @@ describe('runabout handling', () => {
     expect(Math.abs(air(NONE))).toBeLessThan(0.05)
   })
 
-  it('caps air spin', () => {
+  it('reaches its air spin rate almost at once, then holds it', () => {
+    const { spinRate } = runabout.airControl
+    for (const input of [GAS, BRAKE]) {
+      const dir = input.gas ? 1 : -1
+      const sim = new Sim({ vehicle: runabout, height: flat, start: { x: 0, y: 200 } })
+      run(sim, input, 0.15)
+      expect(sim.vehicle.chassis.getAngularVelocity() * dir).toBeGreaterThan(spinRate * 0.8)
+      let peak = 0
+      run(sim, input, 3, () => (peak = Math.max(peak, sim.vehicle.chassis.getAngularVelocity() * dir)))
+      expect(peak).toBeLessThan(spinRate * 1.05)
+    }
+  })
+
+  it('keeps its spin when the pedal is released in the air', () => {
     const sim = new Sim({ vehicle: runabout, height: flat, start: { x: 0, y: 200 } })
-    run(sim, GAS, 3)
-    const spin = sim.vehicle.chassis.getAngularVelocity()
-    expect(spin).toBeGreaterThan(runabout.airControl.maxSpin * 0.8)
-    expect(spin).toBeLessThan(runabout.airControl.maxSpin * 1.15)
+    run(sim, GAS, 0.5)
+    run(sim, NONE, 0.5)
+    expect(sim.vehicle.chassis.getAngularVelocity()).toBeGreaterThan(runabout.airControl.spinRate * 0.9)
+  })
+
+  it('has entry-level pace: modest acceleration and top speed', () => {
+    const sim = new Sim({ vehicle: runabout, height: flat })
+    run(sim, NONE, 1)
+    let t8 = 0
+    for (let i = 1; i <= 10 / STEP && !t8; i++) {
+      sim.step(GAS)
+      if (sim.state().speed >= 8) t8 = i * STEP
+    }
+    run(sim, GAS, 8)
+    // Owner playtest 1: the first version (0-8 m/s in ~1.2 s, 63 km/h top) was too quick.
+    expect(t8).toBeGreaterThan(1.6)
+    expect(sim.state().speed).toBeGreaterThan(10)
+    expect(sim.state().speed).toBeLessThan(13.5)
   })
 
   it('can be driven over the hill test track by feathering the pedals', () => {

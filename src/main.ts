@@ -13,11 +13,17 @@ let sim = newSim()
 let prev = sim.state()
 let next = prev
 
+const restart = () => {
+  sim = newSim()
+  prev = next = sim.state()
+}
 window.addEventListener('keydown', (e) => {
-  if (e.code === 'KeyR') {
-    sim = newSim()
-    prev = next = sim.state()
-  }
+  if (e.code === 'KeyR') restart()
+})
+// pointerdown, not click: the input layer cancels touch events, which stops iOS synthesising clicks.
+document.getElementById('restart')!.addEventListener('pointerdown', (e) => {
+  e.preventDefault()
+  restart()
 })
 
 let last = performance.now()

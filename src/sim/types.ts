@@ -42,14 +42,12 @@ export interface VehicleSpec {
     idleDragTorque: number
   }
   airControl: {
-    /** Torque applied to the chassis by the gas pedal (nose up). */
-    gasTorque: number
-    /** Torque applied to the chassis by the brake pedal (nose down). */
-    brakeTorque: number
-    /** Pedal torque stops adding spin beyond this rate, rad/s. */
-    maxSpin: number
-    /** Share of the pedal torque still applied with wheels on the ground, 0..1. */
-    groundFactor: number
+    /** Spin rate the pedals steer towards in the air, rad/s. Gas is nose up, brake nose down. */
+    spinRate: number
+    /** How quickly the spin reaches spinRate in the air, 1/s. Higher feels more instant. */
+    spinResponse: number
+    /** Torque the pedals add to the chassis while wheels are on the ground. */
+    groundTorque: number
   }
 }
 
