@@ -17,11 +17,26 @@ export function buildTerrain(world: World, height: HeightFn, fromX: number, toX:
 
 export const flat: HeightFn = () => 0
 
-/** Test track: a flat start, then rolling hills that grow with distance. */
+/** Smooth 0..1 step between a and b. */
+const smoothstep = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)))
+  return t * t * (3 - 2 * t)
+}
+
+/**
+ * Test track: a flat start, then terrain that gets harder with distance.
+ * Layers: long rolling hills, medium hills, sharp crests that throw the car
+ * into the air, and short bumps that unsettle the suspension.
+ * Task P4 replaces this with the streamed, seeded generator.
+ */
 export const testHills: HeightFn = (x) => {
   if (x < 15) return 0
   const d = x - 15
-  const ramp = Math.min(1, d / 40)
-  const grow = 1 + d / 400
-  return ramp * grow * (1.6 * Math.sin(d * 0.11) + 0.9 * Math.sin(d * 0.27 + 1.3) + 0.35 * Math.sin(d * 0.71 + 0.4))
+  const ease = smoothstep(0, 30, d)
+  const grow = 1 + d / 300
+  const rolling = 2.6 * Math.sin(d * 0.07) + 1.4 * Math.sin(d * 0.17 + 1.3)
+  // Narrow peaks of a raised sine: steep take-off faces and sharp crests.
+  const crests = 2.2 * Math.pow(Math.max(0, Math.sin(d * 0.052 + 2.1)), 5) * smoothstep(40, 120, d)
+  const bumps = 0.22 * Math.sin(d * 1.3) * Math.sin(d * 0.11) * smoothstep(60, 200, d)
+  return ease * (grow * (rolling + crests) + bumps)
 }

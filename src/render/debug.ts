@@ -48,7 +48,7 @@ export class DebugRenderer {
     const targetX = chassis.x + VIEW_WIDTH * 0.22
     const targetY = chassis.y + 1
     this.camX = targetX
-    this.camY = lerp(this.camY, targetY, 0.08)
+    this.camY = lerp(this.camY, targetY, 0.18)
 
     ctx.fillStyle = '#7fb6e6'
     ctx.fillRect(0, 0, width, h)

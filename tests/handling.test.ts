@@ -105,7 +105,7 @@ describe('runabout handling', () => {
     // A simple driver: ease off when the nose is high, and level the car in the air.
     const sim = new Sim({ vehicle: runabout, height: testHills })
     let worstPitch = 0
-    for (let i = 0; i < 30 / STEP; i++) {
+    for (let i = 0; i < 45 / STEP; i++) {
       const s = sim.state()
       const pitch = s.chassis.angle
       worstPitch = Math.max(worstPitch, Math.abs(pitch))
@@ -117,8 +117,30 @@ describe('runabout handling', () => {
         sim.step({ gas: pitch - slope < 0.35, brake: false })
       }
     }
-    expect(sim.state().distance).toBeGreaterThan(200)
+    // The opening is meant to be easy; past it the track needs real skill.
+    expect(sim.state().distance).toBeGreaterThan(150)
     expect(worstPitch).toBeLessThan(Math.PI / 2)
+  })
+
+  it('is limited by grip, not just power, on steep climbs', () => {
+    // Owner playtest 2: grip felt excessive. Steepest standing-start climb is now about 25 degrees.
+    const climb = (deg: number) => {
+      const k = Math.tan((deg * Math.PI) / 180)
+      const ramp = (x: number) => (x < 5 ? 0 : x < 7 ? (k * (x - 5) ** 2) / 4 : k * (x - 6))
+      const sim = new Sim({ vehicle: runabout, height: ramp })
+      run(sim, GAS, 10)
+      return sim.state().chassis.x
+    }
+    expect(climb(25)).toBeGreaterThan(35)
+    expect(climb(32)).toBeLessThan(15)
+    // With the old grip the same car crawled up 35 degrees, so friction must be what stops it.
+    const grippy = structuredClone(runabout)
+    grippy.wheels.forEach((w) => (w.friction = 1.6))
+    const k = Math.tan((32 * Math.PI) / 180)
+    const ramp = (x: number) => (x < 5 ? 0 : x < 7 ? (k * (x - 5) ** 2) / 4 : k * (x - 6))
+    const sim = new Sim({ vehicle: grippy, height: ramp })
+    run(sim, GAS, 10)
+    expect(sim.state().chassis.x).toBeGreaterThan(climb(32) + 5)
   })
 
   it('is deterministic', () => {
