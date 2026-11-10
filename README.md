@@ -10,6 +10,18 @@ land on your head. Coins you pick up along the way pay for upgrades, and
 upgrades let you get further on the next run. There are no ads and nothing to
 buy: every coin is earned by driving.
 
+### Vehicles
+
+| Vehicle | Unlock | Character |
+|---|---|---|
+| Runabout | free | Small, light car; easy to handle |
+| Scrambler | 6,000 coins | Light dirt bike; quick, spins fast in the air, flips easily |
+| Hauler | 15,000 coins | Heavy 4x4; slow, very stable, climbs almost anything once upgraded |
+
+Each vehicle has its own four upgrades and its own base and fully upgraded
+values. No combination of upgrades flips any vehicle over backwards from a
+standstill on flat ground; the hills still need a light touch.
+
 ### Environments
 
 | Environment | Unlock | What is different |

@@ -64,8 +64,95 @@ export interface VehicleEntry {
   full: VehicleSpec
 }
 
+/**
+ * Dirt bike: very light, quick and twitchy. Spins fast in the air and flips easily,
+ * so it rewards a light touch on the pedals. Base spec (worst).
+ */
+export const scrambler: VehicleSpec = {
+  id: 'scrambler',
+  chassis: {
+    polygon: [
+      { x: -0.75, y: -0.1 },
+      { x: 0.7, y: -0.1 },
+      { x: 0.8, y: 0.25 },
+      { x: 0.1, y: 0.35 },
+      { x: -0.6, y: 0.3 },
+    ],
+    mass: 4,
+    centerOfMass: { x: -0.05, y: 0.25 },
+  },
+  wheels: [
+    { anchor: { x: -0.72, y: -0.4 }, radius: 0.38, mass: 0.5, friction: 0.25, springHz: 4, damping: 0.6, axle: 'rear' },
+    { anchor: { x: 0.78, y: -0.4 }, radius: 0.38, mass: 0.5, friction: 0.25, springHz: 4, damping: 0.6, axle: 'front' },
+  ],
+  engine: {
+    maxTorque: 7,
+    frontShare: 0,
+    torqueFalloff: 0.5,
+    maxWheelSpeed: 30,
+    brakeTorque: 12,
+    reverseWheelSpeed: 12,
+    idleDragTorque: 0.4,
+  },
+  driver: { head: { x: -0.15, y: 1.25 }, headRadius: 0.2 },
+  airControl: { spinRate: 3.4, spinResponse: 16, groundTorque: 2 },
+}
+
+export const scramblerFull: VehicleSpec = {
+  ...scrambler,
+  chassis: { ...scrambler.chassis, centerOfMass: { x: -0.05, y: 0.05 } },
+  wheels: scrambler.wheels.map((w) => ({ ...w, friction: 1, damping: 0.85 })),
+  engine: { ...scrambler.engine, maxTorque: 6.8, torqueFalloff: 0.35, maxWheelSpeed: 58, frontShare: 0.2 },
+}
+
+/**
+ * Hauler: a big, heavy 4x4. Slow, very stable, and climbs almost anything once
+ * upgraded. Already part-time four-wheel drive at base. Base spec (worst).
+ */
+export const hauler: VehicleSpec = {
+  id: 'hauler',
+  chassis: {
+    polygon: [
+      { x: -2.1, y: -0.3 },
+      { x: 2.1, y: -0.3 },
+      { x: 2.15, y: 0.3 },
+      { x: 0.9, y: 0.4 },
+      { x: 0.6, y: 1.1 },
+      { x: -0.6, y: 1.1 },
+      { x: -0.7, y: 0.45 },
+      { x: -2.1, y: 0.45 },
+    ],
+    mass: 26,
+    centerOfMass: { x: 0, y: 0.05 },
+  },
+  wheels: [
+    { anchor: { x: -1.45, y: -0.7 }, radius: 0.62, mass: 2.5, friction: 0.28, springHz: 3.4, damping: 0.65, axle: 'rear' },
+    { anchor: { x: 1.45, y: -0.7 }, radius: 0.62, mass: 2.5, friction: 0.28, springHz: 3.4, damping: 0.65, axle: 'front' },
+  ],
+  engine: {
+    maxTorque: 70,
+    frontShare: 0.25,
+    torqueFalloff: 0.5,
+    maxWheelSpeed: 14,
+    brakeTorque: 90,
+    reverseWheelSpeed: 7,
+    idleDragTorque: 4,
+  },
+  driver: { head: { x: -0.05, y: 1.45 }, headRadius: 0.2 },
+  airControl: { spinRate: 1.9, spinResponse: 10, groundTorque: 10 },
+}
+
+export const haulerFull: VehicleSpec = {
+  ...hauler,
+  chassis: { ...hauler.chassis, centerOfMass: { x: 0, y: -0.15 } },
+  wheels: hauler.wheels.map((w) => ({ ...w, friction: 1.05, damping: 0.9 })),
+  engine: { ...hauler.engine, maxTorque: 90, torqueFalloff: 0.15, maxWheelSpeed: 27, frontShare: 0.6 },
+}
+
 export const VEHICLES: VehicleEntry[] = [
   { id: 'runabout', name: 'Runabout', blurb: 'Small, light, easy to handle', price: 0, base: runabout, full: runaboutFull },
+  { id: 'scrambler', name: 'Scrambler', blurb: 'Light dirt bike: fast, flips easily', price: 6000, base: scrambler, full: scramblerFull },
+  { id: 'hauler', name: 'Hauler', blurb: 'Heavy 4x4: slow, climbs anything', price: 15000, base: hauler, full: haulerFull },
 ]
 
 export const vehicleEntry = (id: string) => VEHICLES.find((v) => v.id === id) ?? VEHICLES[0]

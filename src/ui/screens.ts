@@ -47,15 +47,12 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
       ${c.owned ? '' : `<span class="price">Unlock ● ${c.price}</span>`}
     </button>`
   el.innerHTML = `
-    <div class="bar"><h1>Ridgeline</h1><span class="coins">● ${v.coins}</span></div>
+    <div class="bar"><h1>Ridgeline</h1><span class="coins">● ${v.coins}</span><button class="big" data-act="drive">Drive</button></div>
     ${v.vehicles.length > 1 ? `<div class="choices">${v.vehicles.map((c) => choice('vehicle', c)).join('')}</div>` : ''}
     <div class="label">${v.vehicleName} upgrades</div>
     <div class="cards">${UPGRADES.map(card).join('')}</div>
     <div class="choices">${v.environments.map((c) => choice('env', c)).join('')}</div>
-    <div class="actions">
-      <button class="big" data-act="drive">Drive</button>
-      ${v.tuning ? '<button class="small" data-act="tune">Tuning</button>' : ''}
-    </div>`
+    ${v.tuning ? '<div class="actions"><button class="small" data-act="tune">Tuning</button></div>' : ''}`
   el.onclick = (e) => {
     const b = (e.target as HTMLElement).closest('button')
     if (!b || b.disabled) return
