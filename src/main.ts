@@ -145,7 +145,7 @@ function startRun(): void {
 function finishRun(): void {
   if (mode !== 'driving' && mode !== 'ending') return
   const total = run.totalCoins
-  const distance = next.distance
+  const distance = run.endDistance ?? next.distance
   const envId = currentEnv().id
   const best = save.best[envId] ?? 0
   save.coins += total
@@ -221,6 +221,7 @@ function frame(now: number): void {
     runCoins: run.totalCoins,
     popups,
     showPedals: mode === 'driving',
+    driver: { lean: run.sway.lean, ragdoll: run.ragdoll?.poses() ?? null },
     showHud: mode === 'driving' || mode === 'ending' || mode === 'results',
   })
   requestAnimationFrame(frame)

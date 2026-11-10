@@ -35,6 +35,8 @@ export interface View {
   runCoins: number
   popups: Popup[]
   showPedals: boolean
+  /** Driver lean while driving, or the ragdoll's body parts after a crash. */
+  driver: { lean: number; ragdoll: { torso: Pose; head: Pose } | null }
   /** Distance, fuel and coin counter; hidden behind full-screen menus. */
   showHud: boolean
 }
@@ -184,29 +186,63 @@ export class DebugRenderer {
       ctx.restore()
     })
 
-    // Chassis and driver
+    // Driver: sways with the car while driving; a limp ragdoll after a crash.
+    const { headRadius } = spec.driver
+    const drawHead = () => {
+      ctx.beginPath()
+      ctx.arc(0, 0, headRadius, 0, Math.PI * 2)
+      ctx.fillStyle = '#2f80ed'
+      ctx.fill()
+      ctx.fillStyle = '#f2f6fb'
+      ctx.fillRect(headRadius * 0.1, -headRadius * 0.15, headRadius * 0.85, headRadius * 0.45)
+    }
+    const drawTorso = (length: number) => {
+      ctx.strokeStyle = '#2b3a55'
+      ctx.lineWidth = 0.2
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(0, -length / 2)
+      ctx.lineTo(0, length / 2)
+      ctx.stroke()
+    }
+    const rag = view.driver.ragdoll
+    if (rag) {
+      ctx.save()
+      ctx.translate(rag.torso.x, rag.torso.y)
+      ctx.rotate(rag.torso.angle)
+      drawTorso(0.6)
+      ctx.restore()
+    }
+
+    // Chassis (and the seated driver)
     ctx.save()
     ctx.translate(chassis.x, chassis.y)
     ctx.rotate(chassis.angle)
-    const { head, headRadius } = spec.driver
-    ctx.strokeStyle = '#2b3a55'
-    ctx.lineWidth = 0.16
-    ctx.beginPath()
-    ctx.moveTo(head.x, 0.35)
-    ctx.lineTo(head.x, head.y - headRadius)
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.arc(head.x, head.y, headRadius, 0, Math.PI * 2)
-    ctx.fillStyle = '#2f80ed'
-    ctx.fill()
-    ctx.fillStyle = '#f2f6fb'
-    ctx.fillRect(head.x + headRadius * 0.1, head.y - headRadius * 0.15, headRadius * 0.85, headRadius * 0.45)
+    if (!rag) {
+      const seat = { x: spec.driver.head.x, y: spec.driver.head.y - 0.75 }
+      ctx.save()
+      ctx.translate(seat.x, seat.y)
+      ctx.rotate(view.driver.lean)
+      ctx.translate(0, 0.3)
+      drawTorso(0.6)
+      ctx.translate(0, 0.45)
+      drawHead()
+      ctx.restore()
+    }
     ctx.beginPath()
     spec.chassis.polygon.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)))
     ctx.closePath()
     ctx.fillStyle = '#e2542f'
     ctx.fill()
     ctx.restore()
+
+    if (rag) {
+      ctx.save()
+      ctx.translate(rag.head.x, rag.head.y)
+      ctx.rotate(rag.head.angle)
+      drawHead()
+      ctx.restore()
+    }
 
     // Pop-ups attached to the world
     for (const p of view.popups) {
