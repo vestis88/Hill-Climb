@@ -1,9 +1,9 @@
 import type { Environment } from '../data/environments'
 import type { Pickup } from '../data/track'
 import type { HeightFn, Input, Pose, SimState, VehicleSpec } from '../sim/types'
-import { drawHead, drawPickup, drawVehicle, drawWheel, OUTLINE } from './art'
+import { drawHead, drawPickup, drawVehicle, drawWheel, EXHAUST, OUTLINE } from './art'
 import { Particles } from './particles'
-import { drawBackdrop, drawGround, drawWeather } from './scenery'
+import { drawBackdrop, drawGround, drawProps, drawWeather, themeFor } from './scenery'
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const lerpPose = (a: Pose, b: Pose, t: number): Pose => ({
@@ -58,6 +58,7 @@ export class GameRenderer {
   private height = 0
   private time = 0
   private wasAirborne = false
+  private shakeAmount = 0
   /** Safe-area insets (notch, home bar, rounded corners), CSS pixels. */
   private safe = { top: 0, right: 0, bottom: 0, left: 0 }
   /** Highest pixel density to draw at; lowered automatically if frames run slow. */
@@ -91,6 +92,11 @@ export class GameRenderer {
     this.particles.clear()
   }
 
+  /** Shake the view, e.g. on a hard landing or a crash. Strength 0..1. */
+  shake(strength: number): void {
+    this.shakeAmount = Math.max(this.shakeAmount, Math.min(1, strength))
+  }
+
   /** A burst of sparkles, e.g. where a coin was picked up. */
   sparkle(x: number, y: number, colour = '#ffe58a'): void {
     this.particles.emit(x, y, { count: 8, speed: 3, colour, size: 0.08, life: 0.5, gravity: 0 })
@@ -113,9 +119,14 @@ export class GameRenderer {
     this.camX = chassis.x + this.viewWidth * 0.2
     this.camY = lerp(this.camY, chassis.y + 1, 0.18)
 
-    drawBackdrop(ctx, env, width, h, this.camX, this.time)
+    drawBackdrop(ctx, env, width, h, this.camX, this.camY, this.time)
 
     ctx.save()
+    if (this.shakeAmount > 0.01) {
+      const k = this.shakeAmount * 6
+      ctx.translate((Math.random() - 0.5) * k, (Math.random() - 0.5) * k)
+      this.shakeAmount *= Math.pow(0.02, view.dt)
+    }
     ctx.translate(width / 2, h * 0.58)
     ctx.scale(scale, -scale)
     ctx.translate(-this.camX, -this.camY)
@@ -123,8 +134,10 @@ export class GameRenderer {
     const right = this.camX + this.viewWidth / 2 + 1
     const bottom = this.camY - (h / scale) * 0.6
 
-    drawGround(ctx, env, height, left, right, bottom)
+    drawProps(ctx, env, height, left, right)
+    drawGround(ctx, env, height, left, right, bottom, this.camY + this.viewWidth)
     this.drawSigns(height, left, right)
+    this.drawShadow(view, chassis)
     for (const p of view.pickups) if (!p.taken && p.x > left - 1 && p.x < right + 1) drawPickup(ctx, p, this.time)
 
     this.effects(view, chassis)
@@ -180,10 +193,41 @@ export class GameRenderer {
     }
   }
 
-  /** Dust from spinning wheels and puffs on landing. */
+  /** A soft shadow on the ground under the vehicle, fading as it rises. */
+  private drawShadow(view: View, chassis: Pose): void {
+    const { ctx } = this
+    const xs = view.spec.wheels.map((w) => w.anchor.x)
+    const half = (Math.max(...xs) - Math.min(...xs)) / 2 + 0.6
+    const ground = view.height(chassis.x)
+    const gap = Math.max(0, chassis.y - ground - 0.6)
+    const alpha = Math.max(0, 0.35 - gap * 0.05)
+    if (alpha <= 0.01) return
+    const w = half * (1 + gap * 0.08)
+    ctx.save()
+    ctx.translate(chassis.x, ground + 0.02)
+    ctx.scale(1, 0.18)
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, w)
+    g.addColorStop(0, `rgba(0, 0, 0, ${alpha})`)
+    g.addColorStop(1, 'rgba(0, 0, 0, 0)')
+    ctx.fillStyle = g
+    ctx.beginPath()
+    ctx.arc(0, 0, w, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+  }
+
+  /** Dust from spinning wheels, exhaust puffs on the gas, and puffs on landing. */
   private effects(view: View, chassis: Pose): void {
     const { next, spec, env } = view
-    const dust = env.id === 'frost' ? '#ffffff' : env.id === 'crater' ? '#b7b8c2' : '#b08a62'
+    const dust = themeFor(env).dust
+    const pipe = EXHAUST[spec.id]
+    if (pipe && view.input.gas && !view.driver.ragdoll && Math.random() < 0.3) {
+      const c = Math.cos(chassis.angle)
+      const s = Math.sin(chassis.angle)
+      const px = chassis.x + pipe[0] * c - pipe[1] * s
+      const py = chassis.y + pipe[0] * s + pipe[1] * c
+      this.particles.emit(px, py, { count: 1, speed: 0.6, colour: 'rgba(120, 125, 135, 0.6)', size: 0.12, life: 0.7, dir: chassis.angle + Math.PI, up: 0.5, gravity: 0.6 })
+    }
     next.wheels.forEach((w, i) => {
       if (!next.wheelContacts[i]) return
       const r = spec.wheels[i].radius
@@ -193,7 +237,9 @@ export class GameRenderer {
       }
     })
     if (this.wasAirborne && !next.airborne) {
-      for (const w of next.wheels) this.particles.emit(w.x, w.y - 0.4, { count: 6, speed: 2.2, colour: dust, size: 0.16, life: 0.7, up: 0.3 })
+      for (const w of next.wheels) this.particles.emit(w.x, w.y - 0.4, { count: 8, speed: 2.4, colour: dust, size: 0.18, life: 0.8, up: 0.3 })
+      const fall = Math.abs(next.speed) * 0.02 + Math.max(0, -(next.chassis.y - view.prev.chassis.y) * 60) * 0.06
+      if (fall > 0.25) this.shake(fall * 0.6)
     }
     this.wasAirborne = next.airborne
     void chassis
@@ -359,14 +405,14 @@ export class GameRenderer {
 
   private drawPedals(input: Input, swap: boolean): void {
     const { ctx, width, height: h, safe } = this
-    const pw = 96
-    const ph = 110
+    const pw = 78
+    const ph = 92
     const y = h - ph - 16 - safe.bottom
     const pedal = (x: number, active: boolean, colour: string, label: string) => {
       ctx.save()
       ctx.translate(x + pw / 2, y + ph / 2)
       if (active) ctx.scale(0.94, 0.94)
-      ctx.globalAlpha = active ? 0.75 : 0.4
+      ctx.globalAlpha = active ? 0.6 : 0.28
       ctx.beginPath()
       ctx.roundRect(-pw / 2, -ph / 2, pw, ph, 18)
       ctx.fillStyle = '#2a2f38'

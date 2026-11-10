@@ -5,6 +5,7 @@ import { applyUpgrades, BASE_LEVELS, FULL_LEVELS, MAX_LEVEL, price, type Upgrade
 import { Sound } from './audio/sound'
 import { createInput } from './input/input'
 import { GameRenderer, type Popup } from './render/game'
+import { drawEnvironmentPreview, drawVehiclePreview } from './render/preview'
 import { emptySave, levelsFor, loadSave, writeSave } from './save/save'
 import { Run } from './sim/run'
 import type { SimState } from './sim/types'
@@ -91,11 +92,13 @@ function openGarage(): void {
     vehicles: VEHICLES.map((v) => ({
       id: v.id, name: v.name, blurb: v.blurb, price: v.price,
       owned: owned(v.id, v.price), selected: v.id === vehicle.id,
+      preview: (c: HTMLCanvasElement) => drawVehiclePreview(c, v.base),
     })),
     environments: ENVIRONMENTS.map((e) => ({
       id: e.id, name: e.name, blurb: e.blurb, price: e.price,
       owned: owned(e.id, e.price), selected: e.id === currentEnv().id,
       note: `Best ${Math.floor(save.best[e.id] ?? 0)} m`,
+      preview: (c: HTMLCanvasElement) => drawEnvironmentPreview(c, e, heightFor(e)),
     })),
     onPick: pick,
     tuning: tuningEnabled(),
@@ -244,7 +247,10 @@ function frame(now: number): void {
       accumulator -= STEP
     }
     if (mode === 'driving' && run.status !== 'running') {
-      if (run.status === 'crashed') sound.crash()
+      if (run.status === 'crashed') {
+        sound.crash()
+        renderer.shake(1)
+      }
       // Let the crash or the final roll show for a moment before the results.
       mode = 'ending'
       endTimer = 1.2

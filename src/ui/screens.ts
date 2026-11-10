@@ -10,6 +10,8 @@ export interface Choice {
   selected: boolean
   /** Shown under the name, e.g. "Best 420 m". */
   note?: string
+  /** Draws a small picture into the card. */
+  preview?: (canvas: HTMLCanvasElement) => void
 }
 import type { RunStatus } from '../sim/run'
 
@@ -43,17 +45,25 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
   const choice = (kind: 'vehicle' | 'env', c: Choice) => `
     <button class="choice ${c.selected ? 'on' : ''} ${c.owned ? '' : 'locked'}" data-pick="${kind}:${c.id}"
       ${!c.owned && c.price > v.coins ? 'disabled' : ''}>
+      ${c.preview ? `<canvas class="thumb ${kind}" data-thumb="${kind}:${c.id}"></canvas>` : ''}
       <span class="name">${c.name}</span>
       <span class="blurb">${c.owned ? (c.note ?? c.blurb) : c.blurb}</span>
       ${c.owned ? '' : `<span class="price">Unlock ● ${c.price}</span>`}
     </button>`
   el.innerHTML = `
     <div class="bar"><h1>Ridgeline</h1><span class="coins">● ${v.coins}</span><button class="big" data-act="drive">Drive</button></div>
-    ${v.vehicles.length > 1 ? `<div class="choices">${v.vehicles.map((c) => choice('vehicle', c)).join('')}</div>` : ''}
+    <div class="choices">${v.vehicles.map((c) => choice('vehicle', c)).join('')}</div>
     <div class="label">${v.vehicleName} upgrades</div>
     <div class="cards">${UPGRADES.map(card).join('')}</div>
     <div class="choices">${v.environments.map((c) => choice('env', c)).join('')}</div>
     <div class="actions"><button class="small" data-act="settings">Settings</button>${v.tuning ? '<button class="small" data-act="tune">Tuning</button>' : ''}</div>`
+  // Draw the previews once the garage is laid out on screen (canvases have no size while hidden).
+  requestAnimationFrame(() => {
+    for (const c of [...v.vehicles.map((x) => ['vehicle', x] as const), ...v.environments.map((x) => ['env', x] as const)]) {
+      const canvas = el.querySelector<HTMLCanvasElement>(`canvas[data-thumb="${c[0]}:${c[1].id}"]`)
+      if (canvas && c[1].preview) c[1].preview(canvas)
+    }
+  })
   el.onclick = (e) => {
     const b = (e.target as HTMLElement).closest('button')
     if (!b || b.disabled) return
