@@ -10,7 +10,7 @@ export interface InputController {
  * Two-pedal input. Touch: left half of the screen is brake, right half is gas,
  * and both can be held at once. Keyboard: arrow keys or A/D.
  */
-export function createInput(target: HTMLElement): InputController {
+export function createInput(target: HTMLElement, swapped: () => boolean = () => false): InputController {
   const input: Input = { gas: false, brake: false }
   const touches = new Map<number, 'gas' | 'brake'>()
   const keys = { gas: false, brake: false }
@@ -28,7 +28,8 @@ export function createInput(target: HTMLElement): InputController {
 
   const down = (e: PointerEvent) => {
     e.preventDefault()
-    touches.set(e.pointerId, e.clientX >= window.innerWidth / 2 ? 'gas' : 'brake')
+    const rightHalf = e.clientX >= window.innerWidth / 2
+    touches.set(e.pointerId, rightHalf !== swapped() ? 'gas' : 'brake')
     refresh()
   }
   const up = (e: PointerEvent) => {

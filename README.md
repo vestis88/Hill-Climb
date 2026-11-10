@@ -128,4 +128,10 @@ without `?tune` never see it.
 
 Every push to `main` is checked, built and published to GitHub Pages by
 `.github/workflows/deploy.yml`. In Safari, open the Pages address and use
-Share, then "Add to Home Screen" for a full-screen launch.
+Share, then "Add to Home Screen": it then opens full-screen like an app, with
+its own icon, and works offline after the first visit. New versions arrive
+the next time it is opened with a connection.
+
+**Settings** (in the garage): sound on/off and volume, pedals swapped (gas on
+the left), and resetting all progress. All sound is synthesised in the game;
+there are no audio files.
