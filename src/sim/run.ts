@@ -1,4 +1,5 @@
 import type { Pickup, PickupSource } from '../data/track'
+import { DriverSway, Ragdoll } from './driver'
 import type { HeightFn, Input, SimState, VehicleSpec } from './types'
 import { Sim, STEP } from './world'
 
@@ -51,6 +52,11 @@ export class Run {
   coins = { track: 0, air: 0, flips: 0, milestones: 0 }
   /** Events from the last step only, for pop-ups and sounds. */
   events: RunEvent[] = []
+  /** The driver's sway while driving, and the ragdoll after a crash. */
+  readonly sway = new DriverSway()
+  ragdoll: Ragdoll | null = null
+  /** Distance when the run ended; the car may roll on a little afterwards. */
+  endDistance: number | null = null
   private airSteps = 0
   private takeoffAngle = 0
   private emptySteps = 0
@@ -71,7 +77,11 @@ export class Run {
 
   step(rawInput: Input): void {
     this.events = []
-    if (this.status !== 'running') return
+    if (this.status !== 'running') {
+      // Keep the physics going briefly so the crash or the final roll can be seen.
+      this.sim.step({ gas: false, brake: false })
+      return
+    }
     const input = this.fuel > 0 ? rawInput : { gas: false, brake: rawInput.brake }
 
     this.sim.step(input)
@@ -79,9 +89,12 @@ export class Run {
     this.fuel = Math.max(0, this.fuel)
 
     const s = this.sim.state()
+    this.sway.update(this.sim.vehicle.chassis, STEP)
     this.collect(s)
     if (this.headOnGround()) {
       this.status = 'crashed'
+      this.endDistance = s.distance
+      this.ragdoll = new Ragdoll(this.sim.world, this.sim.vehicle, this.sway.lean)
       return
     }
     this.stunts(s)
@@ -90,7 +103,10 @@ export class Run {
     if (this.fuel <= 0) {
       this.emptySteps++
       const stopped = Math.abs(s.speed) < 0.3 && !s.airborne
-      if ((stopped && this.emptySteps > 30) || this.emptySteps * STEP > RULES.outOfFuelTimeout) this.status = 'outOfFuel'
+      if ((stopped && this.emptySteps > 30) || this.emptySteps * STEP > RULES.outOfFuelTimeout) {
+        this.status = 'outOfFuel'
+        this.endDistance = s.distance
+      }
     }
   }
 

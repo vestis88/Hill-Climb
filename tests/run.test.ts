@@ -40,6 +40,25 @@ describe('run rules', () => {
     for (const w of run.sim.vehicle.wheels) w.setPosition({ x: w.getPosition().x, y: w.getPosition().y + 5 })
     drive(run, GAS, 4)
     expect(run.status).toBe('crashed')
+    expect(run.endDistance).not.toBeNull()
+    // The driver goes limp and the physics keeps running for the crash to be seen.
+    expect(run.ragdoll).not.toBeNull()
+    for (let i = 0; i < 120; i++) run.step(NONE)
+    const { head, torso } = run.ragdoll!.poses()
+    for (const v of [head.x, head.y, torso.x, torso.y]) expect(Number.isFinite(v)).toBe(true)
+    expect(Math.hypot(head.x - torso.x, head.y - torso.y)).toBeLessThan(1)
+  })
+
+  it('sways the driver back when accelerating hard', () => {
+    const run = new Run({ vehicle: runabout, height: flat, pickups: fixedPickups([]), bestDistance: 1e9 })
+    drive(run, NONE, 1)
+    let maxLean = 0
+    for (let i = 0; i < 60; i++) {
+      run.step(GAS)
+      maxLean = Math.max(maxLean, run.sway.lean)
+    }
+    expect(maxLean).toBeGreaterThan(0.05)
+    expect(maxLean).toBeLessThanOrEqual(0.5)
   })
 
   it('pays for air time and a landed flip', () => {
