@@ -19,10 +19,9 @@ export interface PickupSource {
 
 /** Coin value by distance: further out is worth more. */
 export function coinValue(x: number): number {
-  if (x < 300) return 5
-  if (x < 700) return 10
-  if (x < 1200) return 25
-  return 50
+  if (x < 500) return 5
+  if (x < 1500) return 10
+  return 15
 }
 
 /**
@@ -52,10 +51,10 @@ export class PickupField implements PickupSource {
         this.items.push({ kind: 'fuel', x, y: this.height(x) + 0.9, value: 0 })
         this.lastFuelX = x
         this.fuelCount++
-        this.nextFuelX = x + 160 + 35 * this.fuelCount
+        this.nextFuelX = x + 150 + 85 * this.fuelCount
       } else {
         const x = this.nextCoinX
-        this.nextCoinX = x + 35 + this.random() * 30
+        this.nextCoinX = x + 45 + this.random() * 35
         if (x - this.lastFuelX < 12 || this.nextFuelX - x < 12) continue
         for (let i = 0; i < 5; i++) {
           const cx = x + i * 1.3

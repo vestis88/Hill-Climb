@@ -18,8 +18,8 @@ export const RULES = {
   coinsPerFlip: 50,
   /** A first-time bonus at every multiple of this distance. */
   milestoneEvery: 100,
-  /** Bonus for the k-th milestone (k = 1 at 100 m). */
-  milestoneBonus: (k: number) => 25 * k,
+  /** Bonus for the k-th milestone (k = 1 at 100 m). Flat, set by the economy simulation (npm run economy). */
+  milestoneBonus: (_k: number) => 15,
 }
 
 export type RunStatus = 'running' | 'crashed' | 'outOfFuel'
