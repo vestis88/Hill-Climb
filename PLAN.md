@@ -155,12 +155,12 @@ so the rest stay consistent. All art is original.
 
 | ID | Task | Depends |
 |---|---|---|
-| G1 | Style guide and renderer structure (layers, camera, interpolation) | P6 |
-| G2 | Vehicle art for all three vehicles, with suspension and wheel animation | G1, V1, V2 |
-| G3 | Original driver character, ragdoll-driven, with crash reaction | G1, P3 |
-| G4 | Terrain rendering (ground fill, surface strip, props) and parallax backgrounds per environment | G1, T1, T2 |
-| G5 | Particles: dust, exhaust, landing puffs, coin sparkle | G1 |
-| G6 | HUD: fuel gauge, distance, coins, rpm/boost dials, pedals, stunt pop-ups | G1, P5 |
+| G1 (done) | Style guide and renderer structure (layers, camera, interpolation) | P6 |
+| G2 (done) | Vehicle art for all three vehicles, with suspension and wheel animation | G1, V1, V2 |
+| G3 (done) | Original driver character, ragdoll-driven, with crash reaction | G1, P3 |
+| G4 (done) | Terrain rendering (ground fill, surface strip, props) and parallax backgrounds per environment | G1, T1, T2 |
+| G5 (done) | Particles: dust, exhaust, landing puffs, coin sparkle | G1 |
+| G6 (done) | HUD: fuel gauge, distance, coins, rpm/boost dials, pedals, stunt pop-ups | G1, P5 |
 | G7 | Menus: title, garage with upgrade cards, vehicle and environment select, results screen | G1, U1, U3 |
 
 ### Phase 4: misc (parallel, tier C)

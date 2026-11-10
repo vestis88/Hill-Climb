@@ -3,7 +3,7 @@ import { PickupField } from './data/track'
 import { VEHICLES, vehicleEntry } from './data/vehicles'
 import { applyUpgrades, BASE_LEVELS, FULL_LEVELS, MAX_LEVEL, price, type UpgradeId } from './data/upgrades'
 import { createInput } from './input/input'
-import { DebugRenderer, type Popup } from './render/debug'
+import { GameRenderer, type Popup } from './render/game'
 import { levelsFor, loadSave, writeSave } from './save/save'
 import { Run } from './sim/run'
 import type { SimState } from './sim/types'
@@ -19,7 +19,7 @@ const tuneEl = $('tune')
 const endRunBtn = $('endRun')
 
 const controls = createInput(canvas)
-const renderer = new DebugRenderer(canvas)
+const renderer = new GameRenderer(canvas)
 const save = loadSave()
 const tuning = loadTuning()
 let driveAs: DriveAs = 'mine'
@@ -176,8 +176,13 @@ document.addEventListener('visibilitychange', () => {
 
 function handleEvents(): void {
   for (const e of run.events) {
-    if (e.kind === 'coin') popups.push({ text: `+${e.value}`, at: { x: e.x, y: e.y }, age: 0 })
-    else if (e.kind === 'fuel') popups.push({ text: 'Fuel!', at: { x: e.x, y: e.y }, age: 0 })
+    if (e.kind === 'coin') {
+      popups.push({ text: `+${e.value}`, at: { x: e.x, y: e.y }, age: 0 })
+      renderer.sparkle(e.x, e.y)
+    } else if (e.kind === 'fuel') {
+      popups.push({ text: 'Fuel!', at: { x: e.x, y: e.y }, age: 0 })
+      renderer.sparkle(e.x, e.y, '#ff9a9a')
+    }
     else if (e.kind === 'air') popups.push({ text: `Air ${e.seconds.toFixed(1)} s  +${e.value}`, age: 0 })
     else if (e.kind === 'flip') popups.push({ text: `${e.flips > 1 ? `${e.flips}× ` : ''}Flip!  +${e.value}`, age: 0 })
     else if (e.kind === 'milestone') popups.push({ text: `${e.distance} m  +${e.value}`, age: 0 })
@@ -214,7 +219,8 @@ function frame(now: number): void {
     alpha: mode === 'driving' || mode === 'ending' ? accumulator / STEP : 1,
     spec: run.options.vehicle,
     height: run.options.height,
-    palette: currentEnv().palette,
+    env: currentEnv(),
+    dt,
     input: controls.input,
     pickups: run.options.pickups.items,
     fuel: run.fuel,
