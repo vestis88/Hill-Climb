@@ -26,7 +26,7 @@ export const runabout: VehicleSpec = {
   engine: {
     maxTorque: 21,
     torqueFalloff: 0.5,
-    maxWheelSpeed: 29,
+    maxWheelSpeed: 22,
     brakeTorque: 30,
     reverseWheelSpeed: 14,
     idleDragTorque: 1.2,

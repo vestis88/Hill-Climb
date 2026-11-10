@@ -20,6 +20,8 @@ export class DebugRenderer {
   private camY = 0
   private width = 0
   private height = 0
+  /** Safe-area insets (notch, home bar, rounded corners), CSS pixels. */
+  private safe = { top: 0, right: 0, bottom: 0, left: 0 }
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!
@@ -34,6 +36,14 @@ export class DebugRenderer {
     this.canvas.width = Math.round(this.width * dpr)
     this.canvas.height = Math.round(this.height * dpr)
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    const css = getComputedStyle(document.documentElement)
+    const inset = (name: string) => parseFloat(css.getPropertyValue(name)) || 0
+    this.safe = {
+      top: inset('--safe-top'),
+      right: inset('--safe-right'),
+      bottom: inset('--safe-bottom'),
+      left: inset('--safe-left'),
+    }
   }
 
   draw(prev: SimState, next: SimState, alpha: number, spec: VehicleSpec, height: HeightFn, input: Input): void {
@@ -116,23 +126,27 @@ export class DebugRenderer {
     ctx.fillStyle = '#10151c'
     ctx.font = '600 16px -apple-system, system-ui, sans-serif'
     ctx.textBaseline = 'top'
-    ctx.fillText(`${Math.floor(next.distance)} m`, 16, 14)
-    ctx.fillText(`${Math.round(Math.abs(next.speed) * 3.6)} km/h`, 16, 36)
+    const { safe } = this
+    const hudX = Math.max(16, safe.left)
+    const hudY = Math.max(14, safe.top)
+    ctx.fillText(`${Math.floor(next.distance)} m`, hudX, hudY)
+    ctx.fillText(`${Math.round(Math.abs(next.speed) * 3.6)} km/h`, hudX, hudY + 22)
 
     // Pedal hints
     const pad = (x: number, label: string, active: boolean) => {
       ctx.globalAlpha = active ? 0.55 : 0.22
       ctx.fillStyle = '#10151c'
       ctx.beginPath()
-      ctx.roundRect(x, h - 96, 120, 72, 14)
+      ctx.roundRect(x, padY, 120, 72, 14)
       ctx.fill()
       ctx.globalAlpha = 1
       ctx.fillStyle = '#ffffff'
       ctx.textAlign = 'center'
-      ctx.fillText(label, x + 60, h - 68)
+      ctx.fillText(label, x + 60, padY + 28)
       ctx.textAlign = 'left'
     }
-    pad(24, 'BRAKE', input.brake)
-    pad(width - 144, 'GAS', input.gas)
+    const padY = h - 96 - safe.bottom
+    pad(Math.max(24, safe.left), 'BRAKE', input.brake)
+    pad(width - 144 - Math.max(0, safe.right - 24), 'GAS', input.gas)
   }
 }

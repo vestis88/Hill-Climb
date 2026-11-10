@@ -6,9 +6,20 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- Safari tints its top bar with this; match the sky so the top edge blends in. -->
+    <meta name="theme-color" content="#7fb6e6" />
     <title>Ridgeline</title>
     <style>
-      html, body { margin: 0; height: 100%; overflow: hidden; background: #1b2330; }
+      /* Safari on iPad can leave a strip of page background visible under its toolbars.
+         Sky colour at the top and ground colour at the bottom make any strip blend in. */
+      :root {
+        --safe-top: env(safe-area-inset-top, 0px);
+        --safe-right: env(safe-area-inset-right, 0px);
+        --safe-bottom: env(safe-area-inset-bottom, 0px);
+        --safe-left: env(safe-area-inset-left, 0px);
+      }
+      html { margin: 0; height: 100%; overflow: hidden; background: linear-gradient(#7fb6e6 50%, #6b4a2f 50%); }
+      body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
       body {
         position: fixed; inset: 0;
         touch-action: none; overscroll-behavior: none;
