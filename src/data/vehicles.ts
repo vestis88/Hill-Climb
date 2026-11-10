@@ -138,7 +138,7 @@ export const hauler: VehicleSpec = {
     reverseWheelSpeed: 7,
     idleDragTorque: 4,
   },
-  driver: { head: { x: -0.05, y: 1.45 }, headRadius: 0.2 },
+  driver: { head: { x: -0.05, y: 0.95 }, headRadius: 0.22 },
   airControl: { spinRate: 1.9, spinResponse: 10, groundTorque: 10 },
 }
 
