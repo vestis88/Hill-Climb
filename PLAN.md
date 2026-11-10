@@ -165,7 +165,7 @@ so the rest stay consistent. All art is original.
 | M2 | PWA: manifest, icons, offline service worker, full-screen home-screen launch, rotate overlay, safe areas |
 | M3 | Settings: volume, pedal size and side swap, reset save |
 | M4 | Performance pass on a real iPhone: chunk culling, particle caps, canvas resolution |
-| M5 | Deployment to static hosting (GitHub Pages) so builds can be opened on a phone. Needed before the P6 playtest, so do it early |
+| M5 (done) | Deployment to GitHub Pages: every push to `main` runs the checks and publishes the build |
 
 ## 5. Next steps after the first version
 

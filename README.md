@@ -14,3 +14,9 @@ npm run build    # production build in dist/
 
 Controls: hold the right half of the screen for gas and the left half for
 brake. On a keyboard use the arrow keys or A/D; R restarts.
+
+## Play on a phone
+
+Every push to `main` is checked, built and published to GitHub Pages by
+`.github/workflows/deploy.yml`. In Safari, open the Pages address and use
+Share, then "Add to Home Screen" for a full-screen launch.
