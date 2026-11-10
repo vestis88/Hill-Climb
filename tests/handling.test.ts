@@ -95,10 +95,10 @@ describe('runabout handling', () => {
       if (sim.state().speed >= 8) t8 = i * STEP
     }
     run(sim, GAS, 8)
-    // Owner playtest 1: the first version (0-8 m/s in ~1.2 s, 63 km/h top) was too quick.
+    // Owner playtests 1 and 3: 63 km/h, then 43 km/h, was too fast for the starter car.
     expect(t8).toBeGreaterThan(1.6)
-    expect(sim.state().speed).toBeGreaterThan(10)
-    expect(sim.state().speed).toBeLessThan(13.5)
+    expect(sim.state().speed).toBeGreaterThan(8)
+    expect(sim.state().speed).toBeLessThan(10)
   })
 
   it('can be driven over the hill test track by feathering the pedals', () => {
