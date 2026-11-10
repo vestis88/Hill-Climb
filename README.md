@@ -51,7 +51,7 @@ Each vehicle has four upgrades, each with 10 levels. Level 1 is the base car.
 | **Engine** | Faster acceleration and higher top speed; climbs hills it used to stall on | Drive torque and top wheel speed | Torque ×1 → ×2; top speed 33 → about 70 km/h |
 | **Tyres** | Wheels spin less on launch and on steep climbs; better braking | Tyre friction | Steepest climb from a standstill about 25° → about 38° |
 | **Suspension** | Lands jumps cleanly, stays planted over bumps, harder to tip over | Spring damping, and a lower centre of weight | Bounce after landing dies out faster; centre of weight 0.2 m lower |
-| **Drivetrain** | Less wheelie, steadier climbing, power on rough ground | Share of engine power sent to the front wheels | Rear-wheel drive → 50/50 all-wheel drive |
+| **Drivetrain** | Steadier climbing, power on rough and slippery ground | Drive added at the front wheels | Rear-wheel drive → all-wheel drive |
 
 Upgrades are bought separately per vehicle. There is deliberately no fuel
 upgrade: fuel stays the same for every car, so getting further comes from
@@ -80,7 +80,20 @@ npm run build    # production build in dist/
 ```
 
 Controls: hold the right half of the screen for gas and the left half for
-brake. On a keyboard use the arrow keys or A/D; R restarts.
+brake. On a keyboard use the arrow keys or A/D; R restarts a run, and Enter
+starts one from the garage.
+
+Progress (coins, upgrades, best distance) is saved in the browser on each
+device. Clearing Safari's website data resets it.
+
+### Tuning sandbox
+
+Add `?tune` to the address (for example `…/Hill-Climb/?tune`) to get a
+**Tuning** button in the garage. It has sliders for every handling value of
+the base car and of the fully upgraded car, a choice of which to drive (your
+upgrades, base, or full), and **Copy values** to get the numbers to put into
+`src/data/vehicles.ts`. Tuning changes stay in that browser only. Players
+without `?tune` never see it.
 
 ## Play on a phone
 

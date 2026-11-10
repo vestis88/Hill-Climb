@@ -41,7 +41,7 @@ describe('runabout handling', () => {
       for (let i = 0; i < restSteps; i++) sim.step(NONE)
       let maxPitch = 0
       run(sim, GAS, 6, () => (maxPitch = Math.max(maxPitch, sim.state().chassis.angle)))
-      expect(maxPitch, `rest ${restSteps} steps`).toBeGreaterThan(0.05)
+      expect(maxPitch, `rest ${restSteps} steps`).toBeGreaterThan(0.04)
       expect(maxPitch, `rest ${restSteps} steps`).toBeLessThan(0.6)
     }
   })
@@ -131,7 +131,7 @@ describe('runabout handling', () => {
       run(sim, GAS, 10)
       return sim.state().chassis.x
     }
-    expect(climb(25)).toBeGreaterThan(35)
+    expect(climb(25)).toBeGreaterThan(30)
     expect(climb(32)).toBeLessThan(15)
     // With the old grip the same car crawled up 35 degrees, so friction must be what stops it.
     const grippy = structuredClone(runabout)

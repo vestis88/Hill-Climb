@@ -6,6 +6,9 @@ import { Vehicle } from './vehicle'
 /** Fixed simulation step. Rendering interpolates; physics never uses real time. */
 export const STEP = 1 / 60
 
+/** Length of the current fixed test track, metres. Task P4 replaces this with endless terrain. */
+export const TRACK_LENGTH = 4000
+
 export interface SimOptions {
   vehicle: VehicleSpec
   height: HeightFn
@@ -26,7 +29,7 @@ export class Sim {
 
   constructor(readonly options: SimOptions) {
     this.world = new World({ gravity: new Vec2(0, -(options.gravity ?? 10)) })
-    const span = options.span ?? { from: -30, to: 1200 }
+    const span = options.span ?? { from: -30, to: TRACK_LENGTH + 60 }
     const ground = buildTerrain(this.world, options.height, span.from, span.to)
 
     const x = options.start?.x ?? 0
