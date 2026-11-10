@@ -84,14 +84,20 @@ That keeps priority 2 (upgrades) a pure function of priority 1 (physics).
 
 ## 3. Handling model (the part that must feel right)
 
+**Read the "How the game works" section of README.md first.** It is the
+source of truth for the run rules, coins, upgrades and the progression
+principle: every vehicle's base values are its worst; upgrades move each value
+towards a tuned fully upgraded value. When tuning, always say which end
+(base or fully upgraded) a change is for.
+
+
 - **Rig:** chassis body + wheels on wheel joints (spring + damper along the suspension axis, motor on the hub).
 - **Gas on the ground:** motor drives the driven wheels; reaction torque lifts the nose, so hard throttle causes wheelies and can flip the car backwards.
 - **Brake on the ground:** brakes the wheels, then reverses; pitches the nose down.
 - **In the air:** gas rotates the car nose-up, brake rotates it nose-down. The spin snaps to a fixed rate almost at once and holds it, rather than building up while the pedal is held (owner playtest 1). Releasing the pedal keeps the current spin. This is the core skill of the genre.
 - **Suspension:** soft and long-travel, visibly squashing on landings; weight shifts under acceleration and braking.
 - **Driver:** a jointed head and torso riding on the chassis. The run ends when the head hits terrain.
-- **Fuel:** drains with time (faster on throttle); canisters appear at growing intervals, so progress depends on pace and upgrades.
-- **Stunts:** flips and air time pay coins; so does distance.
+- **Fuel and coins:** as described in README "The run".
 - **Terrain:** continuous height function per environment (layered noise, amplitude and roughness ramp up with distance), plus per-environment gravity and surface friction.
 - **Camera:** follows the car, looks ahead in the direction of travel, zooms out with speed and height.
 
@@ -127,13 +133,13 @@ listed files and should not edit others except to wire itself in.
 | P3 | Driver ragdoll and crash detection | `sim/driver.ts` | Landing on the roof ends the run; a hard but upright landing does not |
 | P4 | Procedural terrain with chunk streaming and difficulty ramp | `sim/terrain.ts` | Endless drive at 60 fps; identical terrain for the same seed |
 | P5 | Run rules: fuel, canisters, coins, distance, stunt detection, run end and payout | `sim/run.ts` | Scripted-input tests verify fuel-out, flip counting, payouts |
-| P6 | Handling pass on the first vehicle using the sandbox, plus numeric regression tests (0-to-top-speed time, wheelie onset, air rotation rate, max climbable slope) | `data/vehicles.ts`, `tests/handling/` | **Owner playtest approves the feel.** Nothing in later phases starts before this |
+| P6 | Handling pass on the first vehicle using the sandbox: tune the **base** (worst) values and the **fully upgraded** values, plus numeric regression tests for both ends (0-to-top-speed time, wheelie onset, air rotation rate, max climbable slope). The sandbox needs a switch between base and fully upgraded | `data/vehicles.ts`, `tests/handling/` | **Owner playtest approves both ends.** Nothing in later phases starts before this |
 
 ### Phase 2: upgrades and content (parallel, tier C unless noted)
 
 | ID | Task | Depends | Done when |
 |---|---|---|---|
-| U1 | Upgrade system: 4 upgrades per vehicle (engine, grip, suspension, drivetrain/weight balance), 15 levels, cost curve, `applyUpgrades` | P6 | Each level produces a measurable change in the P6 handling metrics; tests assert monotonic improvement |
+| U1 | Upgrade system as specified in README "Upgrades": engine, tyres, suspension, drivetrain; 15 levels each; `applyUpgrades(base, max, levels)` interpolates each physics value; cost curve | P6 | Each level produces a measurable change in the P6 handling metrics; tests assert monotonic improvement and that level 1 equals the base car |
 | U2 | Economy balance: payouts vs upgrade costs so a new upgrade is affordable every 2 to 4 runs early, slowing later | U1, P5 | Simulated-progression script prints a sane curve |
 | U3 | Save system: coins, owned vehicles, upgrade levels, best distances; versioned | P5 | Survives reload; migration test passes |
 | V1 | Vehicle 2: light two-wheeler (agile, easy to flip, rider leans) (**S**, new rig shape) | P6 | Own handling tests; distinctly different feel |
