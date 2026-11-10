@@ -70,6 +70,19 @@
       .rows .total { border-top: 1px solid rgba(255, 255, 255, 0.3); margin-top: 4px; padding-top: 6px; font-weight: 800; color: #ffd23f; }
       .actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
       .best { font-size: 14px; opacity: 0.85; }
+      .label { width: 100%; max-width: 900px; font-size: 13px; font-weight: 700; opacity: 0.75; margin-bottom: -6px; }
+      .choices { width: 100%; max-width: 900px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+      button.choice {
+        border: 2px solid transparent; border-radius: 14px; padding: 8px 10px; text-align: left; color: #fff;
+        background: rgba(255, 255, 255, 0.1); display: flex; flex-direction: column; gap: 2px;
+        font: 13px -apple-system, system-ui, sans-serif;
+      }
+      button.choice .name { font-weight: 800; font-size: 15px; }
+      button.choice .blurb { opacity: 0.8; font-size: 12px; }
+      button.choice .price { color: #ffd23f; font-weight: 800; }
+      button.choice.on { border-color: #3fbf5f; background: rgba(63, 191, 95, 0.18); }
+      button.choice.locked { background: rgba(0, 0, 0, 0.25); }
+      button.choice:disabled { opacity: 0.55; }
       .coin { color: #ffd23f; }
       .newbest { color: #3fbf5f; font-weight: 800; }
       #tune { gap: 8px; align-items: stretch; }

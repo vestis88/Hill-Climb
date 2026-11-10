@@ -6,14 +6,19 @@ export interface SaveData {
   coins: number
   /** Upgrade levels per vehicle id. */
   levels: Record<string, Levels>
-  /** Best distance per track id, metres. */
+  /** Best distance per environment id, metres. */
   best: Record<string, number>
+  /** Environment and vehicle ids bought with coins (the free ones are always open). */
+  unlocked: string[]
+  /** Last chosen environment and vehicle. */
+  envId: string
+  vehicleId: string
 }
 
 const KEY = 'ridgeline.save'
 
 export function emptySave(): SaveData {
-  return { version: 1, coins: 0, levels: {}, best: {} }
+  return { version: 1, coins: 0, levels: {}, best: {}, unlocked: [], envId: 'meadow', vehicleId: 'runabout' }
 }
 
 export function loadSave(): SaveData {
@@ -22,7 +27,11 @@ export function loadSave(): SaveData {
     if (!raw) return emptySave()
     const data = JSON.parse(raw)
     if (data?.version !== 1) return emptySave()
-    return { ...emptySave(), ...data }
+    const save: SaveData = { ...emptySave(), ...data }
+    // Version 1 saves from before environments kept the best distance under "hills".
+    if (save.best.hills !== undefined && save.best.meadow === undefined) save.best.meadow = save.best.hills
+    delete save.best.hills
+    return save
   } catch {
     return emptySave()
   }

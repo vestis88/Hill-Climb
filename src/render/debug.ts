@@ -1,3 +1,4 @@
+import type { Environment } from '../data/environments'
 import type { Pickup } from '../data/track'
 import type { HeightFn, Input, Pose, SimState, VehicleSpec } from '../sim/types'
 
@@ -26,9 +27,9 @@ export interface View {
   alpha: number
   spec: VehicleSpec
   height: HeightFn
+  palette: Environment['palette']
   input: Input
   pickups: Pickup[]
-  taken: boolean[]
   /** Fuel left, 0..1. */
   fuel: number
   runCoins: number
@@ -94,7 +95,11 @@ export class DebugRenderer {
     this.camX = chassis.x + VIEW_WIDTH * 0.22
     this.camY = lerp(this.camY, chassis.y + 1, 0.18)
 
-    ctx.fillStyle = '#7fb6e6'
+    const pal = view.palette
+    const sky = ctx.createLinearGradient(0, 0, 0, h)
+    sky.addColorStop(0, pal.skyTop)
+    sky.addColorStop(1, pal.skyBottom)
+    ctx.fillStyle = sky
     ctx.fillRect(0, 0, width, h)
 
     ctx.save()
@@ -111,12 +116,12 @@ export class DebugRenderer {
     for (let x = left; x <= right; x += 0.25) ctx.lineTo(x, height(x))
     ctx.lineTo(right, bottom)
     ctx.closePath()
-    ctx.fillStyle = '#6b4a2f'
+    ctx.fillStyle = pal.ground
     ctx.fill()
     ctx.beginPath()
     for (let x = left; x <= right; x += 0.25) ctx.lineTo(x, height(x))
     ctx.lineWidth = 0.22
-    ctx.strokeStyle = '#4c9a3d'
+    ctx.strokeStyle = pal.surface
     ctx.stroke()
 
     // Distance markers every 50 m
@@ -137,8 +142,8 @@ export class DebugRenderer {
     }
 
     // Pickups
-    view.pickups.forEach((p, i) => {
-      if (view.taken[i] || p.x < left || p.x > right) return
+    view.pickups.forEach((p) => {
+      if (p.taken || p.x < left || p.x > right) return
       if (p.kind === 'coin') {
         ctx.beginPath()
         ctx.arc(p.x, p.y, 0.32, 0, Math.PI * 2)
@@ -232,8 +237,11 @@ export class DebugRenderer {
     // Distance
     ctx.textBaseline = 'top'
     ctx.textAlign = 'left'
-    ctx.font = `700 17px ${FONT}`
-    ctx.fillStyle = '#10151c'
+    ctx.font = `800 18px ${FONT}`
+    ctx.lineWidth = 4
+    ctx.strokeStyle = '#10151c'
+    ctx.fillStyle = '#ffffff'
+    ctx.strokeText(`${Math.floor(view.next.distance)} m`, x0, y0)
     ctx.fillText(`${Math.floor(view.next.distance)} m`, x0, y0)
 
     // Fuel gauge

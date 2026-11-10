@@ -1,10 +1,25 @@
 import { MAX_LEVEL, price, UPGRADES, type Levels, type UpgradeId } from '../data/upgrades'
+
+/** An environment or vehicle the player can pick, buy, or see locked. */
+export interface Choice {
+  id: string
+  name: string
+  blurb: string
+  price: number
+  owned: boolean
+  selected: boolean
+  /** Shown under the name, e.g. "Best 420 m". */
+  note?: string
+}
 import type { RunStatus } from '../sim/run'
 
 export interface GarageView {
   coins: number
+  vehicleName: string
+  vehicles: Choice[]
+  environments: Choice[]
+  onPick(kind: 'vehicle' | 'env', id: string): void
   levels: Levels
-  best: number
   tuning: boolean
   onBuy(id: UpgradeId): void
   onDrive(): void
@@ -24,10 +39,19 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
       <button class="buy" data-buy="${u.id}" ${maxed || cost > v.coins ? 'disabled' : ''}>${maxed ? 'Maxed' : `Upgrade ● ${cost}`}</button>
     </div>`
   }
+  const choice = (kind: 'vehicle' | 'env', c: Choice) => `
+    <button class="choice ${c.selected ? 'on' : ''} ${c.owned ? '' : 'locked'}" data-pick="${kind}:${c.id}"
+      ${!c.owned && c.price > v.coins ? 'disabled' : ''}>
+      <span class="name">${c.name}</span>
+      <span class="blurb">${c.owned ? (c.note ?? c.blurb) : c.blurb}</span>
+      ${c.owned ? '' : `<span class="price">Unlock ● ${c.price}</span>`}
+    </button>`
   el.innerHTML = `
     <div class="bar"><h1>Ridgeline</h1><span class="coins">● ${v.coins}</span></div>
+    ${v.vehicles.length > 1 ? `<div class="choices">${v.vehicles.map((c) => choice('vehicle', c)).join('')}</div>` : ''}
+    <div class="label">${v.vehicleName} upgrades</div>
     <div class="cards">${UPGRADES.map(card).join('')}</div>
-    <div class="best">Best distance: ${Math.floor(v.best)} m</div>
+    <div class="choices">${v.environments.map((c) => choice('env', c)).join('')}</div>
     <div class="actions">
       <button class="big" data-act="drive">Drive</button>
       ${v.tuning ? '<button class="small" data-act="tune">Tuning</button>' : ''}
@@ -36,6 +60,10 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
     const b = (e.target as HTMLElement).closest('button')
     if (!b || b.disabled) return
     if (b.dataset.buy) v.onBuy(b.dataset.buy as UpgradeId)
+    else if (b.dataset.pick) {
+      const [kind, id] = b.dataset.pick.split(':')
+      v.onPick(kind as 'vehicle' | 'env', id)
+    }
     else if (b.dataset.act === 'drive') v.onDrive()
     else if (b.dataset.act === 'tune') v.onTune()
   }
