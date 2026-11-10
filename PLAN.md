@@ -129,19 +129,19 @@ listed files and should not edit others except to wire itself in.
 | ID | Task | Owns | Done when |
 |---|---|---|---|
 | P1 (done) | Project scaffold, fixed-step world, one vehicle on flat and sloped test terrain, keyboard + touch input, debug renderer | `sim/world.ts`, `sim/vehicle.ts`, `input/`, build config | Car drives, wheelies under full gas, pitches in the air; sim tests pass; loads on an iPhone in landscape |
-| P2 | Tuning sandbox: on-screen sliders for every `VehicleSpec` field, save/load presets as JSON | `ui/sandbox/` | Any handling value can be changed while driving and exported |
-| P3 | Driver ragdoll and crash detection | `sim/driver.ts` | Landing on the roof ends the run; a hard but upright landing does not |
+| P2 (done) | Tuning sandbox: on-screen sliders for every `VehicleSpec` field, save/load presets as JSON | `ui/sandbox/` | Any handling value can be changed while driving and exported |
+| P3 (first version done: crash when the head touches the ground; ragdoll still to do) | Driver ragdoll and crash detection | `sim/driver.ts` | Landing on the roof ends the run; a hard but upright landing does not |
 | P4 | Procedural terrain with chunk streaming and difficulty ramp | `sim/terrain.ts` | Endless drive at 60 fps; identical terrain for the same seed |
-| P5 | Run rules: fuel, canisters, coins, distance, stunt detection, run end and payout | `sim/run.ts` | Scripted-input tests verify fuel-out, flip counting, payouts |
+| P5 (done; numbers in `sim/run.ts` RULES) | Run rules: fuel, canisters, coins, distance, stunt detection, run end and payout | `sim/run.ts` | Scripted-input tests verify fuel-out, flip counting, payouts |
 | P6 | Handling pass on the first vehicle using the sandbox: tune the **base** (worst) values and the **fully upgraded** values, plus numeric regression tests for both ends (0-to-top-speed time, wheelie onset, air rotation rate, max climbable slope). The sandbox needs a switch between base and fully upgraded | `data/vehicles.ts`, `tests/handling/` | **Owner playtest approves both ends.** Nothing in later phases starts before this |
 
 ### Phase 2: upgrades and content (parallel, tier C unless noted)
 
 | ID | Task | Depends | Done when |
 |---|---|---|---|
-| U1 | Upgrade system as specified in README "Upgrades": engine, tyres, suspension, drivetrain; 10 levels each; no fuel upgrade; `applyUpgrades(base, max, levels)` interpolates each physics value; cost curve | P6 | Each level produces a measurable change in the P6 handling metrics; tests assert monotonic improvement and that level 1 equals the base car |
+| U1 (done: `data/upgrades.ts`, tests in `tests/upgrades.test.ts`) | Upgrade system as specified in README "Upgrades": engine, tyres, suspension, drivetrain; 10 levels each; no fuel upgrade; `applyUpgrades(base, max, levels)` interpolates each physics value; cost curve | P6 | Each level produces a measurable change in the P6 handling metrics; tests assert monotonic improvement and that level 1 equals the base car |
 | U2 | Economy balance: payouts vs upgrade costs so a new upgrade is affordable every 2 to 4 runs early, slowing later | U1, P5 | Simulated-progression script prints a sane curve |
-| U3 | Save system: coins, owned vehicles, upgrade levels, best distances; versioned | P5 | Survives reload; migration test passes |
+| U3 (done: `save/save.ts`) | Save system: coins, owned vehicles, upgrade levels, best distances; versioned | P5 | Survives reload; migration test passes |
 | V1 | Vehicle 2: light two-wheeler (agile, easy to flip, rider leans) (**S**, new rig shape) | P6 | Own handling tests; distinctly different feel |
 | V2 | Vehicle 3: heavy 4x4 truck (slow, stable, climbs anything) | P6 | Same |
 | T1 | Environment 2: low-gravity, long floaty jumps | P4 | Own `TrackSpec`, playable end to end |

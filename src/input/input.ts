@@ -1,10 +1,16 @@
 import type { Input } from '../sim/types'
 
+export interface InputController {
+  readonly input: Input
+  /** Release every pedal, e.g. when a menu opens over the game. */
+  reset(): void
+}
+
 /**
  * Two-pedal input. Touch: left half of the screen is brake, right half is gas,
  * and both can be held at once. Keyboard: arrow keys or A/D.
  */
-export function createInput(target: HTMLElement): Input {
+export function createInput(target: HTMLElement): InputController {
   const input: Input = { gas: false, brake: false }
   const touches = new Map<number, 'gas' | 'brake'>()
   const keys = { gas: false, brake: false }
@@ -13,6 +19,11 @@ export function createInput(target: HTMLElement): Input {
     const sides = [...touches.values()]
     input.gas = keys.gas || sides.includes('gas')
     input.brake = keys.brake || sides.includes('brake')
+  }
+  const reset = () => {
+    touches.clear()
+    keys.gas = keys.brake = false
+    refresh()
   }
 
   const down = (e: PointerEvent) => {
@@ -28,8 +39,12 @@ export function createInput(target: HTMLElement): Input {
   target.addEventListener('pointerup', up)
   target.addEventListener('pointercancel', up)
   target.addEventListener('pointerleave', up)
-  // Stop Safari scrolling, zooming and showing the long-press menu.
-  for (const type of ['touchstart', 'touchmove', 'gesturestart', 'contextmenu', 'dblclick']) {
+  // Stop Safari scrolling, zooming and showing the long-press menu over the game.
+  // Only on the game itself, so menu buttons still get normal taps.
+  for (const type of ['touchstart', 'touchmove', 'contextmenu']) {
+    target.addEventListener(type, (e) => e.preventDefault(), { passive: false })
+  }
+  for (const type of ['gesturestart', 'dblclick']) {
     document.addEventListener(type, (e) => e.preventDefault(), { passive: false })
   }
 
@@ -42,11 +57,7 @@ export function createInput(target: HTMLElement): Input {
   }
   window.addEventListener('keydown', key(true))
   window.addEventListener('keyup', key(false))
-  window.addEventListener('blur', () => {
-    touches.clear()
-    keys.gas = keys.brake = false
-    refresh()
-  })
+  window.addEventListener('blur', reset)
 
-  return input
+  return { input, reset }
 }

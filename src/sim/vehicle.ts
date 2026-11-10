@@ -69,19 +69,25 @@ export class Vehicle {
     const rpm = this.rpm()
     const driveTorque = engine.maxTorque * (1 - engine.torqueFalloff * rpm * rpm)
 
+    const contacts = this.wheelContacts()
+    const axleCount = { rear: 0, front: 0 }
+    for (const w of this.spec.wheels) axleCount[w.axle]++
+
     this.spec.wheels.forEach((w, i) => {
       const joint = this.joints[i]
+      // The rear always gets full drive; the drivetrain upgrade adds drive at the front on top.
+      const share = w.axle === 'rear' ? 1 : engine.frontShare
       if (both) {
         // Both pedals: hold the wheels.
         joint.setMotorSpeed(0)
         joint.setMaxMotorTorque(engine.brakeTorque)
-      } else if (gas && w.driven) {
+      } else if (gas && share > 0) {
         joint.setMotorSpeed(-engine.maxWheelSpeed)
-        joint.setMaxMotorTorque(driveTorque)
+        joint.setMaxMotorTorque((driveTorque * share) / axleCount[w.axle])
       } else if (brake) {
         // Brakes act on every wheel, then pull the car into reverse.
         joint.setMotorSpeed(engine.reverseWheelSpeed)
-        joint.setMaxMotorTorque(w.driven ? engine.brakeTorque : engine.brakeTorque * 0.5)
+        joint.setMaxMotorTorque(w.axle === 'rear' ? engine.brakeTorque : engine.brakeTorque * 0.5)
       } else {
         joint.setMotorSpeed(0)
         joint.setMaxMotorTorque(engine.idleDragTorque)
@@ -92,7 +98,7 @@ export class Vehicle {
     if (gas || brake) {
       const dir = gas ? 1 : -1
       const spin = this.chassis.getAngularVelocity()
-      if (this.wheelContacts().some(Boolean)) {
+      if (contacts.some(Boolean)) {
         // On the ground: a light push that helps wheelies and nose-downs.
         if (spin * dir < airControl.spinRate) this.chassis.applyTorque(dir * airControl.groundTorque, true)
       } else {
@@ -122,11 +128,17 @@ export class Vehicle {
     let sum = 0
     let n = 0
     this.spec.wheels.forEach((w, i) => {
-      if (!w.driven) return
+      if (w.axle !== 'rear') return
       sum += Math.abs(this.wheels[i].getAngularVelocity() - this.chassis.getAngularVelocity())
       n++
     })
     return n ? Math.min(1, sum / n / this.spec.engine.maxWheelSpeed) : 0
+  }
+
+  /** World position of the driver's head. */
+  headPosition(): { x: number; y: number } {
+    const p = this.chassis.getWorldPoint(new Vec2(this.spec.driver.head.x, this.spec.driver.head.y))
+    return { x: p.x, y: p.y }
   }
 
   destroy(): void {

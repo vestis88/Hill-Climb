@@ -16,7 +16,7 @@ export interface WheelSpec {
   springHz: number
   /** Suspension damping ratio, 0 (bouncy) to 1 (dead). */
   damping: number
-  driven: boolean
+  axle: 'rear' | 'front'
 }
 
 export interface VehicleSpec {
@@ -29,8 +29,10 @@ export interface VehicleSpec {
   }
   wheels: WheelSpec[]
   engine: {
-    /** Peak drive torque per driven wheel. */
+    /** Peak drive torque at the rear axle. */
     maxTorque: number
+    /** Extra drive at the front axle, as a share of maxTorque: 0 is rear-wheel drive. */
+    frontShare: number
     /** Share of drive torque lost at top wheel speed, 0..1. */
     torqueFalloff: number
     /** Wheel spin at top speed, rad/s. */
@@ -41,6 +43,8 @@ export interface VehicleSpec {
     /** Drag torque when no pedal is held. */
     idleDragTorque: number
   }
+  /** The driver's head, for crash detection. The run ends if it touches the ground. */
+  driver: { head: Vec2; headRadius: number }
   airControl: {
     /** Spin rate the pedals steer towards in the air, rad/s. Gas is nose up, brake nose down. */
     spinRate: number
