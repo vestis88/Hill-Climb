@@ -22,6 +22,8 @@ buy: every coin is earned by driving.
   - flips, paid for each full rotation that lands on the wheels;
   - distance milestones, a one-off bonus the first time you pass each marker on a track.
 - At the end of a run all coins collected are banked, whether it ended in a crash or an empty tank.
+- Crashing costs nothing except the run itself. There are no checkpoints:
+  every run starts from the beginning of the track.
 
 ### Progression principle
 
@@ -42,7 +44,7 @@ there to its best version. So when we tune:
 
 ### Upgrades
 
-Each vehicle has four upgrades, each with 15 levels. Level 1 is the base car.
+Each vehicle has four upgrades, each with 10 levels. Level 1 is the base car.
 
 | Upgrade | What you notice | What it changes in the physics | Base → fully upgraded (starter car, first proposal) |
 |---|---|---|---|
@@ -51,14 +53,16 @@ Each vehicle has four upgrades, each with 15 levels. Level 1 is the base car.
 | **Suspension** | Lands jumps cleanly, stays planted over bumps, harder to tip over | Spring damping, and a lower centre of weight | Bounce after landing dies out faster; centre of weight 0.2 m lower |
 | **Drivetrain** | Less wheelie, steadier climbing, power on rough ground | Share of engine power sent to the front wheels | Rear-wheel drive → 50/50 all-wheel drive |
 
-Upgrades are bought separately per vehicle.
+Upgrades are bought separately per vehicle. There is deliberately no fuel
+upgrade: fuel stays the same for every car, so getting further comes from
+driving better and from the four upgrades above.
 
 ### Coins and prices
 
-- Prices rise with each level, roughly 35% more than the level before. An
+- Prices rise with each level, roughly 50% more than the level before. An
   early level costs about one or two runs of coins; the last levels take many
-  runs. First proposal: level 2 costs 300 coins and level 15 about 15,000,
-  about 56,000 coins to max one upgrade.
+  runs. First proposal: level 2 costs 300 coins and level 10 about 7,700,
+  about 22,000 coins to max one upgrade.
 - New vehicles and new environments are also bought with coins.
 - Target pace, to be checked by an economy simulation (task U2): a new
   upgrade every 2 to 4 runs at the start, slowing later. Fully upgrading

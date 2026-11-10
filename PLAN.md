@@ -139,7 +139,7 @@ listed files and should not edit others except to wire itself in.
 
 | ID | Task | Depends | Done when |
 |---|---|---|---|
-| U1 | Upgrade system as specified in README "Upgrades": engine, tyres, suspension, drivetrain; 15 levels each; `applyUpgrades(base, max, levels)` interpolates each physics value; cost curve | P6 | Each level produces a measurable change in the P6 handling metrics; tests assert monotonic improvement and that level 1 equals the base car |
+| U1 | Upgrade system as specified in README "Upgrades": engine, tyres, suspension, drivetrain; 10 levels each; no fuel upgrade; `applyUpgrades(base, max, levels)` interpolates each physics value; cost curve | P6 | Each level produces a measurable change in the P6 handling metrics; tests assert monotonic improvement and that level 1 equals the base car |
 | U2 | Economy balance: payouts vs upgrade costs so a new upgrade is affordable every 2 to 4 runs early, slowing later | U1, P5 | Simulated-progression script prints a sane curve |
 | U3 | Save system: coins, owned vehicles, upgrade levels, best distances; versioned | P5 | Survives reload; migration test passes |
 | V1 | Vehicle 2: light two-wheeler (agile, easy to flip, rider leans) (**S**, new rig shape) | P6 | Own handling tests; distinctly different feel |
