@@ -24,7 +24,7 @@ export const ENVIRONMENTS: Environment[] = [
     gravity: 10,
     groundFriction: 0.9,
     seed: 11,
-    terrain: { flatStart: 15, amplitude: 3.3, wavelength: 32, crests: 3.0, bumps: 0.2, growPerKm: 2.2, maxGrow: 3.2 },
+    terrain: { flatStart: 15, amplitude: 3.0, wavelength: 38, crests: 2.8, bumps: 0.2, growPerKm: 1.0, maxGrow: 2.6 },
     palette: { skyTop: '#5fa8e8', skyBottom: '#bfe3f7', ground: '#6b4a2f', surface: '#4c9a3d', far: '#8fbfa0', near: '#5f9e63' },
   },
   {

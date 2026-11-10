@@ -39,7 +39,7 @@ and steeper with distance, up to a limit, so there is always further to go.
   lie along the track, further apart the further you get. The run ends when
   the tank is empty and the car rolls to a stop.
 - **Crashing**: the run ends at once if the driver's head hits the ground.
-- **Coins** come from four places:
+- **Coins** come from four places (values in `src/sim/run.ts` and `src/data/track.ts`):
   - coins lying on the track, in small groups, worth more the further out they are;
   - air time, paid per second in the air;
   - flips, paid for each full rotation that lands on the wheels;
@@ -87,9 +87,15 @@ driving better and from the four upgrades above.
   runs. First proposal: level 2 costs 300 coins and level 10 about 7,700,
   about 22,000 coins to max one upgrade.
 - New vehicles and new environments are also bought with coins.
-- Target pace, to be checked by an economy simulation (task U2): a new
-  upgrade every 2 to 4 runs at the start, slowing later. Fully upgrading
-  the starter car should take a few hours of play, not weeks.
+- Pace is checked by an economy simulation, `npm run economy`: a scripted
+  driver plays Green Meadows with the Runabout and buys the cheapest upgrade
+  after each run. It almost never crashes, so it is much faster than a child.
+  Current result: first upgrades after one run, fully upgraded after about
+  26 runs or **2 hours** of play. Children should take several times longer.
+- What sets the pace: coins are worth 5 each up to 500 m, 10 up to 1,500 m
+  and 15 beyond; the distance bonus is 15 coins per new 100 m; fuel cans get
+  further apart (150 m more each time plus 85 m), so a faster, upgraded car
+  gets further on each tank.
 
 All prices and upgrade ranges live in `src/data/` and are tuned by playtest.
 
