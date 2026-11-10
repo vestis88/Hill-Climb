@@ -193,6 +193,7 @@ an API key or paid service.
 ## 7. Rules for agents
 
 - One task per branch and pull request; touch only the files the task owns.
+- Merging: the owner has authorised merging your own pull requests into `main` without asking, once `npm run check` passes and the pull request has no conflicts or unanswered review comments. Merging publishes the game, so confirm the deploy run succeeds afterwards.
 - `npm run check` (types, lint, tests) must pass before pushing.
 - Never change a P6 handling value or a `sim/` interface outside a Phase 1 task without flagging it; the handling regression tests are the guard.
 - No copyrighted names, characters, vehicle designs, tracks, art or audio from any existing game.
