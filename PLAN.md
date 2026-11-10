@@ -55,7 +55,7 @@ src/
   input/
 ```
 
-Key types (owned by task P1; later tasks may add fields, never rename):
+Key types (the source of truth is `src/sim/types.ts`; later tasks may add fields, never rename):
 
 ```ts
 interface Input { gas: boolean; brake: boolean }
@@ -64,11 +64,11 @@ interface VehicleSpec {
   id: string
   chassis: { polygon: Vec2[]; mass: number; centerOfMass: Vec2 }
   wheels: { anchor: Vec2; radius: number; mass: number; friction: number;
-            springHz: number; damping: number; travel: number; driven: boolean }[]
-  engine: { maxTorque: number; maxWheelSpeed: number; brakeTorque: number }
-  airControl: { gasTorque: number; brakeTorque: number; maxSpin: number }
-  fuel: { capacity: number; burnPerSec: number }
-  driverSeat: Vec2
+            springHz: number; damping: number; driven: boolean }[]
+  engine: { maxTorque: number; torqueFalloff: number; maxWheelSpeed: number;
+            brakeTorque: number; reverseWheelSpeed: number; idleDragTorque: number }
+  airControl: { gasTorque: number; brakeTorque: number; maxSpin: number; groundFactor: number }
+  // added by later tasks: fuel (P5), driverSeat (P3)
 }
 
 interface SimState {            // what render and UI read each frame
@@ -97,6 +97,21 @@ That keeps priority 2 (upgrades) a pure function of priority 1 (physics).
 
 All numbers live in `data/` and are live-editable in the tuning sandbox (P2).
 
+### Reference notes on genre feel
+
+Public guides and reviews describe the feel only in qualitative terms; there
+are no published physics numbers. What they agree on, and what P6 tunes towards:
+
+- Momentum matters more than top speed: carrying speed over a crest beats flooring it up the face.
+- Holding full gas up a hill flips the car backwards; players feather the pedal and use brake to drop the nose.
+- Landing flat on both wheels keeps speed; landing nose- or tail-first costs it.
+- Engine upgrades add power for steep climbs; grip puts that power down; suspension adds stability and landing absorption; all-wheel drive balances the car and reduces tipping. Power upgraded far beyond grip is wasted as wheelspin.
+- The launch should be punchy with a light nose, settling as speed builds (implemented as drive torque that fades towards top speed).
+
+Lesson from P1: the launch wheelie was on a knife-edge and flipped the car
+depending on which frame the pedal went down. Handling tests must sweep input
+timing, not check a single scripted run.
+
 ## 4. Tasks
 
 Tier: **S** = strong model, done in sequence, sets the feel. **C** = cheaper
@@ -107,7 +122,7 @@ listed files and should not edit others except to wire itself in.
 
 | ID | Task | Owns | Done when |
 |---|---|---|---|
-| P1 | Project scaffold, fixed-step world, one vehicle on flat and sloped test terrain, keyboard + touch input, debug renderer | `sim/world.ts`, `sim/vehicle.ts`, `input/`, build config | Car drives, wheelies under full gas, pitches in the air; sim tests pass; loads on an iPhone in landscape |
+| P1 (done) | Project scaffold, fixed-step world, one vehicle on flat and sloped test terrain, keyboard + touch input, debug renderer | `sim/world.ts`, `sim/vehicle.ts`, `input/`, build config | Car drives, wheelies under full gas, pitches in the air; sim tests pass; loads on an iPhone in landscape |
 | P2 | Tuning sandbox: on-screen sliders for every `VehicleSpec` field, save/load presets as JSON | `ui/sandbox/` | Any handling value can be changed while driving and exported |
 | P3 | Driver ragdoll and crash detection | `sim/driver.ts` | Landing on the roof ends the run; a hard but upright landing does not |
 | P4 | Procedural terrain with chunk streaming and difficulty ramp | `sim/terrain.ts` | Endless drive at 60 fps; identical terrain for the same seed |
@@ -126,7 +141,6 @@ listed files and should not edit others except to wire itself in.
 | T1 | Environment 2: low-gravity, long floaty jumps | P4 | Own `TrackSpec`, playable end to end |
 | T2 | Environment 3: slippery, steep, rough | P4 | Same |
 | T3 | Vehicle and environment unlock prices and the order they open | U2 | Wired into save and economy |
-| R1 | Timed race mode: fixed-seed tracks with a finish line, race your own best ghost (recorded inputs replayed deterministically) (**S**) | P5, U3 | Ghost replays exactly; finish time saved |
 
 ### Phase 3: graphics (parallel, tier C)
 
@@ -151,10 +165,32 @@ so the rest stay consistent. All art is original.
 | M2 | PWA: manifest, icons, offline service worker, full-screen home-screen launch, rotate overlay, safe areas |
 | M3 | Settings: volume, pedal size and side swap, reset save |
 | M4 | Performance pass on a real iPhone: chunk culling, particle caps, canvas resolution |
-| M5 | Daily challenge: date-seeded track with a personal best |
-| M6 | Deployment to static hosting (GitHub Pages) so builds can be opened on a phone |
+| M5 | Deployment to static hosting (GitHub Pages) so builds can be opened on a phone. Needed before the P6 playtest, so do it early |
 
-## 5. Rules for agents
+## 5. Next steps after the first version
+
+Not part of the first version; pick up once phases 1 to 4 are done.
+
+- Timed race mode on fixed-seed tracks with a finish line, racing your own best ghost (recorded inputs replayed deterministically).
+- More vehicles and environments beyond the first three of each.
+- Daily challenge: a date-seeded track with a personal best.
+- Vehicle tuning parts or perks as a second upgrade layer.
+- App Store build via a Capacitor wrapper.
+
+## 6. How to run these tasks in the Claude app
+
+Everything here runs inside the Claude app on the subscription; nothing needs
+an API key or paid service.
+
+- This file is the task list. Start one new session per task with a message like
+  "Do task U1 from PLAN.md", so each session starts small and cheap.
+- Use the model picker: the strongest model for tier S tasks, a cheaper model
+  (Sonnet, or Haiku for the simplest) for tier C tasks.
+- Run one task at a time unless two tasks own different files; mark a task
+  "(done)" in the tables when it is merged.
+- Hosting on GitHub Pages is free for public repositories.
+
+## 7. Rules for agents
 
 - One task per branch and pull request; touch only the files the task owns.
 - `npm run check` (types, lint, tests) must pass before pushing.
@@ -162,7 +198,7 @@ so the rest stay consistent. All art is original.
 - No copyrighted names, characters, vehicle designs, tracks, art or audio from any existing game.
 - No ads, no purchase prompts, no timers that gate play.
 
-## 6. Where the owner is needed
+## 8. Where the owner is needed
 
 1. **P6 feel sign-off.** Play the build on an iPhone and iPad and describe what is off ("too floaty", "nose drops too fast"). Expect two or three rounds.
 2. Same again, briefly, for each new vehicle (V1, V2).

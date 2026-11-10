@@ -1,0 +1,130 @@
+import { Body, Circle, Polygon, Vec2, WheelJoint, World } from 'planck'
+import type { Input, VehicleSpec } from './types'
+
+/**
+ * A vehicle rig: chassis + wheels on sprung wheel joints.
+ *
+ * Convention: the vehicle faces +x. Positive rotation is counter-clockwise,
+ * so "nose up" is positive chassis torque and forward wheel spin is negative.
+ */
+export class Vehicle {
+  readonly chassis: Body
+  readonly wheels: Body[] = []
+  readonly joints: WheelJoint[] = []
+
+  constructor(
+    private readonly world: World,
+    readonly spec: VehicleSpec,
+    private readonly ground: Body,
+    position: { x: number; y: number },
+  ) {
+    const origin = new Vec2(position.x, position.y)
+
+    this.chassis = world.createDynamicBody({ position: origin })
+    this.chassis.createFixture(new Polygon(spec.chassis.polygon.map((p) => new Vec2(p.x, p.y))), {
+      density: 1,
+      friction: 0.4,
+      filterGroupIndex: -1, // never collide with own wheels
+    })
+    setMass(this.chassis, spec.chassis.mass, spec.chassis.centerOfMass)
+
+    for (const w of spec.wheels) {
+      const hub = new Vec2(origin.x + w.anchor.x, origin.y + w.anchor.y)
+      const wheel = world.createDynamicBody({ position: hub })
+      wheel.createFixture(new Circle(w.radius), {
+        density: w.mass / (Math.PI * w.radius * w.radius),
+        friction: w.friction,
+        filterGroupIndex: -1,
+      })
+      const joint = new WheelJoint(
+        { frequencyHz: w.springHz, dampingRatio: w.damping, enableMotor: true, maxMotorTorque: 0, motorSpeed: 0 },
+        this.chassis,
+        wheel,
+        hub,
+        new Vec2(0, 1),
+      )
+      world.createJoint(joint)
+      this.wheels.push(wheel)
+      this.joints.push(joint)
+    }
+  }
+
+  /** True for each wheel currently touching the ground. */
+  wheelContacts(): boolean[] {
+    return this.wheels.map((wheel) => {
+      for (let edge = wheel.getContactList(); edge; edge = edge.next ?? null) {
+        if (edge.other === this.ground && edge.contact.isTouching()) return true
+      }
+      return false
+    })
+  }
+
+  /** Apply pedal input for one fixed step. Call before world.step. */
+  applyInput(input: Input): void {
+    const { engine, airControl } = this.spec
+    const gas = input.gas && !input.brake
+    const brake = input.brake && !input.gas
+    const both = input.gas && input.brake
+    // Drive torque fades towards top speed, so launches are punchy and the nose settles as speed builds.
+    const rpm = this.rpm()
+    const driveTorque = engine.maxTorque * (1 - engine.torqueFalloff * rpm * rpm)
+
+    this.spec.wheels.forEach((w, i) => {
+      const joint = this.joints[i]
+      if (both) {
+        // Both pedals: hold the wheels.
+        joint.setMotorSpeed(0)
+        joint.setMaxMotorTorque(engine.brakeTorque)
+      } else if (gas && w.driven) {
+        joint.setMotorSpeed(-engine.maxWheelSpeed)
+        joint.setMaxMotorTorque(driveTorque)
+      } else if (brake) {
+        // Brakes act on every wheel, then pull the car into reverse.
+        joint.setMotorSpeed(engine.reverseWheelSpeed)
+        joint.setMaxMotorTorque(w.driven ? engine.brakeTorque : engine.brakeTorque * 0.5)
+      } else {
+        joint.setMotorSpeed(0)
+        joint.setMaxMotorTorque(engine.idleDragTorque)
+      }
+    })
+
+    // Pedals also pitch the chassis: full strength in the air, reduced on the ground.
+    if (gas || brake) {
+      const grounded = this.wheelContacts().some(Boolean)
+      const factor = grounded ? airControl.groundFactor : 1
+      const spin = this.chassis.getAngularVelocity()
+      if (gas && spin < airControl.maxSpin) this.chassis.applyTorque(airControl.gasTorque * factor, true)
+      if (brake && spin > -airControl.maxSpin) this.chassis.applyTorque(-airControl.brakeTorque * factor, true)
+    }
+  }
+
+  /** Mean driven wheel spin as a share of top wheel speed, 0..1. */
+  rpm(): number {
+    let sum = 0
+    let n = 0
+    this.spec.wheels.forEach((w, i) => {
+      if (!w.driven) return
+      sum += Math.abs(this.wheels[i].getAngularVelocity() - this.chassis.getAngularVelocity())
+      n++
+    })
+    return n ? Math.min(1, sum / n / this.spec.engine.maxWheelSpeed) : 0
+  }
+
+  destroy(): void {
+    for (const wheel of this.wheels) this.world.destroyBody(wheel)
+    this.world.destroyBody(this.chassis)
+  }
+}
+
+/** Override a body's mass and centre of mass, scaling its rotational inertia to match. */
+function setMass(body: Body, mass: number, center: { x: number; y: number }): void {
+  const data = { mass: 0, center: new Vec2(0, 0), I: 0 }
+  body.getMassData(data)
+  const oldCentroidI = data.I - data.mass * Vec2.dot(data.center, data.center)
+  const c = new Vec2(center.x, center.y)
+  body.setMassData({
+    mass,
+    center: c,
+    I: oldCentroidI * (mass / data.mass) + mass * Vec2.dot(c, c),
+  })
+}
