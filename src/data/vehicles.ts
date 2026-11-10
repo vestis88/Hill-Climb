@@ -20,21 +20,20 @@ export const runabout: VehicleSpec = {
     centerOfMass: { x: -0.1, y: 0.05 },
   },
   wheels: [
-    { anchor: { x: -0.95, y: -0.55 }, radius: 0.42, mass: 1, friction: 1.6, springHz: 3.2, damping: 0.45, driven: true },
-    { anchor: { x: 1.0, y: -0.55 }, radius: 0.42, mass: 1, friction: 1.6, springHz: 3.2, damping: 0.45, driven: false },
+    { anchor: { x: -0.95, y: -0.55 }, radius: 0.42, mass: 1, friction: 1.6, springHz: 4.3, damping: 0.7, driven: true },
+    { anchor: { x: 1.0, y: -0.55 }, radius: 0.42, mass: 1, friction: 1.6, springHz: 4.3, damping: 0.7, driven: false },
   ],
   engine: {
-    maxTorque: 30,
+    maxTorque: 21,
     torqueFalloff: 0.5,
-    maxWheelSpeed: 42,
+    maxWheelSpeed: 29,
     brakeTorque: 30,
     reverseWheelSpeed: 14,
     idleDragTorque: 1.2,
   },
   airControl: {
-    gasTorque: 46,
-    brakeTorque: 46,
-    maxSpin: 4.2,
-    groundFactor: 0.2,
+    spinRate: 2.6,
+    spinResponse: 14,
+    groundTorque: 12,
   },
 }

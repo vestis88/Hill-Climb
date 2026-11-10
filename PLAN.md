@@ -67,7 +67,7 @@ interface VehicleSpec {
             springHz: number; damping: number; driven: boolean }[]
   engine: { maxTorque: number; torqueFalloff: number; maxWheelSpeed: number;
             brakeTorque: number; reverseWheelSpeed: number; idleDragTorque: number }
-  airControl: { gasTorque: number; brakeTorque: number; maxSpin: number; groundFactor: number }
+  airControl: { spinRate: number; spinResponse: number; groundTorque: number }
   // added by later tasks: fuel (P5), driverSeat (P3)
 }
 
@@ -87,7 +87,7 @@ That keeps priority 2 (upgrades) a pure function of priority 1 (physics).
 - **Rig:** chassis body + wheels on wheel joints (spring + damper along the suspension axis, motor on the hub).
 - **Gas on the ground:** motor drives the driven wheels; reaction torque lifts the nose, so hard throttle causes wheelies and can flip the car backwards.
 - **Brake on the ground:** brakes the wheels, then reverses; pitches the nose down.
-- **In the air:** gas rotates the car nose-up, brake rotates it nose-down, with a spin cap. This is the core skill of the genre.
+- **In the air:** gas rotates the car nose-up, brake rotates it nose-down. The spin snaps to a fixed rate almost at once and holds it, rather than building up while the pedal is held (owner playtest 1). Releasing the pedal keeps the current spin. This is the core skill of the genre.
 - **Suspension:** soft and long-travel, visibly squashing on landings; weight shifts under acceleration and braking.
 - **Driver:** a jointed head and torso riding on the chassis. The run ends when the head hits terrain.
 - **Fuel:** drains with time (faster on throttle); canisters appear at growing intervals, so progress depends on pace and upgrades.

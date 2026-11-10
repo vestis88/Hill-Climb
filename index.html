@@ -17,6 +17,12 @@
         font: 14px -apple-system, system-ui, sans-serif; color: #fff;
       }
       canvas { display: block; width: 100%; height: 100%; }
+      #restart {
+        position: fixed; z-index: 5;
+        top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right));
+        padding: 10px 16px; border: 0; border-radius: 12px;
+        background: rgba(16, 21, 28, 0.35); color: #fff; font: 600 15px -apple-system, system-ui, sans-serif;
+      }
       #rotate {
         display: none; position: fixed; inset: 0; z-index: 10;
         background: #1b2330; align-items: center; justify-content: center;
@@ -27,6 +33,7 @@
   </head>
   <body>
     <canvas id="game"></canvas>
+    <button id="restart">Restart</button>
     <div id="rotate">Rotate your device to landscape</div>
     <script type="module" src="/src/main.ts"></script>
   </body>

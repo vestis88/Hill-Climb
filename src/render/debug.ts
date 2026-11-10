@@ -37,6 +37,9 @@ export class DebugRenderer {
   }
 
   draw(prev: SimState, next: SimState, alpha: number, spec: VehicleSpec, height: HeightFn, input: Input): void {
+    // iOS can change the canvas's on-screen size (rotation, home-screen launch) without a
+    // usable resize event; a stale backing size stretches the picture, so check every frame.
+    if (this.canvas.clientWidth !== this.width || this.canvas.clientHeight !== this.height) this.resize()
     const { ctx, width, height: h } = this
     const chassis = lerpPose(prev.chassis, next.chassis, alpha)
     const scale = width / VIEW_WIDTH
