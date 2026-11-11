@@ -32,6 +32,9 @@ standstill on flat ground; the hills still need a light touch.
 
 Every environment is endless and the same every run: the hills grow taller
 and steeper with distance, up to a limit, so there is always further to go.
+Kicker ramps (a ramp that steepens to a lip, then a drop) throw the car into
+the air regularly, so holding full gas all the way does not work: you have
+to ease off and balance the car in the air. Green Meadows has the most.
 
 ### The run
 
@@ -54,7 +57,8 @@ and steeper with distance, up to a limit, so there is always further to go.
 deliberately slow, short of grip and hard to handle. Upgrades take it from
 there to its best version. So when we tune:
 
-- The playtests so far have set the **base** values: about 33 km/h top speed,
+- The playtests so far have set the **base** values: about 40 km/h top speed
+  (eased into rather than a hard limit),
   a modest engine, tyres that spin on climbs steeper than about 25 degrees.
   These stay weak on purpose.
 - Each upgrade moves one group of physics values from its base value
@@ -71,7 +75,7 @@ Each vehicle has four upgrades, each with 10 levels. Level 1 is the base car.
 
 | Upgrade | What you notice | What it changes in the physics | Base → fully upgraded (starter car, first proposal) |
 |---|---|---|---|
-| **Engine** | Faster acceleration and higher top speed; climbs hills it used to stall on | Drive torque and top wheel speed | Torque ×1 → ×2; top speed 33 → about 70 km/h |
+| **Engine** | Faster acceleration and higher top speed; climbs hills it used to stall on | Drive torque and top wheel speed | More pull, especially at speed; top speed about 40 → 77 km/h |
 | **Tyres** | Wheels spin less on launch and on steep climbs; better braking | Tyre friction | Steepest climb from a standstill about 25° → about 38° |
 | **Suspension** | Lands jumps cleanly, stays planted over bumps, harder to tip over | Spring damping, and a lower centre of weight | Bounce after landing dies out faster; centre of weight 0.2 m lower |
 | **Drivetrain** | Steadier climbing, power on rough and slippery ground | Drive added at the front wheels | Rear-wheel drive → all-wheel drive |
@@ -91,7 +95,8 @@ driving better and from the four upgrades above.
   driver plays Green Meadows with the Runabout and buys the cheapest upgrade
   after each run. It almost never crashes, so it is much faster than a child.
   Current result: first upgrades after one run, fully upgraded after about
-  26 runs or **2 hours** of play. Children should take several times longer.
+  97 runs or **3.4 hours** of play (it crashes on some jumps). Children should take
+  several times longer.
 - What sets the pace: coins are worth 5 each up to 500 m, 10 up to 1,500 m
   and 15 beyond; the distance bonus is 15 coins per new 100 m; fuel cans get
   further apart (150 m more each time plus 85 m), so a faster, upgraded car
@@ -115,10 +120,12 @@ starts one from the garage.
 Progress (coins, upgrades, best distance) is saved in the browser on each
 device. Clearing Safari's website data resets it.
 
-### Tuning sandbox
+### Test mode and tuning sandbox
 
-Add `?tune` to the address (for example `…/Hill-Climb/?tune`) to get a
-**Tuning** button in the garage. It has sliders for every handling value of
+Add `?tune` to the address (for example `…/Hill-Climb/?tune`) for **test
+mode**: every vehicle and environment can be picked without buying it (a red
+TEST MODE badge shows in the garage, and no coins are spent), and the garage
+gets a **Tuning** button. It has sliders for every handling value of
 the base car and of the fully upgraded car, a choice of which to drive (your
 upgrades, base, or full), and **Copy values** to get the numbers to put into
 `src/data/vehicles.ts`. Tuning changes stay in that browser only. Players

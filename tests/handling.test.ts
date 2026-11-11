@@ -86,6 +86,20 @@ describe('runabout handling', () => {
     expect(sim.vehicle.chassis.getAngularVelocity()).toBeGreaterThan(runabout.airControl.spinRate * 0.9)
   })
 
+  it('eases into top speed instead of stopping at a hard limit', () => {
+    const sim = new Sim({ vehicle: runabout, height: flat })
+    const speeds: number[] = []
+    run(sim, GAS, 900, () => speeds.push(sim.state().speed))
+    const top = speeds[speeds.length - 1]
+    // Still gaining speed in the last stretch before top speed...
+    expect(speeds[240] - speeds[120]).toBeGreaterThan(0.3)
+    // ...and acceleration fades gradually: no single second takes away most of it.
+    const gain = (a: number) => speeds[a + 60] - speeds[a]
+    expect(gain(60)).toBeGreaterThan(gain(120))
+    expect(gain(120)).toBeGreaterThan(0)
+    expect(top).toBeGreaterThan(speeds[180])
+  })
+
   it('has entry-level pace: modest acceleration and top speed', () => {
     const sim = new Sim({ vehicle: runabout, height: flat })
     run(sim, NONE, 1)
@@ -95,10 +109,11 @@ describe('runabout handling', () => {
       if (sim.state().speed >= 8) t8 = i * STEP
     }
     run(sim, GAS, 8)
-    // Owner playtests 1 and 3: 63 km/h, then 43 km/h, was too fast for the starter car.
+    // Owner playtests 1 and 3 found 63 and 43 km/h too fast; playtest 5 found 33 km/h too low
+    // and the hard stop unnatural. Now about 40 km/h, reached by easing in, not a sudden limit.
     expect(t8).toBeGreaterThan(1.6)
-    expect(sim.state().speed).toBeGreaterThan(8)
-    expect(sim.state().speed).toBeLessThan(10)
+    expect(sim.state().speed).toBeGreaterThan(10)
+    expect(sim.state().speed).toBeLessThan(12)
   })
 
   it('can be driven over the hill test track by feathering the pedals', () => {

@@ -45,7 +45,8 @@ let endTimer = 0
 
 // Function declarations, not arrow consts: the first run is created above, before this point.
 function owned(id: string, price: number): boolean {
-  return price === 0 || save.unlocked.includes(id)
+  // Test mode (?tune in the address): everything is open, nothing is bought.
+  return price === 0 || tuningEnabled() || save.unlocked.includes(id)
 }
 function currentEnv() {
   return environment(save.envId)
@@ -104,6 +105,7 @@ function openGarage(): void {
     })),
     onPick: pick,
     tuning: tuningEnabled(),
+    testMode: tuningEnabled(),
     onBuy: buy,
     onDrive: startRun,
     onTune: openTuning,
