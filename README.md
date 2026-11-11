@@ -213,7 +213,7 @@ the next time it is opened with a connection.
 the left), and resetting all progress. All sound is synthesised in the game;
 there are no audio files. Each vehicle has its own engine; the Scrambler is a
 single-cylinder two-stroke built from exhaust pulses, with pops and bangs when
-the gas is let go at high revs, and the Hauler a rumbling cross-plane V8 built the same way.
+the gas is let go at high revs, the Hauler a rumbling cross-plane V8 and the Runabout a buzzy inline four, all built the same way.
 
 **Gears.** Every vehicle has a gearbox (Runabout 4, Scrambler 5, Hauler 4), mostly for sound
 and feel: the engine note climbs through each gear and drops on the shift, with a clunk and

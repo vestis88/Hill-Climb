@@ -29,7 +29,7 @@ interface EngineVoice {
    * Played from loops of real-shaped exhaust pulses instead of oscillators (PULSE). Its idle/top
    * are then firing rates (Hz), so revs = idle..top.
    */
-  kind?: 'twoStroke' | 'v8'
+  kind?: 'twoStroke' | 'v8' | 'i4'
 }
 
 /** How a pulse engine is built and driven. */
@@ -38,7 +38,7 @@ interface PulseEngine {
   on: [number, number, number]
   off: [number, number, number]
   /** Pulse shape: a sharp crack (two-stroke) or a deep thump (V8). */
-  shape: 'crack' | 'thump'
+  shape: 'crack' | 'thump' | 'bark'
   /** Loudness of each firing in turn, repeating (a cross-plane V8's uneven beat). */
   pattern?: number[]
   /** Exhaust body resonance and the pipe resonance: [Hz, Q, dB]; pipe dB is set while driving. */
@@ -55,7 +55,16 @@ interface PulseEngine {
   pops: boolean
 }
 
-const PULSE: Record<'twoStroke' | 'v8', PulseEngine> = {
+const PULSE: Record<'twoStroke' | 'v8' | 'i4', PulseEngine> = {
+  // Inline four: four even firings per cycle, a smooth, buzzy bark that turns raspy as it revs,
+  // through a mid exhaust resonance; light flywheel.
+  i4: {
+    on: [32, 0, 0.2], off: [32, 0.05, 0.6], shape: 'bark',
+    pattern: [1, 0.9, 0.96, 0.86],
+    body: [180, 1.2, 5], pipe: [1150, 1.6],
+    pipeGain: (gas, revs) => (gas ? 1 + 7 * Math.max(0, revs - 0.3) : 0),
+    highpass: 40, lag: [0.06, 0.12], level: [0.36, 0.24], pops: false,
+  },
   // Single-cylinder two-stroke: an expansion chamber that "comes on the pipe" at high revs,
   // and an off-throttle loop that misses and stutters ("four-stroking").
   twoStroke: {
@@ -88,7 +97,8 @@ interface PulseGraph {
 
 const ENGINES: Record<string, EngineVoice> = {
   // Small four-cylinder buggy: buzzy and eager.
-  runabout: { idle: 55, top: 190, firing: 2, pulse: 0.35, grit: 2.5, cutoff: [900, 2600], sub: 0.35, noise: 0.15, waves: ['sawtooth', 'square'], volume: 0.9 },
+  // Firing rate 25 Hz (750 rpm) at idle to 233 Hz (7,000 rpm).
+  runabout: { idle: 25, top: 233, firing: 4, pulse: 0, grit: 2.2, cutoff: [900, 4200], sub: 0, noise: 0.15, waves: ['sawtooth', 'square'], volume: 1, kind: 'i4' },
   // Two-stroke dirt bike: ring-a-ding idle, raspy braap on the pipe, pops off the gas.
   // Firing rate 30 Hz (1800 rpm) at idle to 185 Hz (11,000 rpm) flat out.
   scrambler: { idle: 30, top: 185, firing: 1, pulse: 0, grit: 3, cutoff: [1400, 5200], sub: 0, noise: 0.2, waves: ['square', 'square'], volume: 1, kind: 'twoStroke' },
@@ -116,7 +126,7 @@ export class Sound {
     out: GainNode
     noiseGain: GainNode
   } | null = null
-  private pulses: Partial<Record<'twoStroke' | 'v8', PulseGraph>> = {}
+  private pulses: Partial<Record<'twoStroke' | 'v8' | 'i4', PulseGraph>> = {}
   private offline = false
   private vehicleId = 'runabout'
   private lastGas = false
@@ -147,7 +157,7 @@ export class Sound {
     this.master.connect(comp)
     this.applyVolume()
     this.buildEngine()
-    for (const kind of ['twoStroke', 'v8'] as const) this.pulses[kind] = this.buildPulseEngine(PULSE[kind])
+    for (const kind of ['twoStroke', 'v8', 'i4'] as const) this.pulses[kind] = this.buildPulseEngine(PULSE[kind])
     this.applyVoice()
   }
 
@@ -209,7 +219,7 @@ export class Sound {
    * pure tone. The off-throttle loop misses and stutters, as a two-stroke does when it is not
    * loaded ("four-stroking").
    */
-  private pulseLoop([count, skip, roughness]: [number, number, number], shape: 'crack' | 'thump', pattern?: number[]): AudioBuffer {
+  private pulseLoop([count, skip, roughness]: [number, number, number], shape: 'crack' | 'thump' | 'bark', pattern?: number[]): AudioBuffer {
     const ctx = this.ctx!
     const rate = ctx.sampleRate
     const period = Math.round(rate / 100)
@@ -227,7 +237,13 @@ export class Sound {
         const t = i / rate
         const idx = start + i
         if (idx >= data.length) break
-        if (shape === 'thump') {
+        if (shape === 'bark') {
+          // A crisp pulse with a medium ring: between the two-stroke's crack and the V8's thump.
+          const body = Math.exp(-t / 0.0024) * Math.sin(2 * Math.PI * 170 * t + 0.25)
+          const ringMid = Math.exp(-t / 0.0035) * Math.sin(2 * Math.PI * (ring * 1.6) * t) * 0.35
+          const puff = Math.exp(-t / 0.0018) * (rnd() * 2 - 1) * (0.25 + 0.35 * roughness)
+          data[idx] += amp * (body + ringMid + puff)
+        } else if (shape === 'thump') {
           // A big, slow pressure wave with a low ring and a little rasp.
           const body = Math.exp(-t / 0.0045) * Math.sin(2 * Math.PI * 110 * t + 0.4)
           const ringLow = Math.exp(-t / 0.006) * Math.sin(2 * Math.PI * (ring * 0.7) * t) * 0.3
