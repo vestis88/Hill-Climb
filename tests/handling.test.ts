@@ -224,3 +224,40 @@ describe('scrambler wheelies (owner: easy to start, easy to feather, no snaps)',
     })
   }
 })
+
+describe('scrambler back-wheel landings (owner: land balanced to keep the wheelie)', () => {
+  /** Drop the bike from 1.5 m at 8 m/s, nose up by `nose`, feathering the gas to hold a wheelie. */
+  const land = (nose: number) => {
+    const sim = new Sim({ vehicle: scrambler, height: flat, gravity: 9, start: { x: 0, y: 2.2 } })
+    const c = sim.vehicle.chassis
+    const p = c.getPosition()
+    c.setTransform(p, nose)
+    sim.vehicle.wheels.forEach((w, i) => {
+      const a = scrambler.wheels[i].anchor
+      w.setPosition({ x: p.x + a.x * Math.cos(nose) - a.y * Math.sin(nose), y: p.y + a.x * Math.sin(nose) + a.y * Math.cos(nose) })
+    })
+    for (const b of [c, ...sim.vehicle.wheels]) b.setLinearVelocity({ x: 8, y: 0 })
+    let landedAt = -1
+    let frontDownAt = -1
+    for (let i = 0; i < 180; i++) {
+      // Feather only once down (gas in the air would spin the nose up).
+      sim.step({ gas: landedAt >= 0 && c.getAngle() < 0.6, brake: false })
+      const s = sim.state()
+      if (landedAt < 0 && s.wheelContacts[0]) landedAt = i
+      if (landedAt >= 0 && frontDownAt < 0 && s.wheelContacts[1]) frontDownAt = i
+    }
+    return { landedAt, frontDown: frontDownAt >= 0 ? (frontDownAt - landedAt) * STEP : Infinity }
+  }
+
+  it('a low, heavy back-wheel landing slaps the front down even on the gas', () => {
+    const r = land(0.4)
+    expect(r.landedAt).toBeGreaterThan(0)
+    expect(r.frontDown).toBeLessThan(0.6)
+  })
+
+  it('a balanced back-wheel landing can carry the wheelie on', () => {
+    const r = land(0.9)
+    expect(r.landedAt).toBeGreaterThan(0)
+    expect(r.frontDown).toBeGreaterThan(1.5)
+  })
+})
