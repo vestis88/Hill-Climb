@@ -8,7 +8,7 @@ import { stageTime } from '../src/sim/stage'
 describe('upgrades make stages quicker', () => {
   const env = environment('meadow')
   const height = heightFor(env)
-  const opts = { gravity: env.gravity, airGravity: env.airGravity, groundFriction: env.groundFriction, length: 300 }
+  const opts = { gravity: env.gravity, groundFriction: env.groundFriction, length: 300 }
   const at = (entry: (typeof VEHICLES)[number], level: number) =>
     applyUpgrades(entry.base, entry.full, Object.fromEntries(Object.keys(BASE_LEVELS).map((k) => [k, level])) as Levels)
 

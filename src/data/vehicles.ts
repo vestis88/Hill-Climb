@@ -51,6 +51,7 @@ export const runaboutFull: VehicleSpec = {
   ...runabout,
   chassis: { ...runabout.chassis, centerOfMass: { x: -0.1, y: -0.15 } },
   wheels: runabout.wheels.map((w) => ({ ...w, friction: 0.9, damping: 0.9 })),
+  // 22.5, not more: the starter car stays launch-safe (see launchSafe) at Green Meadows' gravity.
   engine: { ...runabout.engine, maxTorque: 22.5, torqueFalloff: 0.15, maxWheelSpeed: 52, frontShare: 0.3 },
 }
 
@@ -65,6 +66,12 @@ export interface VehicleEntry {
   full: VehicleSpec
   /** The four upgrades this vehicle offers, in garage order. */
   upgrades: UpgradeInfo[]
+  /**
+   * Beginner-safe: holding full gas from a standstill on flat ground never flips it over
+   * backwards, at base, fully upgraded and with any single upgrade maxed (Crater Fields excepted).
+   * Others, like the Scrambler, can backflip on launch: feathering the gas is the skill.
+   */
+  launchSafe: boolean
 }
 
 /**
@@ -107,8 +114,8 @@ export const scrambler: VehicleSpec = {
 export const scramblerFull: VehicleSpec = {
   ...scrambler,
   wheels: scrambler.wheels.map((w) => ({ ...w, friction: 1.1, damping: 0.85 })),
-  chassis: { ...scrambler.chassis, mass: 3.6, centerOfMass: { x: -0.05, y: 0.05 } },
-  engine: { ...scrambler.engine, maxTorque: 6.8, torqueFalloff: 0.35, maxWheelSpeed: 64 },
+  chassis: { ...scrambler.chassis, mass: 3.1, centerOfMass: { x: -0.05, y: 0.05 } },
+  engine: { ...scrambler.engine, maxTorque: 8, torqueFalloff: 0.35, maxWheelSpeed: 64 },
 }
 
 /**
@@ -159,14 +166,17 @@ export const VEHICLES: VehicleEntry[] = [
   {
     id: 'runabout', name: 'Runabout', blurb: 'Small, light, easy to handle', price: 0, base: runabout, full: runaboutFull,
     upgrades: [ENGINE, TYRES, SUSPENSION, DRIVETRAIN],
+    launchSafe: true,
   },
   {
     id: 'scrambler', name: 'Scrambler', blurb: 'Light dirt bike: fast, flips easily', price: 6000, base: scrambler, full: scramblerFull,
     upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'weight', name: 'Lighter frame', blurb: 'Less weight: quicker and nimbler' }],
+    launchSafe: false,
   },
   {
     id: 'hauler', name: 'Hauler', blurb: 'Heavy 4x4: slow, climbs anything', price: 15000, base: hauler, full: haulerFull,
     upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'weight', name: 'Lighter body', blurb: 'Sheds weight: quicker off the line and up hills' }],
+    launchSafe: true,
   },
 ]
 

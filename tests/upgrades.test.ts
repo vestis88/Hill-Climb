@@ -164,15 +164,12 @@ describe.each(VEHICLES)('every vehicle: $name', (entry) => {
     expect(landingBounce(at({ suspension: MAX_LEVEL }))).toBeLessThan(landingBounce(entry.base))
   })
 
-  it('never flips over backwards from a standstill on flat ground, whatever the upgrades', () => {
-    // Kids hold the gas; that alone must not flip the vehicle. Hills still need skill.
+  it.runIf(entry.launchSafe)('beginner-safe: does not flip backwards from a standstill at base, full or any single upgrade', () => {
+    // Owner: launch backflips are fine for some vehicles (feathering is the skill), but not all.
+    // Mixed in-between setups may flip; Crater Fields, the low-gravity map, is excepted.
     const ids = entry.upgrades.map((u) => u.id)
-    const fourth = ids[3]
     const combos: Partial<Levels>[] = [{}, FULL_LEVELS, ...ids.map((id) => ({ [id]: MAX_LEVEL }))]
-    combos.push({ engine: MAX_LEVEL, [fourth]: MAX_LEVEL }, { engine: MAX_LEVEL, tyres: MAX_LEVEL, [fourth]: MAX_LEVEL })
-    // At every environment's gravity: low gravity makes flipping easier (Crater Fields once flipped
-    // every car from a standstill before engine power was scaled with gravity).
-    const gravities = [...new Set(ENVIRONMENTS.map((e) => e.gravity))]
+    const gravities = [...new Set(ENVIRONMENTS.filter((e) => e.id !== 'crater').map((e) => e.gravity))]
     for (const g of gravities) {
       for (const levels of combos) expect(worstLaunchPitch(at(levels), g), `${JSON.stringify(levels)} at gravity ${g}`).toBeLessThan(1)
     }

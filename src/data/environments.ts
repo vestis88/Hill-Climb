@@ -9,13 +9,13 @@ export interface Environment {
   /** Coins to unlock; 0 means open from the start. */
   price: number
   gravity: number
-  /** Gravity while airborne, if lighter than on the ground (floatier jumps). */
-  airGravity?: number
   groundFriction: number
   seed: number
   terrain: TerrainParams
   palette: { skyTop: string; skyBottom: string; ground: string; surface: string; far: string; near: string }
 }
+
+const MEADOW_GRAVITY = 9
 
 export const ENVIRONMENTS: Environment[] = [
   {
@@ -23,10 +23,8 @@ export const ENVIRONMENTS: Environment[] = [
     name: 'Green Meadows',
     blurb: 'Rolling grassy hills',
     price: 0,
-    gravity: 10,
-    // Owner playtest: 10 felt too heavy. Lighter only in the air, so grip, wheelies and engine
-    // power on the ground stay as approved (gravity 8 everywhere made cars flip from a standstill).
-    airGravity: 8,
+    // Owner playtest: 10 felt too heavy. Same gravity in the air as on the ground.
+    gravity: MEADOW_GRAVITY,
     groundFriction: 0.9,
     seed: 11,
     terrain: { flatStart: 15, amplitude: 3.0, wavelength: 38, crests: 2.8, bumps: 0.2, growPerKm: 1.0, maxGrow: 2.6, jumps: { spacing: 55, chance: 0.75, height: 1.3, ramp: 7, from: 45 } },
@@ -37,9 +35,7 @@ export const ENVIRONMENTS: Environment[] = [
     name: 'Crater Fields',
     blurb: 'Low gravity, huge floaty jumps',
     price: 4000,
-    // Moderate gravity on the ground keeps grip and engine power; very low in the air for floaty jumps.
-    gravity: 8,
-    airGravity: 4,
+    gravity: 4.2,
     groundFriction: 0.8,
     seed: 23,
     terrain: { flatStart: 15, amplitude: 3.6, wavelength: 46, crests: 4.5, bumps: 0.3, growPerKm: 1.4, maxGrow: 3, jumps: { spacing: 70, chance: 0.6, height: 1.6, ramp: 9, from: 50 } },
