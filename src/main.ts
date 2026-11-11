@@ -239,7 +239,10 @@ function handleEvents(): void {
     }
     else if (e.kind === 'air') popups.push({ text: `Air ${e.seconds.toFixed(1)} s  +${e.value}`, age: 0 })
     else if (e.kind === 'wheelie') popups.push({ text: `Wheelie ${e.seconds.toFixed(1)} s  +${e.value}`, age: 0 })
-    else if (e.kind === 'flip') popups.push({ text: `${e.flips > 1 ? `${e.flips}× ` : ''}Flip!  +${e.value}`, age: 0 })
+    else if (e.kind === 'flip') {
+      const name = ['', '', 'Double ', 'Triple ', 'Quad '][e.flips] ?? `${e.flips}× `
+      popups.push({ text: `${name}${e.direction === 'back' ? 'backflip' : 'frontflip'}!  +${e.value}`, age: 0 })
+    }
     else if (e.kind === 'milestone') popups.push({ text: `${e.distance} m  +${e.value}`, age: 0 })
   }
 }

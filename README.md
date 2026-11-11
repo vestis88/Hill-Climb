@@ -50,7 +50,8 @@ to ease off and balance the car in the air. Green Meadows has the most.
 - **Coins** come from five places (values in `src/sim/run.ts` and `src/data/track.ts`):
   - coins lying on the track, in small groups, worth more the further out they are;
   - air time: 20 coins per second in the air, for jumps of at least 0.8 s;
-  - flips: 100 coins for each full rotation that lands on the wheels (any wheel
+  - flips: 100 for a single, 300 for a double, 900 for a triple, 2,000 for a
+    quad (and 1,500 more for each rotation beyond), back or front, landing on the wheels (any wheel
     touching, roughly upright relative to the ground; rotation is measured
     against the ground, so ramps and downhill landings count fully);
   - wheelies: 15 coins per second with the front wheels up and the back wheels
