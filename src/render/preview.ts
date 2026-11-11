@@ -33,7 +33,7 @@ export function drawVehiclePreview(canvas: HTMLCanvasElement, spec: VehicleSpec)
   for (const wh of spec.wheels) {
     ctx.save()
     ctx.translate(wh.anchor.x, wh.anchor.y)
-    drawWheel(ctx, wh.radius)
+    drawWheel(ctx, wh.radius, { mx: spec.id === 'scrambler' })
     ctx.restore()
   }
   drawVehicle(ctx, spec, 0, true)

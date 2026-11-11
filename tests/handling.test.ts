@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runabout } from '../src/data/vehicles'
+import { runabout, scrambler, scramblerFull } from '../src/data/vehicles'
 import { flat, testHills } from '../src/sim/terrain'
 import type { Input } from '../src/sim/types'
 import { Sim, STEP } from '../src/sim/world'
@@ -167,5 +167,22 @@ describe('runabout handling', () => {
       return sim.state()
     }
     expect(drive()).toEqual(drive())
+  })
+})
+
+describe('scrambler suspension', () => {
+  it('bottoms out before the tyres reach the mudguards, even off a 10 m drop', () => {
+    for (const v of [scrambler, scramblerFull]) {
+      const sim = new Sim({ vehicle: v, height: flat, start: { x: 0, y: 10 } })
+      let highest = -Infinity
+      for (let i = 0; i < 300; i++) {
+        sim.step(NONE)
+        const { chassis: c, wheels } = sim.state()
+        for (const w of wheels) highest = Math.max(highest, -(w.x - c.x) * Math.sin(c.angle) + (w.y - c.y) * Math.cos(c.angle))
+      }
+      // The hub stops 0.32 m above its anchor (-0.4); art.ts keeps both mudguards clear of
+      // a tyre there (top of tyre 0.30, mudguards from 0.38 up).
+      expect(highest).toBeLessThan(-0.4 + 0.32 + 0.02)
+    }
   })
 })

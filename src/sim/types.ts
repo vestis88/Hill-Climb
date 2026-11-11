@@ -17,6 +17,11 @@ export interface WheelSpec {
   /** Suspension damping ratio, 0 (bouncy) to 1 (dead). */
   damping: number
   axle: 'rear' | 'front'
+  /**
+   * Suspension travel limits, metres from the anchor along the chassis's up axis: the hub
+   * stops at `up` above it (bottoming out) and `down` below it. No limits when absent.
+   */
+  travel?: { up: number; down: number }
 }
 
 export interface VehicleSpec {

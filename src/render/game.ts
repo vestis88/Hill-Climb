@@ -387,7 +387,7 @@ export class GameRenderer {
       ctx.translate(w.x, w.y)
       ctx.rotate(w.angle)
       const spin = (next.wheels[i].angle - prev.wheels[i].angle) * 60
-      drawWheel(ctx, spec.wheels[i].radius, { spin, grime: GRIME[view.env.id] })
+      drawWheel(ctx, spec.wheels[i].radius, { spin, grime: GRIME[view.env.id], mx: spec.id === 'scrambler' })
       ctx.restore()
     })
     ctx.save()
