@@ -58,8 +58,9 @@ to ease off and balance the car in the air. Green Meadows has the most.
     quad (and 1,500 more for each rotation beyond), back or front, landing on the wheels (any wheel
     touching, roughly upright relative to the ground; rotation is measured
     against the ground, so ramps and downhill landings count fully);
-  - wheelies: 15 coins per second with the front wheels up and the back wheels
-    down while moving, for at least 1 s;
+  - wheelies: 2 coins per metre with the front wheels up and the back wheels
+    down while moving forward, for wheelies of at least 10 m (by distance, so a
+    fast wheelie pays more than a slow one);
   - distance milestones, a one-off bonus the first time you pass each marker on a track;
   - 100 coins for reaching a fuel can on an empty tank.
 - At the end of a run all coins collected are banked, whether it ended in a crash or an empty tank.

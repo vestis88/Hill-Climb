@@ -242,7 +242,7 @@ function handleEvents(): void {
       renderer.sparkle(e.x, e.y, '#ff9a9a')
     }
     else if (e.kind === 'air') popups.push({ text: `Air ${e.seconds.toFixed(1)} s  +${e.value}`, age: 0 })
-    else if (e.kind === 'wheelie') popups.push({ text: `Wheelie ${e.seconds.toFixed(1)} s  +${e.value}`, age: 0 })
+    else if (e.kind === 'wheelie') popups.push({ text: `Wheelie ${Math.floor(e.metres)} m  +${e.value}`, age: 0 })
     else if (e.kind === 'flip') {
       const name = ['', '', 'Double ', 'Triple ', 'Quad '][e.flips] ?? `${e.flips}× `
       popups.push({ text: `${name}${e.direction === 'back' ? 'backflip' : 'frontflip'}!  +${e.value}`, age: 0 })

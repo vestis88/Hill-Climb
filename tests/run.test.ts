@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fixedPickups, PickupField, type Pickup } from '../src/data/track'
-import { runabout } from '../src/data/vehicles'
+import { runabout, scrambler } from '../src/data/vehicles'
 import { Run, RULES } from '../src/sim/run'
 import { flat, testHills } from '../src/sim/terrain'
 import type { Input } from '../src/sim/types'
@@ -149,7 +149,7 @@ describe('run rules', () => {
     expect(run.coins.flips).toBe(300)
   })
 
-  it('pays for a wheelie held for over a second', () => {
+  it('pays for a wheelie by distance, from 10 m', () => {
     // A car tuned to wheelie easily, driven to hold the nose up: gas while it is low, ease off when high.
     const vehicle = structuredClone(runabout)
     vehicle.airControl.groundTorque = 60
@@ -157,7 +157,28 @@ describe('run rules', () => {
     drive(run, () => ({ gas: run.sim.vehicle.chassis.getAngle() < 0.45, brake: false }), 6)
     drive(run, { gas: false, brake: true }, 2)
     expect(run.status).toBe('running')
-    expect(run.coins.wheelies).toBeGreaterThanOrEqual(RULES.wheelieCoinsPerSecond)
+    expect(run.coins.wheelies).toBeGreaterThanOrEqual(RULES.minWheelie * RULES.wheelieCoinsPerMetre)
+  })
+
+  it('pays the bike 2 coins per metre of a feathered wheelie', () => {
+    const run = new Run({ vehicle: scrambler, height: flat, gravity: 9, pickups: fixedPickups([]), bestDistance: 1e9 })
+    const wheelies: { value: number; metres: number }[] = []
+    let start = 0
+    let x0: number | null = null
+    for (let i = 0; i < 600 && run.status === 'running'; i++) {
+      const s = run.sim.state()
+      if (x0 === null && !s.wheelContacts[1] && s.speed > 1.5) {
+        x0 = s.chassis.x
+        start = i
+      }
+      run.step(i < 420 ? { gas: s.chassis.angle < 0.6, brake: false } : { gas: false, brake: false })
+      for (const e of run.events) if (e.kind === 'wheelie') wheelies.push(e)
+    }
+    expect(start).toBeGreaterThan(0)
+    expect(wheelies.length).toBeGreaterThan(0)
+    const longest = wheelies.reduce((a, b) => (b.metres > a.metres ? b : a))
+    expect(longest.metres).toBeGreaterThan(RULES.minWheelie)
+    expect(longest.value).toBe(Math.floor(longest.metres * RULES.wheelieCoinsPerMetre))
   })
 
   it('pays a milestone bonus only beyond the best distance so far', () => {
