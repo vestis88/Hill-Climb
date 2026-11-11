@@ -195,7 +195,7 @@ Not part of the first version; pick up once phases 1 to 4 are done.
 
 - (done) Timed race modes (500 m, 1 km, 2 km) with a finish line, per-mode bests, ghosts and highscores.
 - (done) Players (Wille, Frans, Johan), rounds that take turns, ghost riders (own best and last, best of the round) and a highscore board per track. Ghosts record poses rather than inputs, so they survive physics changes.
-- (done: environments) Three more maps: Dune Sea, Red Canyon, Moonlit Woods. More vehicles still open.
+- (done) Three more maps: Dune Sea, Red Canyon, Moonlit Woods; puddles; a fourth vehicle, the Marsh Rover. Cloud sync between devices.
 - Daily challenge: a date-seeded track with a personal best.
 - Vehicle tuning parts or perks as a second upgrade layer.
 - App Store build via a Capacitor wrapper.

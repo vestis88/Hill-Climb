@@ -102,6 +102,8 @@ const ENGINES: Record<string, EngineVoice> = {
   // Two-stroke dirt bike: ring-a-ding idle, raspy braap on the pipe, pops off the gas.
   // Firing rate 30 Hz (1800 rpm) at idle to 185 Hz (11,000 rpm) flat out.
   scrambler: { idle: 30, top: 185, firing: 1, pulse: 0, grit: 3, cutoff: [1400, 5200], sub: 0, noise: 0.2, waves: ['square', 'square'], volume: 1, kind: 'twoStroke' },
+  // Marsh Rover: a small, chugging four-cylinder, lower and slower-revving than the Runabout.
+  rover: { idle: 18, top: 140, firing: 4, pulse: 0, grit: 1.8, cutoff: [700, 2600], sub: 0, noise: 0.12, waves: ['sawtooth', 'square'], volume: 0.95, kind: 'i4' },
   // Big V8 truck: a lumpy rumble at idle, a deep roar on the gas.
   // Firing rate 48 Hz (720 rpm) at idle to 300 Hz (4,500 rpm).
   hauler: { idle: 48, top: 300, firing: 8, pulse: 0, grit: 1.6, cutoff: [380, 1700], sub: 0, noise: 0.1, waves: ['sawtooth', 'sawtooth'], volume: 1.1, kind: 'v8' },
@@ -447,6 +449,28 @@ export class Sound {
       this.blat(0.02, 0.8)
       this.blat(0.09, 0.55)
     }
+  }
+
+  /** Driving into a puddle: a wet whoosh. */
+  splash(strength: number): void {
+    if (!this.ctx || !this.master) return
+    const ctx = this.ctx
+    const t = ctx.currentTime
+    const length = 0.35
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * length), ctx.sampleRate)
+    const data = buffer.getChannelData(0)
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 1.5)
+    const src = ctx.createBufferSource()
+    src.buffer = buffer
+    const band = ctx.createBiquadFilter()
+    band.type = 'bandpass'
+    band.Q.value = 0.9
+    band.frequency.setValueAtTime(2200, t)
+    band.frequency.exponentialRampToValueAtTime(700, t + length)
+    const g = ctx.createGain()
+    g.gain.value = 0.5 * strength
+    src.connect(band).connect(g).connect(this.master)
+    src.start(t)
   }
 
   /** The gearbox: a short metallic knock. */

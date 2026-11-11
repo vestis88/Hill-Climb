@@ -7,7 +7,7 @@
  * steadier than a child, so treat the numbers as a fast-player estimate.
  */
 import { it } from 'vitest'
-import { environment, heightFor } from '../src/data/environments'
+import { environment, heightFor, puddlesFor } from '../src/data/environments'
 import { PickupField } from '../src/data/track'
 import { applyUpgrades, BASE_LEVELS, MAX_LEVEL, price, type Levels, type UpgradeId } from '../src/data/upgrades'
 import { runabout, runaboutFull, vehicleEntry } from '../src/data/vehicles'
@@ -33,6 +33,7 @@ it('economy', () => {
       height,
       gravity: env.gravity,
       groundFriction: env.groundFriction,
+      puddles: puddlesFor(env),
       pickups: new PickupField(height, env.seed),
       bestDistance: best,
     })

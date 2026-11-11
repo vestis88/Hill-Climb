@@ -1,4 +1,4 @@
-import { ENVIRONMENTS, environment, heightFor } from './data/environments'
+import { ENVIRONMENTS, environment, heightFor, puddlesFor } from './data/environments'
 import { PickupField } from './data/track'
 import { VEHICLES, vehicleEntry } from './data/vehicles'
 import { applyUpgrades, BASE_LEVELS, FULL_LEVELS, MAX_LEVEL, price, type UpgradeId } from './data/upgrades'
@@ -108,6 +108,7 @@ function newRun(): Run {
     height,
     gravity: env.gravity,
     groundFriction: env.groundFriction,
+    puddles: puddlesFor(env),
     pickups: new PickupField(height, env.seed),
     // Distance bonuses count from this player's own best.
     bestDistance: playerBest(save, currentPlayer(), env.id),
@@ -373,10 +374,15 @@ document.addEventListener('visibilitychange', () => {
 })
 
 let wasAirborne = false
+let wasInPuddle = false
 function handleEvents(): void {
   const s = run.sim.state()
   if (wasAirborne && !s.airborne) sound.land(Math.abs(run.sim.vehicle.chassis.getLinearVelocity().y) / 15)
   wasAirborne = s.airborne
+  // A splash sound as a wheel goes into a puddle.
+  const inPuddle = run.sim.vehicle.wheels.some((_, i) => run.sim.puddleUnder(i) !== null)
+  if (inPuddle && !wasInPuddle && Math.abs(s.speed) > 2) sound.splash(Math.min(1, Math.abs(s.speed) / 12))
+  wasInPuddle = inPuddle
   if (s.gear !== prev.gear && mode === 'driving') {
     sound.shift(s.gear > prev.gear, s.revs)
     renderer.gearShift(s.gear > prev.gear)
@@ -467,6 +473,7 @@ function frame(now: number): void {
     driver: { lean: run.sway.lean, ragdoll: run.ragdoll?.poses() ?? null },
     player: mode === 'driving' || mode === 'ending' ? { name: currentPlayer(), colour: playerColour(currentPlayer()) } : undefined,
     ghosts: mode === 'driving' || mode === 'ending' ? ghostPoses() : [],
+    puddles: puddlesFor(currentEnv()),
     race: currentMode().length ? { length: currentMode().length!, time: run.finishTime ?? run.sim.steps * STEP } : undefined,
     showHud: mode === 'driving' || mode === 'ending' || mode === 'results',
   })

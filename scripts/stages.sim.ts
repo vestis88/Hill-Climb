@@ -5,7 +5,7 @@
  * level has to be quicker than the one before.
  */
 import { it } from 'vitest'
-import { ENVIRONMENTS, heightFor } from '../src/data/environments'
+import { ENVIRONMENTS, heightFor, puddlesFor } from '../src/data/environments'
 import { applyUpgrades, BASE_LEVELS, MAX_LEVEL, type Levels, type UpgradeId } from '../src/data/upgrades'
 import { VEHICLES } from '../src/data/vehicles'
 import { stageTime } from '../src/sim/stage'
@@ -16,7 +16,7 @@ it('stage times', () => {
   const lines: string[] = []
   for (const env of ENVIRONMENTS) {
     const height = heightFor(env)
-    const opts = { gravity: env.gravity, groundFriction: env.groundFriction }
+    const opts = { gravity: env.gravity, groundFriction: env.groundFriction, puddles: puddlesFor(env) }
     lines.push(`\n${env.name}, first 500 m (seconds; DNF = crashed every try)`)
     lines.push(`vehicle    | all upgrades at level 1..10                                  | each upgrade alone at 10`)
     for (const v of VEHICLES) {

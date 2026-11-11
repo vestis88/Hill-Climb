@@ -17,6 +17,7 @@ buy: every coin is earned by driving.
 | Runabout | free | Small, light car; easy to handle |
 | Scrambler | 6,000 coins | Two-stroke motocross bike; quick, spins fast in the air, flips easily. Wheelies are rider-controlled: full gas lifts the front at launch, and on the back wheel the nose rises steadily on the gas and drops when you let go, so you feather it (hold the gas and it loops). Land on the back wheel balanced, nose well up, to carry a wheelie on; land low or hard and the front slaps down. Its suspension bottoms out on a bump stop before the tyres reach the mudguards |
 | Hauler | 15,000 coins | Heavy 4x4; slow, very stable, climbs almost anything once upgraded |
+| Marsh Rover | 10,000 coins | Amphibious buggy on balloon paddle tyres: puddles do not slow it, and on slippery ground (snow, ice, mud, sand) its studs keep a grip of at least 0.7 (0.95 with Tyres maxed). The best in Frost Pass and Moonlit Woods at low and mid levels; on grass and rock about even with the others. Fourth upgrade: Lighter hull |
 
 Each vehicle has its own four upgrades and its own base and fully upgraded
 values. Backflipping on launch is part of the game: feathering the gas is the
@@ -35,6 +36,11 @@ can, and the Scrambler can at any time.
 | Dune Sea | 7,000 coins | Long rolling sand dunes, loose sand (less grip), big dune jumps; fast. Cacti and blowing sand |
 | Red Canyon | 14,000 coins | Steep rocky climbs with good grip; rare, gentle jumps (kickers on steep ground were unsurvivable). Red cliffs at late afternoon |
 | Moonlit Woods | 20,000 coins | Night forest: muddy and slippery, bumpy with roots. Moon, stars, fireflies, glowing mushrooms |
+
+**Puddles** lie on gentle stretches of three maps: rain puddles on Green Meadows, slush on
+Frost Pass and deep mud in Moonlit Woods. A wheel in one drags the vehicle back (mud most)
+and has less grip, with splashes and a splash sound. They are in fixed places, the same
+every run.
 
 Gravity is the same in the air as on the ground. A test checks that a
 half-upgraded Runabout and Hauler can get through the first 300 m of every

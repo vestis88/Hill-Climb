@@ -70,6 +70,8 @@ export function applyUpgrades(base: VehicleSpec, full: VehicleSpec, levels: Leve
       maxWheelSpeed: lerp(base.engine.maxWheelSpeed, full.engine.maxWheelSpeed, e),
       frontShare: lerp(base.engine.frontShare, full.engine.frontShare, d),
     },
+    // Studded tyres (Marsh Rover): the Tyres upgrade raises the grip they never drop below.
+    ...(base.amphibious ? { amphibious: { minGrip: lerp(base.amphibious.minGrip, full.amphibious?.minGrip ?? base.amphibious.minGrip, g) } } : {}),
     airControl: {
       ...base.airControl,
       spinRate: lerp(base.airControl.spinRate, full.airControl.spinRate, f),
