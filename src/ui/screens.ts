@@ -98,7 +98,7 @@ export interface ResultsView {
   status: RunStatus | 'ended'
   distance: number
   newBest: boolean
-  coins: { track: number; air: number; flips: number; milestones: number }
+  coins: { track: number; air: number; flips: number; wheelies: number; milestones: number }
   total: number
   bank: number
   onGarage(): void
@@ -116,6 +116,7 @@ export function showResults(el: HTMLElement, v: ResultsView): void {
       ${row('Coins on the track', v.coins.track)}
       ${row('Air time', v.coins.air)}
       ${row('Flips', v.coins.flips)}
+      ${row('Wheelies', v.coins.wheelies)}
       ${row('Distance bonus', v.coins.milestones)}
       <div class="total"><span>This run</span><span><b class="coin">●</b> ${v.total}</span></div>
       <div><span>You have</span><span><b class="coin">●</b> ${v.bank}</span></div>

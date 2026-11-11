@@ -82,11 +82,11 @@ export const scrambler: VehicleSpec = {
       { x: -0.6, y: 0.3 },
     ],
     mass: 4,
-    centerOfMass: { x: -0.05, y: 0.25 },
+    centerOfMass: { x: -0.05, y: 0.1 },
   },
   wheels: [
-    { anchor: { x: -0.72, y: -0.4 }, radius: 0.38, mass: 0.5, friction: 0.25, springHz: 4, damping: 0.6, axle: 'rear' },
-    { anchor: { x: 0.78, y: -0.4 }, radius: 0.38, mass: 0.5, friction: 0.25, springHz: 4, damping: 0.6, axle: 'front' },
+    { anchor: { x: -0.72, y: -0.4 }, radius: 0.38, mass: 0.5, friction: 0.36, springHz: 4, damping: 0.6, axle: 'rear' },
+    { anchor: { x: 0.78, y: -0.4 }, radius: 0.38, mass: 0.5, friction: 0.36, springHz: 4, damping: 0.6, axle: 'front' },
   ],
   engine: {
     maxTorque: 7,
@@ -98,13 +98,14 @@ export const scrambler: VehicleSpec = {
     idleDragTorque: 0.4,
   },
   driver: { head: { x: -0.15, y: 1.25 }, headRadius: 0.2 },
-  airControl: { spinRate: 3.4, spinResponse: 16, groundTorque: 2 },
+  // Owner playtest: too little grip, over-rotated in the air, wheelied too readily.
+  airControl: { spinRate: 2.7, spinResponse: 11, groundTorque: 0.8 },
 }
 
 export const scramblerFull: VehicleSpec = {
   ...scrambler,
-  wheels: scrambler.wheels.map((w) => ({ ...w, friction: 1, damping: 0.85 })),
-  chassis: { ...scrambler.chassis, mass: 3.6, centerOfMass: { x: -0.05, y: 0.05 } },
+  wheels: scrambler.wheels.map((w) => ({ ...w, friction: 1.1, damping: 0.85 })),
+  chassis: { ...scrambler.chassis, mass: 3.6, centerOfMass: { x: -0.05, y: -0.05 } },
   engine: { ...scrambler.engine, maxTorque: 6.8, torqueFalloff: 0.35, maxWheelSpeed: 64 },
 }
 

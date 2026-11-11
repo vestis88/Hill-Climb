@@ -173,6 +173,7 @@ function openTuning(): void {
 }
 
 function startRun(): void {
+  sound.setVehicle(currentVehicle().id)
   run = newRun()
   prev = next = run.sim.state()
   popups = []
@@ -220,7 +221,7 @@ function handleEvents(): void {
   for (const e of run.events) {
     if (e.kind === 'coin') sound.coin()
     else if (e.kind === 'fuel') sound.fuel()
-    else if (e.kind === 'flip' || e.kind === 'milestone' || e.kind === 'air') sound.fanfare()
+    else if (e.kind === 'flip' || e.kind === 'milestone' || e.kind === 'air' || e.kind === 'wheelie') sound.fanfare()
   }
   for (const e of run.events) {
     if (e.kind === 'coin') {
@@ -231,6 +232,7 @@ function handleEvents(): void {
       renderer.sparkle(e.x, e.y, '#ff9a9a')
     }
     else if (e.kind === 'air') popups.push({ text: `Air ${e.seconds.toFixed(1)} s  +${e.value}`, age: 0 })
+    else if (e.kind === 'wheelie') popups.push({ text: `Wheelie ${e.seconds.toFixed(1)} s  +${e.value}`, age: 0 })
     else if (e.kind === 'flip') popups.push({ text: `${e.flips > 1 ? `${e.flips}× ` : ''}Flip!  +${e.value}`, age: 0 })
     else if (e.kind === 'milestone') popups.push({ text: `${e.distance} m  +${e.value}`, age: 0 })
   }

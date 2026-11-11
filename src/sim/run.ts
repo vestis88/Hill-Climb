@@ -12,10 +12,13 @@ export const RULES = {
   /** After the tank runs dry, the run ends once the car has stopped (or after this long). */
   outOfFuelTimeout: 6,
   pickupRadius: 1.1,
-  /** Coins per second in the air, for jumps of at least one second. */
-  airCoinsPerSecond: 10,
-  minAirTime: 1,
-  coinsPerFlip: 50,
+  /** Coins per second in the air, for jumps of at least minAirTime. Raised after owner playtest. */
+  airCoinsPerSecond: 20,
+  minAirTime: 0.8,
+  coinsPerFlip: 100,
+  /** Coins per second of wheelie (front wheels up, back wheels down, moving), for at least minWheelie. */
+  wheelieCoinsPerSecond: 15,
+  minWheelie: 1,
   /** A first-time bonus at every multiple of this distance. */
   milestoneEvery: 100,
   /** Bonus for the k-th milestone (k = 1 at 100 m). Flat, set by the economy simulation (npm run economy). */
@@ -29,6 +32,7 @@ export type RunEvent =
   | { kind: 'fuel'; x: number; y: number }
   | { kind: 'air'; value: number; seconds: number }
   | { kind: 'flip'; value: number; flips: number }
+  | { kind: 'wheelie'; value: number; seconds: number }
   | { kind: 'milestone'; value: number; distance: number }
 
 export interface RunOptions {
@@ -49,7 +53,7 @@ export class Run {
   readonly sim: Sim
   fuel = 1
   status: RunStatus = 'running'
-  coins = { track: 0, air: 0, flips: 0, milestones: 0 }
+  coins = { track: 0, air: 0, flips: 0, wheelies: 0, milestones: 0 }
   /** Events from the last step only, for pop-ups and sounds. */
   events: RunEvent[] = []
   /** The driver's sway while driving, and the ragdoll after a crash. */
@@ -58,6 +62,7 @@ export class Run {
   /** Distance when the run ended; the car may roll on a little afterwards. */
   endDistance: number | null = null
   private airSteps = 0
+  private wheelieSteps = 0
   private takeoffAngle = 0
   private emptySteps = 0
   private nextMilestone: number
@@ -72,7 +77,7 @@ export class Run {
 
   get totalCoins(): number {
     const c = this.coins
-    return c.track + c.air + c.flips + c.milestones
+    return c.track + c.air + c.flips + c.wheelies + c.milestones
   }
 
   step(rawInput: Input): void {
@@ -139,6 +144,7 @@ export class Run {
   }
 
   private stunts(s: SimState): void {
+    this.wheelie(s)
     if (s.airborne) {
       if (this.airSteps === 0) this.takeoffAngle = s.chassis.angle
       this.airSteps++
@@ -159,6 +165,25 @@ export class Run {
       const value = flips * RULES.coinsPerFlip
       this.coins.flips += value
       this.events.push({ kind: 'flip', value, flips })
+    }
+  }
+
+  /** Front wheels up, back wheels on the ground, moving forward: a wheelie. Paid when it ends. */
+  private wheelie(s: SimState): void {
+    const wheels = this.options.vehicle.wheels
+    const front = wheels.map((w, i) => (w.axle === 'front' ? s.wheelContacts[i] : null)).filter((c) => c !== null)
+    const rear = wheels.map((w, i) => (w.axle === 'rear' ? s.wheelContacts[i] : null)).filter((c) => c !== null)
+    const on = front.length > 0 && front.every((c) => !c) && rear.some((c) => c) && s.speed > 1.5
+    if (on) {
+      this.wheelieSteps++
+      return
+    }
+    const seconds = this.wheelieSteps * STEP
+    this.wheelieSteps = 0
+    if (seconds >= RULES.minWheelie) {
+      const value = Math.floor(seconds * RULES.wheelieCoinsPerSecond)
+      this.coins.wheelies += value
+      this.events.push({ kind: 'wheelie', value, seconds })
     }
   }
 

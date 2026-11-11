@@ -42,10 +42,12 @@ to ease off and balance the car in the air. Green Meadows has the most.
   lie along the track, further apart the further you get. The run ends when
   the tank is empty and the car rolls to a stop.
 - **Crashing**: the run ends at once if the driver's head hits the ground.
-- **Coins** come from four places (values in `src/sim/run.ts` and `src/data/track.ts`):
+- **Coins** come from five places (values in `src/sim/run.ts` and `src/data/track.ts`):
   - coins lying on the track, in small groups, worth more the further out they are;
-  - air time, paid per second in the air;
-  - flips, paid for each full rotation that lands on the wheels;
+  - air time: 20 coins per second in the air, for jumps of at least 0.8 s;
+  - flips: 100 coins for each full rotation that lands on the wheels;
+  - wheelies: 15 coins per second with the front wheels up and the back wheels
+    down while moving, for at least 1 s;
   - distance milestones, a one-off bonus the first time you pass each marker on a track.
 - At the end of a run all coins collected are banked, whether it ended in a crash or an empty tank.
 - Crashing costs nothing except the run itself. There are no checkpoints:
@@ -121,7 +123,7 @@ vehicle.
   driver plays Green Meadows with the Runabout and buys the cheapest upgrade
   after each run. It almost never crashes, so it is much faster than a child.
   Current result: first upgrades after one run, fully upgraded after about
-  97 runs or **3.4 hours** of play (it crashes on some jumps). Children should take
+  72 runs or **2.5 hours** of play (it crashes on some jumps). Children should take
   several times longer.
 - What sets the pace: coins are worth 5 each up to 500 m, 10 up to 1,500 m
   and 15 beyond; the distance bonus is 15 coins per new 100 m; fuel cans get

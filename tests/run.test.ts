@@ -78,6 +78,17 @@ describe('run rules', () => {
     expect(run.coins.air).toBeGreaterThanOrEqual(RULES.airCoinsPerSecond)
   })
 
+  it('pays for a wheelie held for over a second', () => {
+    // A car tuned to wheelie easily, driven to hold the nose up: gas while it is low, ease off when high.
+    const vehicle = structuredClone(runabout)
+    vehicle.airControl.groundTorque = 30
+    const run = new Run({ vehicle, height: flat, pickups: fixedPickups([]), bestDistance: 1e9 })
+    drive(run, () => ({ gas: run.sim.vehicle.chassis.getAngle() < 0.45, brake: false }), 6)
+    drive(run, { gas: false, brake: true }, 2)
+    expect(run.status).toBe('running')
+    expect(run.coins.wheelies).toBeGreaterThanOrEqual(RULES.wheelieCoinsPerSecond)
+  })
+
   it('pays a milestone bonus only beyond the best distance so far', () => {
     const first = new Run({ vehicle: runabout, height: flat, pickups: fixedPickups([]), bestDistance: 0 })
     drive(first, GAS, 25)

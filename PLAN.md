@@ -173,6 +173,22 @@ so the rest stay consistent. All art is original.
 | M4 (done: steady 60 fps at 1x resolution with a 4x CPU slowdown; automatic resolution drop if frames run slow) | Performance pass on a real iPhone: chunk culling, particle caps, canvas resolution |
 | M5 (done) | Deployment to GitHub Pages: every push to `main` runs the checks and publishes the build |
 
+### Phase 5: graphics pass 2 (planned, not started)
+
+Owner feedback: the graphics need overall improvement, after gameplay, upgrades and sound
+are settled. All art stays original and drawn in code (see `src/render/STYLE.md`); keep the
+frame-time budget (60 fps on an iPhone 11, automatic resolution drop as the safety net).
+
+| ID | Task | Notes |
+|---|---|---|
+| G8 | Vehicles v2 | More detail and depth per vehicle: panel shading, visible suspension arms that compress, wheel motion blur at speed, mud or snow on tyres per environment, small bounce of loose parts |
+| G9 | Pip v2 | Animated arms and legs (hands on the wheel or bars, leaning into the gas), facial expressions (grin on flips, worried when tipping), full ragdoll with limbs on a crash |
+| G10 | Terrain v2 | Smoother ground curves, layered grass that sways, surface details (puddles, roots, rock bands, ice sheen), occasional bridges or logs on jumps |
+| G11 | Backgrounds v2 | A time-of-day mood per environment (sunny morning, starry night, snowy dusk), a foreground layer that passes in front of the track, animated life (birds, windmills, shooting stars, aurora) |
+| G12 | Effects | Speed lines at top speed, dust trails, landing shockwaves, coins that fly to the counter, counter pop, soft vignette and glow on lights |
+| G13 | Menus v2 | Garage with the selected vehicle idling and bouncing on a stage, purchase animation, icons for each upgrade, results screen that counts coins up, a custom rounded display font |
+| G14 | Graphics check | Screenshot pass on iPhone SE, iPhone 16 Pro Max and iPad sizes; frame-time check with the 4x CPU slowdown |
+
 ## 5. Next steps after the first version
 
 Not part of the first version; pick up once phases 1 to 4 are done.
