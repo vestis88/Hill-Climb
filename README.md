@@ -71,18 +71,44 @@ there to its best version. So when we tune:
 
 ### Upgrades
 
-Each vehicle has four upgrades, each with 10 levels. Level 1 is the base car.
+Each vehicle has four upgrades chosen to suit it, each with 10 levels. Level 1
+is the base vehicle. Engine, Tyres and Suspension are shared; the fourth is
+specific:
 
-| Upgrade | What you notice | What it changes in the physics | Base → fully upgraded (starter car, first proposal) |
-|---|---|---|---|
-| **Engine** | Faster acceleration and higher top speed; climbs hills it used to stall on | Drive torque and top wheel speed | More pull, especially at speed; top speed about 40 → 77 km/h |
-| **Tyres** | Wheels spin less on launch and on steep climbs; better braking | Tyre friction | Steepest climb from a standstill about 25° → about 38° |
-| **Suspension** | Lands jumps cleanly, stays planted over bumps, harder to tip over | Spring damping, and a lower centre of weight | Bounce after landing dies out faster; centre of weight 0.2 m lower |
-| **Drivetrain** | Steadier climbing, power on rough and slippery ground | Drive added at the front wheels | Rear-wheel drive → all-wheel drive |
+| Vehicle | Fourth upgrade | Why |
+|---|---|---|
+| Runabout | **Drivetrain**: power to the front wheels too | It starts rear-wheel drive; all-wheel drive climbs and pulls better |
+| Scrambler | **Lighter frame**: less weight | A bike has no front drive; less weight makes it quicker off the line |
+| Hauler | **Lighter body**: sheds weight | It is already a full-time 4x4; less weight makes it quicker and climb better |
+
+| Upgrade | What you notice | What it changes in the physics |
+|---|---|---|
+| **Engine** | Faster acceleration and higher top speed; climbs hills it used to stall on | Drive torque, how much pull it keeps at speed, top wheel speed |
+| **Tyres** | Wheels spin less on launch and on steep climbs; better braking | Tyre friction |
+| **Suspension** | Lands jumps cleanly, stays planted over bumps, harder to tip over | Spring damping, and a lower centre of weight |
+| **Drivetrain** | Steadier climbing, power on rough and slippery ground | Drive added at the front wheels |
+| **Lighter frame / body** | Quicker off the line, livelier | Chassis mass |
 
 Upgrades are bought separately per vehicle. There is deliberately no fuel
 upgrade: fuel stays the same for every car, so getting further comes from
-driving better and from the four upgrades above.
+driving better and from the upgrades.
+
+**Upgrades make stages quicker.** `npm run stages` times a scripted driver over
+the first 500 m of every map with all upgrades at each level, and each upgrade
+on its own. Current results, seconds (DNF: the driver crashed on every try):
+
+| | Level 1 | 5 | 10 |
+|---|---|---|---|
+| Runabout, Green Meadows | 54.8 | 42.1 | 36.1 |
+| Scrambler, Green Meadows | 53.0 | 43.1 | 39.0 |
+| Hauler, Green Meadows | 54.9 | 42.1 | 34.5 |
+| Runabout, Crater Fields | DNF | 53.4 | 42.9 |
+| Hauler, Frost Pass | 61.4 | 46.9 | 37.7 |
+
+Times fall at nearly every level; the engine does the most on its own, and
+tyres, suspension and the fourth upgrade add smaller gains that matter more on
+steep and rough ground. `tests/stages.test.ts` checks the trend for every
+vehicle.
 
 ### Coins and prices
 

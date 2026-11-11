@@ -9,7 +9,8 @@
     "preview": "vite preview --host",
     "test": "vitest run",
     "check": "tsc --noEmit && vitest run",
-    "economy": "ECONOMY=1 vitest run --disable-console-intercept"
+    "economy": "SIM=economy vitest run --disable-console-intercept",
+    "stages": "SIM=stages vitest run --disable-console-intercept"
   },
   "dependencies": {
     "planck": "^1.4.2"

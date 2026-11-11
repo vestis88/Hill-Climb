@@ -31,6 +31,14 @@ export function loadSave(): SaveData {
     // Version 1 saves from before environments kept the best distance under "hills".
     if (save.best.hills !== undefined && save.best.meadow === undefined) save.best.meadow = save.best.hills
     delete save.best.hills
+    // The Scrambler and Hauler swapped Drivetrain for a weight upgrade: carry bought levels over.
+    for (const id of ['scrambler', 'hauler']) {
+      const l = save.levels[id] as Partial<Levels> | undefined
+      if (l?.drivetrain && l.drivetrain > 1 && !l.weight) {
+        l.weight = l.drivetrain
+        l.drivetrain = 1
+      }
+    }
     return save
   } catch {
     return emptySave()

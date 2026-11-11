@@ -1,3 +1,4 @@
+import { DRIVETRAIN, ENGINE, SUSPENSION, TYRES, type UpgradeInfo } from './upgrades'
 import type { VehicleSpec } from '../sim/types'
 
 /**
@@ -62,6 +63,8 @@ export interface VehicleEntry {
   price: number
   base: VehicleSpec
   full: VehicleSpec
+  /** The four upgrades this vehicle offers, in garage order. */
+  upgrades: UpgradeInfo[]
 }
 
 /**
@@ -100,9 +103,9 @@ export const scrambler: VehicleSpec = {
 
 export const scramblerFull: VehicleSpec = {
   ...scrambler,
-  chassis: { ...scrambler.chassis, centerOfMass: { x: -0.05, y: 0.05 } },
   wheels: scrambler.wheels.map((w) => ({ ...w, friction: 1, damping: 0.85 })),
-  engine: { ...scrambler.engine, maxTorque: 6.8, torqueFalloff: 0.35, maxWheelSpeed: 64, frontShare: 0.2 },
+  chassis: { ...scrambler.chassis, mass: 3.6, centerOfMass: { x: -0.05, y: 0.05 } },
+  engine: { ...scrambler.engine, maxTorque: 6.8, torqueFalloff: 0.35, maxWheelSpeed: 64 },
 }
 
 /**
@@ -131,7 +134,7 @@ export const hauler: VehicleSpec = {
   ],
   engine: {
     maxTorque: 70,
-    frontShare: 0.25,
+    frontShare: 0.5,
     torqueFalloff: 0.5,
     maxWheelSpeed: 17,
     brakeTorque: 90,
@@ -144,15 +147,24 @@ export const hauler: VehicleSpec = {
 
 export const haulerFull: VehicleSpec = {
   ...hauler,
-  chassis: { ...hauler.chassis, centerOfMass: { x: 0, y: -0.15 } },
+  chassis: { ...hauler.chassis, mass: 19, centerOfMass: { x: 0, y: -0.15 } },
   wheels: hauler.wheels.map((w) => ({ ...w, friction: 1.05, damping: 0.9 })),
-  engine: { ...hauler.engine, maxTorque: 90, torqueFalloff: 0.15, maxWheelSpeed: 32, frontShare: 0.6 },
+  engine: { ...hauler.engine, maxTorque: 90, torqueFalloff: 0.15, maxWheelSpeed: 32 },
 }
 
 export const VEHICLES: VehicleEntry[] = [
-  { id: 'runabout', name: 'Runabout', blurb: 'Small, light, easy to handle', price: 0, base: runabout, full: runaboutFull },
-  { id: 'scrambler', name: 'Scrambler', blurb: 'Light dirt bike: fast, flips easily', price: 6000, base: scrambler, full: scramblerFull },
-  { id: 'hauler', name: 'Hauler', blurb: 'Heavy 4x4: slow, climbs anything', price: 15000, base: hauler, full: haulerFull },
+  {
+    id: 'runabout', name: 'Runabout', blurb: 'Small, light, easy to handle', price: 0, base: runabout, full: runaboutFull,
+    upgrades: [ENGINE, TYRES, SUSPENSION, DRIVETRAIN],
+  },
+  {
+    id: 'scrambler', name: 'Scrambler', blurb: 'Light dirt bike: fast, flips easily', price: 6000, base: scrambler, full: scramblerFull,
+    upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'weight', name: 'Lighter frame', blurb: 'Less weight: quicker and nimbler' }],
+  },
+  {
+    id: 'hauler', name: 'Hauler', blurb: 'Heavy 4x4: slow, climbs anything', price: 15000, base: hauler, full: haulerFull,
+    upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'weight', name: 'Lighter body', blurb: 'Sheds weight: quicker off the line and up hills' }],
+  },
 ]
 
 export const vehicleEntry = (id: string) => VEHICLES.find((v) => v.id === id) ?? VEHICLES[0]
