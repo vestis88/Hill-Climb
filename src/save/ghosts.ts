@@ -19,8 +19,11 @@ export interface Ghost {
   v: 1
   player: string
   vehicle: string
+  /** Record key: the environment, plus the mode for races (data/modes.ts recordKey). */
   env: string
   distance: number
+  /** Race time in seconds, for a finished race. */
+  time?: number
   wheels: number
   /** Delta-encoded integers, `stride` per frame. */
   data: number[]
@@ -59,7 +62,7 @@ export class GhostRecorder {
     }
   }
 
-  finish(meta: { player: string; vehicle: string; env: string; distance: number }): Ghost {
+  finish(meta: { player: string; vehicle: string; env: string; distance: number; time?: number }): Ghost {
     const n = stride(this.wheels)
     const data = this.raw.map((v, i) => (i < n ? v : v - this.raw[i - n]))
     return { v: 1, ...meta, wheels: this.wheels, data }
@@ -138,7 +141,8 @@ export function storeGhost(ghost: Ghost): void {
     }
   }
   const best = loadGhost(ghost.player, ghost.env, 'best')
-  const isBest = !best || ghost.distance > best.distance
+  // Races: the fastest finished run; endless: the furthest.
+  const isBest = !best || (ghost.time !== undefined || best.time !== undefined ? (ghost.time ?? Infinity) < (best.time ?? Infinity) : ghost.distance > best.distance)
   if (isBest && !put('best')) {
     clearGhosts('last')
     put('best')

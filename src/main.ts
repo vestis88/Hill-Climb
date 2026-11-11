@@ -6,9 +6,10 @@ import { Sound } from './audio/sound'
 import { createInput } from './input/input'
 import { GameRenderer, type Popup } from './render/game'
 import { drawEnvironmentPreview, drawVehiclePreview } from './render/preview'
-import { addScore, emptySave, levelsFor, loadSave, playerBest, writeSave } from './save/save'
+import { addScore, emptySave, levelsFor, loadSave, playerBest, playerTime, writeSave } from './save/save'
 import { clearGhosts, GhostRecorder, GhostTrack, loadGhost, storeGhost } from './save/ghosts'
 import { PLAYERS, playerColour } from './data/players'
+import { formatTime, gameMode, MODES, recordKey } from './data/modes'
 import { Run } from './sim/run'
 import type { SimState } from './sim/types'
 import { STEP } from './sim/world'
@@ -47,7 +48,7 @@ let mode: Mode = 'garage'
 interface Round {
   players: string[]
   turn: number
-  results: { name: string; distance: number; newBest: boolean }[]
+  results: { name: string; distance: number; time?: number; newBest: boolean }[]
 }
 // Declared before the first run is created below, which reads them.
 let round: Round = { players: [...save.players], turn: 0, results: [] }
@@ -72,6 +73,13 @@ function currentEnv() {
 function currentVehicle() {
   return vehicleEntry(save.vehicleId)
 }
+function currentMode() {
+  return gameMode(save.modeId)
+}
+/** Where this track's records are kept in the current mode (bests, ghosts, scores). */
+function currentKey(): string {
+  return recordKey(currentEnv().id, currentMode().id)
+}
 function currentPlayer(): string {
   return round.players[round.turn] ?? save.players[0] ?? PLAYERS[0].name
 }
@@ -95,6 +103,7 @@ function newRun(): Run {
     pickups: new PickupField(height, env.seed),
     // Distance bonuses count from this player's own best.
     bestDistance: playerBest(save, currentPlayer(), env.id),
+    finish: currentMode().length,
   })
 }
 
@@ -133,7 +142,13 @@ function openGarage(justBought?: UpgradeId): void {
     onBuy: buy,
     players: PLAYERS.map((p) => ({ name: p.name, colour: p.colour, on: save.players.includes(p.name) })),
     onTogglePlayer: togglePlayer,
-    onScores: () => openScores(currentEnv().id),
+    modes: MODES.map((m) => ({ id: m.id, name: m.name, on: m.id === currentMode().id })),
+    onMode: (id: string) => {
+      save.modeId = id
+      writeSave(save)
+      openGarage()
+    },
+    onScores: () => openScores(currentEnv().id, currentMode().id),
     onDrive: startRound,
     onTune: openTuning,
     onSettings: openSettings,
@@ -152,14 +167,24 @@ function togglePlayer(name: string): void {
   openGarage()
 }
 
-function openScores(envId: string): void {
+function openScores(envId: string, modeId: string): void {
   const env = environment(envId)
+  const m = gameMode(modeId)
+  const key = recordKey(env.id, m.id)
   showScores(scoresEl, {
     tracks: ENVIRONMENTS.map((e) => ({ id: e.id, name: e.name })),
     track: env.id,
-    rows: save.scores.filter((s) => s.env === env.id).map((s) => ({ name: s.name, colour: playerColour(s.name), vehicle: vehicleEntry(s.vehicle).name, distance: s.distance })),
-    bests: PLAYERS.map((p) => ({ name: p.name, colour: p.colour, distance: playerBest(save, p.name, env.id) })),
-    onTrack: openScores,
+    modes: MODES.map((x) => ({ id: x.id, name: x.name })),
+    mode: m.id,
+    rows: save.scores
+      .filter((s) => s.env === env.id && (s.mode ?? 'endless') === m.id)
+      .map((s) => ({ name: s.name, colour: playerColour(s.name), vehicle: vehicleEntry(s.vehicle).name, result: s.time !== undefined ? formatTime(s.time) : `${Math.floor(s.distance)} m` })),
+    bests: PLAYERS.map((p) => {
+      const t = playerTime(save, p.name, key)
+      return { name: p.name, colour: p.colour, result: m.length ? (t < Infinity ? formatTime(t) : '–') : `${Math.floor(playerBest(save, p.name, env.id))} m` }
+    }),
+    onTrack: (id) => openScores(id, m.id),
+    onMode: (id) => openScores(env.id, id),
     onBack: () => openGarage(),
   })
   show('scores')
@@ -236,7 +261,7 @@ function startRound(): void {
  * the others in the round.
  */
 function pickGhosts(): void {
-  const env = currentEnv().id
+  const env = currentKey()
   const me = currentPlayer()
   ghosts = []
   const add = (g: ReturnType<typeof loadGhost>, label: string) => {
@@ -248,7 +273,8 @@ function pickGhosts(): void {
   // The last run is often the best one too; show it once.
   if (last && !(best && last.distance === best.distance && last.data.length === best.data.length)) add(last, `${me} last`)
   const others = round.players.filter((p) => p !== me).map((p) => loadGhost(p, env, 'best')).filter((g) => g !== null)
-  const top = others.sort((a, b) => b.distance - a.distance)[0]
+  const rank = (g: { time?: number; distance: number }) => (currentMode().length ? (g.time ?? Infinity) : -g.distance)
+  const top = others.sort((a, b) => rank(a) - rank(b) || b.distance - a.distance)[0]
   if (top) add(top, `${top.player} best`)
 }
 
@@ -269,21 +295,28 @@ function finishRun(): void {
   const total = run.totalCoins
   const distance = run.endDistance ?? next.distance
   const envId = currentEnv().id
+  const race = currentMode()
+  const key = currentKey()
   const me = currentPlayer()
   const best = playerBest(save, me, envId)
+  const time = run.finishTime ?? undefined
+  const bestTime = playerTime(save, me, key)
   save.coins += total
   save.best[envId] = Math.max(save.best[envId] ?? 0, distance)
   save.playerBest[me] = { ...save.playerBest[me], [envId]: Math.max(best, distance) }
-  addScore(save, { name: me, vehicle: currentVehicle().id, env: envId, distance })
+  if (time !== undefined) save.playerTimes[me] = { ...save.playerTimes[me], [key]: Math.min(bestTime, time) }
+  addScore(save, { name: me, vehicle: currentVehicle().id, env: envId, distance, mode: race.id, time })
   writeSave(save)
-  // Keep this run as the player's last ghost (and best, if it went further). Not in test drives.
-  if (driveAs === 'mine' && distance > 1) storeGhost(recorder.finish({ player: me, vehicle: currentVehicle().id, env: envId, distance }))
-  round.results.push({ name: me, distance, newBest: distance > best })
+  // Keep this run as the player's last ghost (and best, if it went further or faster). Not in test drives.
+  if (driveAs === 'mine' && distance > 1) storeGhost(recorder.finish({ player: me, vehicle: currentVehicle().id, env: key, distance, time }))
+  const newBest = race.length ? time !== undefined && time < bestTime : distance > best
+  round.results.push({ name: me, distance, time, newBest })
   const nextPlayer = round.players[round.turn + 1]
   showResults(resultsEl, {
     status: run.status === 'running' ? 'ended' : run.status,
     distance,
     newBest: distance > best,
+    race: race.length ? { length: race.length, time, newBestTime: newBest } : undefined,
     coins: run.coins,
     total,
     bank: save.coins,
@@ -304,9 +337,17 @@ function finishRun(): void {
 /** The round's results, furthest first; then back to the garage or another round. */
 function openStandings(): void {
   showStandings(resultsEl, {
-    track: currentEnv().name,
+    track: currentMode().length ? `${currentEnv().name} · ${currentMode().name} race` : currentEnv().name,
     vehicle: currentVehicle().name,
-    rows: [...round.results].sort((a, b) => b.distance - a.distance).map((r) => ({ ...r, colour: playerColour(r.name) })),
+    // Races: finishers by time, then the rest by how far they got. Endless: by distance.
+    rows: [...round.results]
+      .sort((a, b) => (a.time ?? Infinity) - (b.time ?? Infinity) || b.distance - a.distance)
+      .map((r) => ({
+        name: r.name,
+        colour: playerColour(r.name),
+        newBest: r.newBest,
+        result: r.time !== undefined ? formatTime(r.time) : currentMode().length ? `DNF · ${Math.floor(r.distance)} m` : `${Math.floor(r.distance)} m`,
+      })),
     onHome: () => openGarage(),
     onAgain: startRound,
   })
@@ -384,6 +425,9 @@ function frame(now: number): void {
       if (run.status === 'crashed') {
         sound.crash()
         renderer.shake(1)
+      } else if (run.status === 'finished') {
+        sound.fanfare()
+        renderer.cheer()
       }
       // Let the crash or the final roll show for a moment before the results.
       mode = 'ending'
@@ -413,6 +457,7 @@ function frame(now: number): void {
     driver: { lean: run.sway.lean, ragdoll: run.ragdoll?.poses() ?? null },
     player: mode === 'driving' || mode === 'ending' ? { name: currentPlayer(), colour: playerColour(currentPlayer()) } : undefined,
     ghosts: mode === 'driving' || mode === 'ending' ? ghostPoses() : [],
+    race: currentMode().length ? { length: currentMode().length!, time: run.finishTime ?? run.sim.steps * STEP } : undefined,
     showHud: mode === 'driving' || mode === 'ending' || mode === 'results',
   })
   requestAnimationFrame(frame)
