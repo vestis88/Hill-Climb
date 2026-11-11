@@ -13,12 +13,41 @@ export interface SaveData {
   /** Last chosen environment and vehicle. */
   envId: string
   vehicleId: string
+  /** Who plays the next round, in turn order. */
+  players: string[]
+  /** Best distance per player, then per environment id, metres. */
+  playerBest: Record<string, Record<string, number>>
+  /** Highscore board: the best runs on each track (top HIGHSCORES per environment). */
+  scores: Score[]
 }
+
+export interface Score {
+  name: string
+  vehicle: string
+  env: string
+  distance: number
+}
+
+/** Runs kept per track on the highscore board. */
+export const HIGHSCORES = 10
+
+/** Add a run to the board, keeping the best HIGHSCORES per track. True if it made the board. */
+export function addScore(save: SaveData, score: Score): boolean {
+  const rounded = { ...score, distance: Math.floor(score.distance) }
+  if (rounded.distance <= 0) return false
+  const others = save.scores.filter((s) => s.env !== score.env)
+  const board = [...save.scores.filter((s) => s.env === score.env), rounded].sort((a, b) => b.distance - a.distance).slice(0, HIGHSCORES)
+  save.scores = [...others, ...board]
+  return board.includes(rounded)
+}
+
+/** A player's best distance on a track, metres. */
+export const playerBest = (save: SaveData, name: string, env: string) => save.playerBest[name]?.[env] ?? 0
 
 const KEY = 'ridgeline.save'
 
 export function emptySave(): SaveData {
-  return { version: 1, coins: 0, levels: {}, best: {}, unlocked: [], envId: 'meadow', vehicleId: 'runabout' }
+  return { version: 1, coins: 0, levels: {}, best: {}, unlocked: [], envId: 'meadow', vehicleId: 'runabout', players: ['Wille'], playerBest: {}, scores: [] }
 }
 
 export function loadSave(): SaveData {

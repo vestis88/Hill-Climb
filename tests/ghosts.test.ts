@@ -1,0 +1,95 @@
+import { beforeEach, describe, expect, it } from 'vitest'
+import { environment, heightFor } from '../src/data/environments'
+import { runabout } from '../src/data/vehicles'
+import { GHOST_EVERY, GhostRecorder, GhostTrack, loadGhost, storeGhost } from '../src/save/ghosts'
+import type { SimState } from '../src/sim/types'
+import { Sim, STEP } from '../src/sim/world'
+
+/** A tiny in-memory localStorage for the storage tests. */
+function fakeStorage(limit = Infinity) {
+  const map = new Map<string, string>()
+  return {
+    get length() {
+      return map.size
+    },
+    key: (i: number) => [...map.keys()][i] ?? null,
+    getItem: (k: string) => map.get(k) ?? null,
+    setItem: (k: string, v: string) => {
+      const used = [...map.entries()].reduce((n, [a, b]) => n + (a === k ? 0 : b.length), 0)
+      if (used + v.length > limit) throw new Error('QuotaExceededError')
+      map.set(k, v)
+    },
+    removeItem: (k: string) => void map.delete(k),
+  }
+}
+
+/** Drive Green Meadows for `seconds`, recording a ghost and keeping every sim state. */
+function record(seconds: number) {
+  const env = environment('meadow')
+  const sim = new Sim({ vehicle: runabout, height: heightFor(env), gravity: env.gravity })
+  const rec = new GhostRecorder(runabout.wheels.length)
+  const states: SimState[] = []
+  for (let i = 0; i < seconds / STEP; i++) {
+    const s = sim.state()
+    rec.sample(s)
+    states.push(s)
+    sim.step({ gas: s.chassis.angle < 0.4, brake: false })
+  }
+  return { ghost: rec.finish({ player: 'Wille', vehicle: 'runabout', env: 'meadow', distance: sim.state().distance }), states }
+}
+
+describe('ghosts', () => {
+  beforeEach(() => {
+    ;(globalThis as { localStorage?: unknown }).localStorage = fakeStorage()
+  })
+
+  it('replays the recorded poses: chassis within 1 cm, wheels where they were', () => {
+    const { ghost, states } = record(20)
+    const track = new GhostTrack(ghost)
+    for (const i of [0, 120, 600, 1196]) {
+      const s = states[i]
+      const p = track.at((i / GHOST_EVERY) / 15)!
+      expect(Math.abs(p.chassis.x - s.chassis.x)).toBeLessThan(0.01)
+      expect(Math.abs(p.chassis.y - s.chassis.y)).toBeLessThan(0.01)
+      expect(Math.abs(p.chassis.angle - s.chassis.angle)).toBeLessThan(0.01)
+      // Hub back in world coordinates.
+      const c = Math.cos(p.chassis.angle)
+      const sn = Math.sin(p.chassis.angle)
+      const [hx, hy] = p.hubs[0]
+      expect(Math.abs(p.chassis.x + hx * c - hy * sn - s.wheels[0].x)).toBeLessThan(0.02)
+      expect(p.fade).toBe(1)
+    }
+  })
+
+  it('is small enough to keep: a two-minute run is under 80 KB', () => {
+    const { ghost } = record(120)
+    expect(JSON.stringify(ghost).length).toBeLessThan(80_000)
+  })
+
+  it('fades out after its run ended', () => {
+    const { ghost } = record(5)
+    const track = new GhostTrack(ghost)
+    expect(track.at(track.duration + 0.5)!.fade).toBeCloseTo(0.5, 1)
+    expect(track.at(track.duration + 2)!.fade).toBe(0)
+  })
+
+  it('keeps the best run and the last run per player and track', () => {
+    const { ghost } = record(4)
+    storeGhost({ ...ghost, distance: 50 })
+    storeGhost({ ...ghost, distance: 30 })
+    expect(loadGhost('Wille', 'meadow', 'best')!.distance).toBe(50)
+    expect(loadGhost('Wille', 'meadow', 'last')!.distance).toBe(30)
+    storeGhost({ ...ghost, distance: 70 })
+    expect(loadGhost('Wille', 'meadow', 'best')!.distance).toBe(70)
+    expect(loadGhost('Frans', 'meadow', 'best')).toBeNull()
+  })
+
+  it('drops last-run ghosts to make room for a new best when storage is full', () => {
+    const { ghost } = record(4)
+    const size = JSON.stringify(ghost).length
+    ;(globalThis as { localStorage?: unknown }).localStorage = fakeStorage(size * 3.5)
+    storeGhost({ ...ghost, player: 'Frans', distance: 10 })
+    storeGhost({ ...ghost, player: 'Wille', distance: 20 })
+    expect(loadGhost('Wille', 'meadow', 'best')!.distance).toBe(20)
+  })
+})
