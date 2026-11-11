@@ -122,8 +122,8 @@ device. Clearing Safari's website data resets it.
 
 ### Test mode and tuning sandbox
 
-Add `?tune` to the address (for example `…/Hill-Climb/?tune`) for **test
-mode**: every vehicle and environment can be picked without buying it (a red
+Turn on **Test mode** in Settings (or add `?tune` to the address, for example
+`…/Hill-Climb/?tune`): every vehicle and environment can be picked without buying it (a red
 TEST MODE badge shows in the garage, and no coins are spent), and the garage
 gets a **Tuning** button. It has sliders for every handling value of
 the base car and of the fully upgraded car, a choice of which to drive (your

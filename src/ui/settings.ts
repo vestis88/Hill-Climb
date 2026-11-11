@@ -26,6 +26,8 @@ export function saveSettings(s: Settings): void {
   }
 }
 
+import { setTestMode, tuningEnabled } from './tuning'
+
 export function showSettings(el: HTMLElement, s: Settings, onChange: () => void, onReset: () => void, onBack: () => void): void {
   let confirming = false
   const render = () => {
@@ -34,6 +36,7 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
       <div class="rows" style="max-width:420px">
         <div><span>Sound</span><span class="seg"><button data-sound="on" class="${s.sound ? 'on' : ''}">On</button><button data-sound="off" class="${s.sound ? '' : 'on'}">Off</button></span></div>
         <div><span>Volume</span><input type="range" min="0" max="1" step="0.05" value="${s.volume}" data-act="volume" style="width:55%"></div>
+        <div><span>Test mode<br><small style="opacity:.7">Everything unlocked, nothing bought</small></span><span class="seg"><button data-test="off" class="${tuningEnabled() ? '' : 'on'}">Off</button><button data-test="on" class="${tuningEnabled() ? 'on' : ''}">On</button></span></div>
         <div><span>Pedals</span><span class="seg"><button data-pedals="normal" class="${s.swapPedals ? '' : 'on'}">Brake left</button><button data-pedals="swap" class="${s.swapPedals ? 'on' : ''}">Gas left</button></span></div>
       </div>
       <div class="actions">
@@ -55,6 +58,7 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
     if (!b) return
     if (b.dataset.sound) s.sound = b.dataset.sound === 'on'
     else if (b.dataset.pedals) s.swapPedals = b.dataset.pedals === 'swap'
+    else if (b.dataset.test) setTestMode(b.dataset.test === 'on')
     else if (b.dataset.act === 'back') return onBack()
     else if (b.dataset.act === 'reset') confirming = true
     else if (b.dataset.act === 'reset-no') confirming = false
