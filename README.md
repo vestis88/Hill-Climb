@@ -42,7 +42,7 @@ to ease off and balance the car in the air. Green Meadows has the most.
   lie along the track, further apart the further you get. The run ends when
   the tank is empty and the car rolls to a stop.
 - **Crashing**: the run ends at once if the driver's head hits the ground.
-- **Coins** come from four places (values in `src/sim/run.ts` and `src/data/track.ts`):
+- **Coins** come from five places (values in `src/sim/run.ts` and `src/data/track.ts`):
   - coins lying on the track, in small groups, worth more the further out they are;
   - air time: 20 coins per second in the air, for jumps of at least 0.8 s;
   - flips: 100 coins for each full rotation that lands on the wheels;
