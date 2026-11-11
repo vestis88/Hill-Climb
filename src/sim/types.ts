@@ -64,6 +64,14 @@ export interface VehicleSpec {
     spinResponse: number
     /** Torque the pedals add to the chassis while wheels are on the ground. */
     groundTorque: number
+    /**
+     * Rider-controlled wheelies (the bike). With both wheels down, the gas lifts the front with
+     * `lift` times the bike's weight moment about the back wheel, scaled by the engine's pull
+     * (so a lift above 1 raises the front at launch, and less so as speed builds). On the back wheel the
+     * pitch is steered like air control: the gas raises the nose at `rate` rad/s, letting go
+     * lowers it at `drop` rad/s (twice that on the brake). No sudden snaps: feather to hold it.
+     */
+    wheelie?: { lift: number; rate: number; drop: number; response: number }
   }
 }
 

@@ -73,7 +73,7 @@ const eng = (key: keyof VehicleSpec['engine'], label: string, min: number, max: 
   get: (v) => v.engine[key],
   set: (v, x) => (v.engine[key] = x),
 })
-const air = (key: keyof VehicleSpec['airControl'], label: string, min: number, max: number, step: number): Field => ({
+const air = (key: 'spinRate' | 'spinResponse' | 'groundTorque', label: string, min: number, max: number, step: number): Field => ({
   label, min, max, step,
   get: (v) => v.airControl[key],
   set: (v, x) => (v.airControl[key] = x),

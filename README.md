@@ -15,7 +15,7 @@ buy: every coin is earned by driving.
 | Vehicle | Unlock | Character |
 |---|---|---|
 | Runabout | free | Small, light car; easy to handle |
-| Scrambler | 6,000 coins | Two-stroke motocross bike; quick, spins fast in the air, flips easily. Its suspension bottoms out on a bump stop before the tyres reach the mudguards |
+| Scrambler | 6,000 coins | Two-stroke motocross bike; quick, spins fast in the air, flips easily. Wheelies are rider-controlled: full gas lifts the front at launch, and on the back wheel the nose rises steadily on the gas and drops when you let go, so you feather it (hold the gas and it loops). Its suspension bottoms out on a bump stop before the tyres reach the mudguards |
 | Hauler | 15,000 coins | Heavy 4x4; slow, very stable, climbs almost anything once upgraded |
 
 Each vehicle has its own four upgrades and its own base and fully upgraded
@@ -116,7 +116,7 @@ on its own. Current results, seconds (DNF: the driver crashed on every try):
 | | Level 1 | 5 | 10 |
 |---|---|---|---|
 | Runabout, Green Meadows | 55.6 | 42.7 | 36.4 |
-| Scrambler, Green Meadows | 52.4 | 42.8 | 38.4 |
+| Scrambler, Green Meadows | 55.9 | 45.9 | 41.3 |
 | Hauler, Green Meadows | 55.3 | 42.6 | 35.1 |
 | Runabout, Crater Fields | DNF | 53.4 | 42.9 |
 | Hauler, Frost Pass | 61.4 | 46.9 | 37.7 |

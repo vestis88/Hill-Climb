@@ -100,7 +100,29 @@ export class Vehicle {
     })
 
     // Pedals also pitch the chassis.
-    if (gas || brake) {
+    const wheelie = airControl.wheelie
+    if (wheelie && contacts.some(Boolean)) {
+      const spin = this.chassis.getAngularVelocity()
+      const rearDown = this.spec.wheels.some((w, i) => w.axle === 'rear' && contacts[i])
+      const frontDown = this.spec.wheels.some((w, i) => w.axle === 'front' && contacts[i])
+      // The bike pivots about its back wheel, so steer it with the rig's inertia about that hub.
+      const rear = this.wheels[this.spec.wheels.findIndex((w) => w.axle === 'rear')]
+      const arm = Vec2.sub(this.chassis.getWorldCenter(), rear.getWorldCenter())
+      const mass = this.chassis.getMass() + this.wheels.reduce((m, w) => m + w.getMass(), 0)
+      if (rearDown && !frontDown && Math.abs(this.chassis.getAngle()) < 1.8) {
+        // On the back wheel: the rider holds the pitch to a steady rate up or down.
+        const target = gas ? wheelie.rate : brake ? -2 * wheelie.drop : -wheelie.drop
+        const inertia = this.rigInertia() + mass * Vec2.dot(arm, arm)
+        this.chassis.applyTorque(inertia * wheelie.response * (target - spin), true)
+      } else if (gas && spin < wheelie.rate) {
+        // Both wheels down: the gas lifts the front. `lift` is a share of the bike's weight
+        // moment about the back wheel, scaled by how hard the engine pulls (so mostly at launch).
+        const weight = mass * Math.abs(this.world.getGravity().y) * Math.abs(arm.x)
+        this.chassis.applyTorque(wheelie.lift * weight * (driveTorque / engine.maxTorque), true)
+      } else if (brake && spin > -airControl.spinRate) {
+        this.chassis.applyTorque(-airControl.groundTorque, true)
+      }
+    } else if (gas || brake) {
       const dir = gas ? 1 : -1
       const spin = this.chassis.getAngularVelocity()
       if (contacts.some(Boolean)) {

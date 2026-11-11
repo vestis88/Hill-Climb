@@ -109,7 +109,9 @@ export const scrambler: VehicleSpec = {
   // Owner playtests: too little grip and over-rotated in the air; keep the wheelies, rotate more
   // slowly. (Extra body inertia was tried for slower rotation, but then the bike could not level
   // itself in time on Crater Fields' big jumps.)
-  airControl: { spinRate: 2.4, spinResponse: 11, groundTorque: 2 },
+  // Wheelies (owner): full gas lifts the front at launch, and on the back wheel the pitch moves
+  // at a steady rate (up on the gas, down off it), so it is easy to start and to feather.
+  airControl: { spinRate: 2.4, spinResponse: 11, groundTorque: 2, wheelie: { lift: 1.15, rate: 1, drop: 1.2, response: 12 } },
 }
 
 export const scramblerFull: VehicleSpec = {
