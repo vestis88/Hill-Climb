@@ -91,6 +91,7 @@ function openGarage(): void {
   showGarage(garageEl, {
     coins: save.coins,
     vehicleName: vehicle.name,
+    upgrades: vehicle.upgrades,
     levels: levelsFor(save, vehicle.id),
     vehicles: VEHICLES.map((v) => ({
       id: v.id, name: v.name, blurb: v.blurb, price: v.price,

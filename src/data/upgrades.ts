@@ -1,20 +1,30 @@
 import type { VehicleSpec } from '../sim/types'
 
-/** See README "Upgrades". Each upgrade owns a fixed set of physics values. */
-export type UpgradeId = 'engine' | 'tyres' | 'suspension' | 'drivetrain'
+/**
+ * See README "Upgrades". Each upgrade owns a fixed set of physics values. Every vehicle has
+ * four upgrades, chosen to suit it (see VehicleEntry.upgrades); an upgrade a vehicle does not
+ * have simply stays at level 1 and changes nothing.
+ */
+export type UpgradeId = 'engine' | 'tyres' | 'suspension' | 'drivetrain' | 'weight'
 export type Levels = Record<UpgradeId, number>
+
+export interface UpgradeInfo {
+  id: UpgradeId
+  name: string
+  blurb: string
+}
 
 export const MAX_LEVEL = 10
 
-export const UPGRADES: { id: UpgradeId; name: string; blurb: string }[] = [
-  { id: 'engine', name: 'Engine', blurb: 'Faster and stronger on hills' },
-  { id: 'tyres', name: 'Tyres', blurb: 'Less wheelspin, better braking' },
-  { id: 'suspension', name: 'Suspension', blurb: 'Cleaner landings, harder to tip' },
-  { id: 'drivetrain', name: 'Drivetrain', blurb: 'Power to the front wheels too' },
-]
+export const ENGINE: UpgradeInfo = { id: 'engine', name: 'Engine', blurb: 'Faster and stronger on hills' }
+export const TYRES: UpgradeInfo = { id: 'tyres', name: 'Tyres', blurb: 'Less wheelspin, better braking' }
+export const SUSPENSION: UpgradeInfo = { id: 'suspension', name: 'Suspension', blurb: 'Cleaner landings, harder to tip' }
+export const DRIVETRAIN: UpgradeInfo = { id: 'drivetrain', name: 'Drivetrain', blurb: 'Power to the front wheels too' }
 
-export const BASE_LEVELS: Levels = { engine: 1, tyres: 1, suspension: 1, drivetrain: 1 }
-export const FULL_LEVELS: Levels = { engine: MAX_LEVEL, tyres: MAX_LEVEL, suspension: MAX_LEVEL, drivetrain: MAX_LEVEL }
+const ALL: UpgradeId[] = ['engine', 'tyres', 'suspension', 'drivetrain', 'weight']
+const levelsAt = (n: number) => Object.fromEntries(ALL.map((id) => [id, n])) as Levels
+export const BASE_LEVELS: Levels = levelsAt(1)
+export const FULL_LEVELS: Levels = levelsAt(MAX_LEVEL)
 
 /** Coins to buy the given level (2..MAX_LEVEL). About 50% more each level. */
 export function price(level: number): number {
@@ -35,10 +45,12 @@ export function applyUpgrades(base: VehicleSpec, full: VehicleSpec, levels: Leve
   const g = t('tyres')
   const s = t('suspension')
   const d = t('drivetrain')
+  const w = t('weight')
   return {
     ...base,
     chassis: {
       ...base.chassis,
+      mass: lerp(base.chassis.mass, full.chassis.mass, w),
       centerOfMass: {
         x: lerp(base.chassis.centerOfMass.x, full.chassis.centerOfMass.x, s),
         y: lerp(base.chassis.centerOfMass.y, full.chassis.centerOfMass.y, s),

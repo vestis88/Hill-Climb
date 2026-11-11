@@ -1,4 +1,4 @@
-import { MAX_LEVEL, price, UPGRADES, type Levels, type UpgradeId } from '../data/upgrades'
+import { MAX_LEVEL, price, type Levels, type UpgradeId, type UpgradeInfo } from '../data/upgrades'
 
 /** An environment or vehicle the player can pick, buy, or see locked. */
 export interface Choice {
@@ -18,6 +18,8 @@ import type { RunStatus } from '../sim/run'
 export interface GarageView {
   coins: number
   vehicleName: string
+  /** The selected vehicle's four upgrades. */
+  upgrades: UpgradeInfo[]
   vehicles: Choice[]
   environments: Choice[]
   onPick(kind: 'vehicle' | 'env', id: string): void
@@ -34,7 +36,7 @@ export interface GarageView {
 let thumbObserver: ResizeObserver | undefined
 
 export function showGarage(el: HTMLElement, v: GarageView): void {
-  const card = (u: (typeof UPGRADES)[number]) => {
+  const card = (u: UpgradeInfo) => {
     const level = v.levels[u.id]
     const maxed = level >= MAX_LEVEL
     const cost = maxed ? 0 : price(level + 1)
@@ -58,7 +60,7 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
     <div class="bar"><h1>Ridgeline${v.testMode ? ' <span class="badge">TEST MODE</span>' : ''}</h1><span class="coins">● ${v.coins}</span><button class="big" data-act="drive">Drive</button></div>
     <div class="choices">${v.vehicles.map((c) => choice('vehicle', c)).join('')}</div>
     <div class="label">${v.vehicleName} upgrades</div>
-    <div class="cards">${UPGRADES.map(card).join('')}</div>
+    <div class="cards">${v.upgrades.map(card).join('')}</div>
     <div class="choices">${v.environments.map((c) => choice('env', c)).join('')}</div>
     <div class="actions"><button class="small" data-act="settings">Settings</button>${v.tuning ? '<button class="small" data-act="tune">Tuning</button>' : ''}</div>`
   // Draw each preview at its card's real size, and again whenever that size changes (rotation,

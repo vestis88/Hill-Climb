@@ -22,6 +22,16 @@ const topSpeed = (v: VehicleSpec) => {
   return sim.state().speed
 }
 
+/** Seconds of full gas from a standstill to reach the given speed (m/s). */
+const timeTo = (v: VehicleSpec, speed: number) => {
+  const sim = new Sim({ vehicle: v, height: flat })
+  for (let i = 1; i <= 900; i++) {
+    sim.step(GAS)
+    if (sim.state().speed >= speed) return i / 60
+  }
+  return 15
+}
+
 /** Metres travelled up a constant slope from a standstill in 10 s of full gas. */
 const climb = (v: VehicleSpec, deg: number) => {
   const k = Math.tan((deg * Math.PI) / 180)
@@ -109,13 +119,32 @@ describe.each(VEHICLES)('every vehicle: $name', (entry) => {
     expect(at(FULL_LEVELS)).toEqual(entry.full)
   })
 
-  it('engine raises top speed; tyres, drivetrain and the full set climb better', () => {
+  it('offers four upgrades that suit it', () => {
+    expect(entry.upgrades).toHaveLength(4)
+    expect(entry.upgrades.map((u) => u.id).slice(0, 3)).toEqual(['engine', 'tyres', 'suspension'])
+  })
+
+  it('engine raises top speed; tyres, the fourth upgrade and the full set each help', () => {
     expect(topSpeed(at({ engine: MAX_LEVEL }))).toBeGreaterThan(topSpeed(entry.base) * 1.5)
     // Grip only limits on steep slopes, so compare there.
     const base = climb(entry.base, 30)
     expect(climb(at({ tyres: MAX_LEVEL }), 30)).toBeGreaterThan(base + 1)
-    expect(climb(at({ drivetrain: MAX_LEVEL }), 30)).toBeGreaterThan(base + 1)
-    expect(climb(entry.full, 30)).toBeGreaterThan(climb(entry.base, 30) + 20)
+    const fourth = entry.upgrades[3].id
+    if (fourth === 'drivetrain') expect(climb(at({ drivetrain: MAX_LEVEL }), 30)).toBeGreaterThan(base + 1)
+    if (fourth === 'weight') {
+      // Less weight: quicker off the line. (On the light bike it also means less grip on
+      // climbs; the stage-time test checks that the upgrades still make runs quicker overall.)
+      expect(timeTo(at({ weight: MAX_LEVEL }), 7)).toBeLessThan(timeTo(entry.base, 7) * 0.95)
+    }
+    // The fully upgraded vehicle climbs a 30 degree slope at least twice as far (plus a margin).
+    expect(climb(entry.full, 30)).toBeGreaterThan(climb(entry.base, 30) * 2 + 5)
+  })
+
+  it('an upgrade it does not offer changes nothing', () => {
+    const offered = new Set(entry.upgrades.map((u) => u.id))
+    for (const id of ['drivetrain', 'weight'] as UpgradeId[]) {
+      if (!offered.has(id)) expect(at({ [id]: MAX_LEVEL })).toEqual(entry.base)
+    }
   })
 
   it('suspension gives cleaner landings', () => {
@@ -124,9 +153,10 @@ describe.each(VEHICLES)('every vehicle: $name', (entry) => {
 
   it('never flips over backwards from a standstill on flat ground, whatever the upgrades', () => {
     // Kids hold the gas; that alone must not flip the vehicle. Hills still need skill.
-    const ids: UpgradeId[] = ['engine', 'tyres', 'suspension', 'drivetrain']
+    const ids = entry.upgrades.map((u) => u.id)
+    const fourth = ids[3]
     const combos: Partial<Levels>[] = [{}, FULL_LEVELS, ...ids.map((id) => ({ [id]: MAX_LEVEL }))]
-    combos.push({ engine: MAX_LEVEL, drivetrain: MAX_LEVEL }, { engine: MAX_LEVEL, tyres: MAX_LEVEL, drivetrain: MAX_LEVEL })
+    combos.push({ engine: MAX_LEVEL, [fourth]: MAX_LEVEL }, { engine: MAX_LEVEL, tyres: MAX_LEVEL, [fourth]: MAX_LEVEL })
     for (const levels of combos) expect(worstLaunchPitch(at(levels)), JSON.stringify(levels)).toBeLessThan(1)
   }, 60000)
 })
