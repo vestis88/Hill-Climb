@@ -117,7 +117,7 @@ on its own. Current results, seconds (DNF: the driver crashed on every try):
 | | Level 1 | 5 | 10 |
 |---|---|---|---|
 | Runabout, Green Meadows | 55.6 | 42.7 | 36.4 |
-| Scrambler, Green Meadows | 55.9 | 45.9 | 41.3 |
+| Scrambler, Green Meadows | 55.3 | 45.1 | 40.2 |
 | Hauler, Green Meadows | 55.3 | 42.6 | 35.1 |
 | Runabout, Crater Fields | DNF | 53.4 | 42.9 |
 | Hauler, Frost Pass | 61.4 | 46.9 | 37.7 |

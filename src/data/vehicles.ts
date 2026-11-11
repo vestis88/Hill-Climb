@@ -93,8 +93,10 @@ export const scrambler: VehicleSpec = {
   },
   wheels: [
     // Travel stops the tyres short of the mudguards (owner: wheels must never go through them).
-    { anchor: { x: -0.78, y: -0.4 }, radius: 0.38, mass: 0.5, friction: 0.36, springHz: 4, damping: 0.6, axle: 'rear', travel: { up: 0.32, down: 0.1 } },
-    { anchor: { x: 0.84, y: -0.4 }, radius: 0.38, mass: 0.5, friction: 0.36, springHz: 4, damping: 0.6, axle: 'front', travel: { up: 0.32, down: 0.1 } },
+    // The rear hub moves across the swingarm (pivot at -0.12, -0.02), so it swings back as it
+    // rises; the front slides up the raked fork. Wheelbase 1.74 m.
+    { anchor: { x: -0.84, y: -0.4 }, radius: 0.38, mass: 0.5, friction: 0.36, springHz: 4, damping: 0.6, axle: 'rear', axis: { x: -0.29, y: 0.957 }, travel: { up: 0.32, down: 0.1 } },
+    { anchor: { x: 0.9, y: -0.4 }, radius: 0.38, mass: 0.5, friction: 0.36, springHz: 4, damping: 0.6, axle: 'front', axis: { x: -0.428, y: 0.904 }, travel: { up: 0.32, down: 0.1 } },
   ],
   engine: {
     maxTorque: 7,

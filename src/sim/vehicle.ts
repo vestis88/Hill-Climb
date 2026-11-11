@@ -41,7 +41,7 @@ export class Vehicle {
         this.chassis,
         wheel,
         hub,
-        new Vec2(0, 1),
+        new Vec2(w.axis?.x ?? 0, w.axis?.y ?? 1),
       )
       world.createJoint(joint)
       this.wheels.push(wheel)
@@ -142,33 +142,44 @@ export class Vehicle {
   /**
    * Bump stops: planck's wheel joint has no travel limit, so after each step any wheel past its
    * travel (spec.wheels[i].travel) is put back at the stop and its closing speed is taken out
-   * with an impulse shared with the chassis, as when a fork bottoms out.
+   * with an impulse shared with the chassis, as when a fork bottoms out. The hub is also held
+   * on its axis: on a hard landing the joint's own sideways hold gives, most of all on a
+   * tilted axis (the bike's swingarm and fork).
    */
   limitTravel(): void {
     this.spec.wheels.forEach((w, i) => {
       if (!w.travel) return
       const wheel = this.wheels[i]
-      const axis = this.chassis.getWorldVector(new Vec2(0, 1))
+      const axis = this.chassis.getWorldVector(new Vec2(w.axis?.x ?? 0, w.axis?.y ?? 1))
+      const side = new Vec2(-axis.y, axis.x)
       const anchor = this.chassis.getWorldPoint(new Vec2(w.anchor.x, w.anchor.y))
-      const hub = wheel.getPosition()
-      const t = Vec2.dot(Vec2.sub(hub, anchor), axis)
+      const offset = Vec2.sub(wheel.getPosition(), anchor)
+      const t = Vec2.dot(offset, axis)
       const over = t > w.travel.up ? t - w.travel.up : t < -w.travel.down ? t + w.travel.down : 0
-      if (over === 0) return
-      const mA = this.chassis.getMass()
-      const mB = wheel.getMass()
-      // Share the position fix by mass, so the wheel does not sink into the ground.
-      wheel.setPosition(Vec2.sub(hub, Vec2.mul(axis, (over * mA) / (mA + mB))))
-      const c = this.chassis.getPosition()
-      this.chassis.setPosition(Vec2.add(c, Vec2.mul(axis, (over * mB) / (mA + mB))))
-      // Remove the speed at which the wheel is still moving past the stop.
-      const vRel = Vec2.dot(Vec2.sub(wheel.getLinearVelocity(), this.chassis.getLinearVelocityFromWorldPoint(hub)), axis)
-      if (vRel * over <= 0) return
-      const r = Vec2.sub(hub, this.chassis.getWorldCenter())
-      const rn = Vec2.cross(r, axis)
-      const impulse = vRel / (1 / mA + 1 / mB + (rn * rn) / this.chassis.getInertia())
-      wheel.applyLinearImpulse(Vec2.mul(axis, -impulse), wheel.getWorldCenter(), true)
-      this.chassis.applyLinearImpulse(Vec2.mul(axis, impulse), hub, true)
+      if (over !== 0) this.separate(wheel, axis, over, true)
+      const drift = Vec2.dot(offset, side)
+      if (Math.abs(drift) > 0.002) this.separate(wheel, side, drift, false)
     })
+  }
+
+  /**
+   * Move a wheel back by `error` along `dir` (sharing the fix with the chassis by mass) and take
+   * out their relative speed along `dir`: only the part making the error worse when `oneWay`.
+   */
+  private separate(wheel: Body, dir: Vec2, error: number, oneWay: boolean): void {
+    const mA = this.chassis.getMass()
+    const mB = wheel.getMass()
+    const hub = wheel.getPosition()
+    // Share the position fix by mass, so the wheel does not sink into the ground.
+    wheel.setPosition(Vec2.sub(hub, Vec2.mul(dir, (error * mA) / (mA + mB))))
+    this.chassis.setPosition(Vec2.add(this.chassis.getPosition(), Vec2.mul(dir, (error * mB) / (mA + mB))))
+    const vRel = Vec2.dot(Vec2.sub(wheel.getLinearVelocity(), this.chassis.getLinearVelocityFromWorldPoint(hub)), dir)
+    if (oneWay && vRel * error <= 0) return
+    const r = Vec2.sub(hub, this.chassis.getWorldCenter())
+    const rn = Vec2.cross(r, dir)
+    const impulse = vRel / (1 / mA + 1 / mB + (rn * rn) / this.chassis.getInertia())
+    wheel.applyLinearImpulse(Vec2.mul(dir, -impulse), wheel.getWorldCenter(), true)
+    this.chassis.applyLinearImpulse(Vec2.mul(dir, impulse), hub, true)
   }
 
   /** Rotational inertia of the whole rig (chassis plus wheels) about the chassis centre of mass. */
