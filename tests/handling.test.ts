@@ -186,3 +186,41 @@ describe('scrambler suspension', () => {
     }
   })
 })
+
+describe('scrambler wheelies (owner: easy to start, easy to feather, no snaps)', () => {
+  for (const [name, v] of [['base', scrambler], ['full', scramblerFull]] as const) {
+    it(`${name}: full gas from a standstill lifts the front within a second, at a steady rate`, () => {
+      const sim = new Sim({ vehicle: v, height: flat, gravity: 9 })
+      run(sim, NONE, 0.5)
+      let lifted = -1
+      let fastest = 0
+      run(sim, GAS, 1.5, () => {
+        const s = sim.state()
+        if (lifted < 0 && !s.wheelContacts[1]) lifted = sim.steps
+        if (s.chassis.angle < 1) fastest = Math.max(fastest, sim.vehicle.chassis.getAngularVelocity())
+      })
+      expect(lifted).toBeGreaterThan(0)
+      expect((lifted - 30) * STEP).toBeLessThan(1)
+      // No snap: the nose comes up at about the rider's rate (1 rad/s), not a sudden flick.
+      expect(fastest).toBeLessThan(1.6)
+    })
+
+    it(`${name}: feathering the gas holds a steady wheelie, and letting go brings it down`, () => {
+      const sim = new Sim({ vehicle: v, height: flat, gravity: 9 })
+      let lo = Infinity
+      let hi = -Infinity
+      for (let i = 0; i < 600; i++) {
+        const a = sim.state().chassis.angle
+        sim.step({ gas: a < 0.6, brake: false })
+        if (i > 180) {
+          lo = Math.min(lo, a)
+          hi = Math.max(hi, a)
+        }
+      }
+      expect(lo).toBeGreaterThan(0.4)
+      expect(hi).toBeLessThan(0.8)
+      run(sim, NONE, 1)
+      expect(sim.state().wheelContacts[1]).toBe(true)
+    })
+  }
+})

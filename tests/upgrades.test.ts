@@ -8,6 +8,9 @@ import { Sim } from '../src/sim/world'
 
 const GAS: Input = { gas: true, brake: false }
 const NONE: Input = { gas: false, brake: false }
+
+/** Full gas, easing off when the nose is more than 0.4 rad above the slope (the bike wheelies). */
+const rider = (sim: Sim, slope = 0): Input => ({ gas: sim.state().chassis.angle < slope + 0.4, brake: false })
 const at = (levels: Partial<Levels>) => applyUpgrades(runabout, runaboutFull, { ...BASE_LEVELS, ...levels })
 
 function run(sim: Sim, input: Input, steps: number, each?: () => void) {
@@ -19,14 +22,14 @@ function run(sim: Sim, input: Input, steps: number, each?: () => void) {
 
 const topSpeed = (v: VehicleSpec) => {
   const sim = new Sim({ vehicle: v, height: flat })
-  run(sim, GAS, 900)
+  for (let i = 0; i < 900; i++) sim.step(rider(sim))
   return sim.state().speed
 }
 
 /** Metres to stop from top speed after 4 s of gas, braking on flat ground. */
 const brakingDistance = (v: VehicleSpec) => {
   const sim = new Sim({ vehicle: v, height: flat })
-  run(sim, GAS, 240)
+  for (let i = 0; i < 240; i++) sim.step(rider(sim))
   const x0 = sim.state().chassis.x
   for (let i = 0; i < 600 && sim.state().speed > 0.2; i++) sim.step({ gas: false, brake: true })
   return sim.state().chassis.x - x0
@@ -36,7 +39,7 @@ const brakingDistance = (v: VehicleSpec) => {
 const timeTo = (v: VehicleSpec, speed: number) => {
   const sim = new Sim({ vehicle: v, height: flat })
   for (let i = 1; i <= 900; i++) {
-    sim.step(GAS)
+    sim.step(rider(sim))
     if (sim.state().speed >= speed) return i / 60
   }
   return 15
@@ -47,7 +50,8 @@ const climb = (v: VehicleSpec, deg: number) => {
   const k = Math.tan((deg * Math.PI) / 180)
   const ramp = (x: number) => (x < 5 ? 0 : x < 7 ? (k * (x - 5) ** 2) / 4 : k * (x - 6))
   const sim = new Sim({ vehicle: v, height: ramp })
-  run(sim, GAS, 600)
+  const slope = Math.atan(k)
+  for (let i = 0; i < 600; i++) sim.step(rider(sim, sim.state().chassis.x > 6 ? slope : 0))
   return sim.state().chassis.x
 }
 
