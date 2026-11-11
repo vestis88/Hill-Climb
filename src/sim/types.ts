@@ -26,6 +26,8 @@ export interface VehicleSpec {
     polygon: Vec2[]
     mass: number
     centerOfMass: Vec2
+    /** Multiplies the body's resistance to rotation: higher pitches up and down more slowly. Default 1. */
+    inertiaScale?: number
   }
   wheels: WheelSpec[]
   engine: {

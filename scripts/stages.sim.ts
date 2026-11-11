@@ -16,7 +16,7 @@ it('stage times', () => {
   const lines: string[] = []
   for (const env of ENVIRONMENTS) {
     const height = heightFor(env)
-    const opts = { gravity: env.gravity, groundFriction: env.groundFriction }
+    const opts = { gravity: env.gravity, airGravity: env.airGravity, groundFriction: env.groundFriction }
     lines.push(`\n${env.name}, first 500 m (seconds; DNF = crashed every try)`)
     lines.push(`vehicle    | all upgrades at level 1..10                                  | each upgrade alone at 10`)
     for (const v of VEHICLES) {

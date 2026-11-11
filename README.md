@@ -26,9 +26,14 @@ standstill on flat ground; the hills still need a light touch.
 
 | Environment | Unlock | What is different |
 |---|---|---|
-| Green Meadows | free | Rolling grassy hills |
-| Crater Fields | 4,000 coins | Low gravity (about 40%), big crests, long floaty jumps |
+| Green Meadows | free | Rolling grassy hills, many jumps; lighter gravity in the air (8 instead of 10) for floatier jumps |
+| Crater Fields | 4,000 coins | Big crests and very floaty jumps: gravity 8 on the ground, 4 in the air |
 | Frost Pass | 10,000 coins | Icy ground with far less grip, steeper and bumpier |
+
+Gravity can be lighter in the air than on the ground: jumps float further, while grip,
+wheelies and engine power on the ground stay the same. Where ground gravity is below 10,
+engine power is scaled down with it so cars never flip over backwards from a standstill
+(tested at every environment's gravity).
 
 Every environment is endless and the same every run: the hills grow taller
 and steeper with distance, up to a limit, so there is always further to go.
@@ -101,11 +106,11 @@ on its own. Current results, seconds (DNF: the driver crashed on every try):
 
 | | Level 1 | 5 | 10 |
 |---|---|---|---|
-| Runabout, Green Meadows | 54.8 | 42.1 | 36.1 |
-| Scrambler, Green Meadows | 53.0 | 43.1 | 39.0 |
-| Hauler, Green Meadows | 54.9 | 42.1 | 34.5 |
-| Runabout, Crater Fields | DNF | 53.4 | 42.9 |
-| Hauler, Frost Pass | 61.4 | 46.9 | 37.7 |
+| Runabout, Green Meadows | 55.1 | 42.7 | 37.1 |
+| Scrambler, Green Meadows | 52.8 | 44.1 | 40.9 |
+| Hauler, Green Meadows | 54.9 | 42.7 | 35.5 |
+| Runabout, Crater Fields | DNF | 52.0 | 43.6 |
+| Hauler, Frost Pass | 61.3 | 46.7 | 37.5 |
 
 Times fall at nearly every level; the engine does the most on its own, and
 tyres, suspension and the fourth upgrade add smaller gains that matter more on
@@ -123,7 +128,7 @@ vehicle.
   driver plays Green Meadows with the Runabout and buys the cheapest upgrade
   after each run. It almost never crashes, so it is much faster than a child.
   Current result: first upgrades after one run, fully upgraded after about
-  72 runs or **2.5 hours** of play (it crashes on some jumps). Children should take
+  60 runs or **2.3 hours** of play (it crashes on some jumps). Children should take
   several times longer.
 - What sets the pace: coins are worth 5 each up to 500 m, 10 up to 1,500 m
   and 15 beyond; the distance bonus is 15 coins per new 100 m; fuel cans get

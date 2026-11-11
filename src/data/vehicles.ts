@@ -82,7 +82,7 @@ export const scrambler: VehicleSpec = {
       { x: -0.6, y: 0.3 },
     ],
     mass: 4,
-    centerOfMass: { x: -0.05, y: 0.1 },
+    centerOfMass: { x: -0.05, y: 0.25 },
   },
   wheels: [
     { anchor: { x: -0.72, y: -0.4 }, radius: 0.38, mass: 0.5, friction: 0.36, springHz: 4, damping: 0.6, axle: 'rear' },
@@ -98,14 +98,16 @@ export const scrambler: VehicleSpec = {
     idleDragTorque: 0.4,
   },
   driver: { head: { x: -0.15, y: 1.25 }, headRadius: 0.2 },
-  // Owner playtest: too little grip, over-rotated in the air, wheelied too readily.
-  airControl: { spinRate: 2.7, spinResponse: 11, groundTorque: 0.8 },
+  // Owner playtests: too little grip and over-rotated in the air; keep the wheelies, rotate more
+  // slowly. (Extra body inertia was tried for slower rotation, but then the bike could not level
+  // itself in time on Crater Fields' big jumps.)
+  airControl: { spinRate: 2.4, spinResponse: 11, groundTorque: 2 },
 }
 
 export const scramblerFull: VehicleSpec = {
   ...scrambler,
   wheels: scrambler.wheels.map((w) => ({ ...w, friction: 1.1, damping: 0.85 })),
-  chassis: { ...scrambler.chassis, mass: 3.6, centerOfMass: { x: -0.05, y: -0.05 } },
+  chassis: { ...scrambler.chassis, mass: 3.6, centerOfMass: { x: -0.05, y: 0.05 } },
   engine: { ...scrambler.engine, maxTorque: 6.8, torqueFalloff: 0.35, maxWheelSpeed: 64 },
 }
 
