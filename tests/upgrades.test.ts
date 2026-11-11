@@ -65,6 +65,14 @@ const landingBounce = (v: VehicleSpec) => {
   return travel
 }
 
+/** Radians turned in 0.6 s of gas while falling from high up (no ground in reach). */
+const airSpin = (v: VehicleSpec) => {
+  const sim = new Sim({ vehicle: v, height: flat, start: { x: 0, y: 40 } })
+  const a0 = sim.state().chassis.angle
+  run(sim, GAS, 36)
+  return sim.state().chassis.angle - a0
+}
+
 /** Worst nose-up angle when flooring it from a standstill, over many pedal timings. */
 const worstLaunchPitch = (v: VehicleSpec, gravity = 10) => {
   let worst = 0
@@ -148,6 +156,12 @@ describe.each(VEHICLES)('every vehicle: $name', (entry) => {
       // climbs; the stage-time test checks that the upgrades still make runs quicker overall.)
       expect(timeTo(at({ weight: MAX_LEVEL }), 7)).toBeLessThan(timeTo(entry.base, 7) * 0.95)
     }
+    if (fourth === 'flip') {
+      // Flip control: a clearly faster spin in the air.
+      const flip = at({ flip: MAX_LEVEL })
+      expect(flip.airControl.spinRate).toBeGreaterThan(entry.base.airControl.spinRate * 1.3)
+      expect(airSpin(flip)).toBeGreaterThan(airSpin(entry.base) * 1.3)
+    }
     // The fully upgraded vehicle climbs clearly further up a 25 degree slope. (The light bike is
     // engine-limited on steeper slopes; tests/stages.test.ts checks it is much quicker overall.)
     expect(climb(entry.full, 25)).toBeGreaterThan(climb(entry.base, 25) * 1.3)
@@ -155,7 +169,7 @@ describe.each(VEHICLES)('every vehicle: $name', (entry) => {
 
   it('an upgrade it does not offer changes nothing', () => {
     const offered = new Set(entry.upgrades.map((u) => u.id))
-    for (const id of ['drivetrain', 'weight'] as UpgradeId[]) {
+    for (const id of ['drivetrain', 'weight', 'flip'] as UpgradeId[]) {
       if (!offered.has(id)) expect(at({ [id]: MAX_LEVEL })).toEqual(entry.base)
     }
   })

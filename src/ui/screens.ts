@@ -22,6 +22,7 @@ const ICONS: Record<string, string> = {
   suspension: '<rect x="4" y="2" width="16" height="3" rx="1" fill="#8b93a1"/><rect x="4" y="19" width="16" height="3" rx="1" fill="#8b93a1"/><path d="M12 5 L17 7.5 L7 10 L17 12.5 L7 15 L17 17.5 L12 19" fill="none" stroke="#f2b632" stroke-width="2" stroke-linejoin="round"/>',
   drivetrain: '<circle cx="8" cy="12" r="5" fill="none" stroke="#c9ced6" stroke-width="3" stroke-dasharray="2.2 1.8"/><circle cx="17" cy="12" r="4" fill="none" stroke="#8b93a1" stroke-width="3" stroke-dasharray="2 1.6"/><circle cx="8" cy="12" r="1.6" fill="#c9ced6"/><circle cx="17" cy="12" r="1.3" fill="#8b93a1"/>',
   weight: '<path d="M5 19 C 7 9, 13 4, 20 3 C 18 10, 13 16, 5 19 Z" fill="#e8ecf2"/><path d="M5 19 L 15 9" stroke="#8b93a1" stroke-width="1.5"/>',
+  flip: '<path d="M6 15 A 7 7 0 1 1 13 19" fill="none" stroke="#ffb020" stroke-width="2.6" stroke-linecap="round"/><path d="M2.5 12.5 L6 16.5 L9.5 12.5 Z" fill="#ffb020"/><circle cx="12" cy="12" r="2.4" fill="#c9ced6"/>',
 }
 
 export interface GarageView {
