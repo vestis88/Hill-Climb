@@ -10,7 +10,7 @@ import { it } from 'vitest'
 import { environment, heightFor } from '../src/data/environments'
 import { PickupField } from '../src/data/track'
 import { applyUpgrades, BASE_LEVELS, MAX_LEVEL, price, type Levels, type UpgradeId } from '../src/data/upgrades'
-import { runabout, runaboutFull } from '../src/data/vehicles'
+import { runabout, runaboutFull, vehicleEntry } from '../src/data/vehicles'
 import { Run } from '../src/sim/run'
 import { STEP } from '../src/sim/world'
 
@@ -54,7 +54,9 @@ it('economy', () => {
 
     const bought: string[] = []
     for (;;) {
-      const options = (Object.keys(levels) as UpgradeId[]).filter((id) => levels[id] < MAX_LEVEL)
+      // Only the upgrades the Runabout offers.
+      const offered = vehicleEntry('runabout').upgrades.map((u) => u.id) as UpgradeId[]
+      const options = offered.filter((id) => levels[id] < MAX_LEVEL)
       if (!options.length) break
       const id = options.reduce((a, b) => (price(levels[a] + 1) <= price(levels[b] + 1) ? a : b))
       const cost = price(levels[id] + 1)
@@ -69,7 +71,7 @@ it('economy', () => {
           `  ${(seconds / 60).toFixed(0).padStart(4)} min played  ${bought.length ? 'bought ' + bought.join(', ') : ''}`,
       )
     }
-    if (Object.values(levels).every((l) => l === MAX_LEVEL)) {
+    if (vehicleEntry('runabout').upgrades.every((u) => levels[u.id] === MAX_LEVEL)) {
       lines.push(`Fully upgraded after ${n} runs, about ${(seconds / 3600).toFixed(1)} hours of play.`)
       break
     }
