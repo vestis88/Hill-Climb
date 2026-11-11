@@ -48,8 +48,9 @@ function syncRows(cloud: CloudSync | undefined, joining: boolean, joinError: boo
     <span class="seg"><button data-act="sync-now">Sync now</button><button data-act="sync-leave">Stop</button></span></div>`
 }
 
-export function showSettings(el: HTMLElement, s: Settings, onChange: () => void, onReset: () => void, onBack: () => void, cloud?: CloudSync): void {
+export function showSettings(el: HTMLElement, s: Settings, onChange: () => void, onReset: () => void, onBack: () => void, cloud?: CloudSync, onClearScores?: () => void): void {
   let confirming = false
+  let clearing = false
   let joining = false
   let joinError = false
   const render = () => {
@@ -65,7 +66,9 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
       <div class="actions">
         ${confirming
           ? `<span>Delete all coins, upgrades and unlocks${cloud?.code ? ' on this device (it also stops syncing)' : ''}?</span><button class="small" data-act="reset-yes" style="background:#e5383b">Yes, reset</button><button class="small" data-act="reset-no">Cancel</button>`
-          : '<button class="small" data-act="reset">Reset progress…</button>'}
+          : clearing
+            ? '<span>Clear all highscores, bests and ghosts? Coins and upgrades stay.</span><button class="small" data-act="clear-yes" style="background:#e5383b">Yes, clear</button><button class="small" data-act="clear-no">Cancel</button>'
+            : '<button class="small" data-act="clear">Clear highscores and ghosts…</button><button class="small" data-act="reset">Reset progress…</button>'}
       </div>`
   }
   render()
@@ -101,7 +104,12 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
       return
     } else if (b.dataset.act === 'sync-now') void cloud?.syncNow()
     else if (b.dataset.act === 'sync-leave') cloud?.leave()
-    else if (b.dataset.act === 'reset-yes') {
+    else if (b.dataset.act === 'clear') clearing = true
+    else if (b.dataset.act === 'clear-no') clearing = false
+    else if (b.dataset.act === 'clear-yes') {
+      clearing = false
+      onClearScores?.()
+    } else if (b.dataset.act === 'reset-yes') {
       confirming = false
       onReset()
     }

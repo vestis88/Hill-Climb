@@ -30,6 +30,14 @@ export class Sim {
   private readonly startX: number
   private maxX: number
   steps = 0
+  /**
+   * The chassis and wheel angles as continuous values. planck wraps a body's angle into
+   * -180..180 degrees whenever its position is set directly (the bike's bump stops do that on
+   * hard landings), which would erase full turns and lose flips. Each step, any jump of more
+   * than half a turn is taken back out, so turns keep adding up.
+   */
+  private angleOffsets: number[] = []
+  private lastRaw: number[] = []
 
   constructor(readonly options: SimOptions) {
     this.world = new World({ gravity: new Vec2(0, -(options.gravity ?? 10)) })
@@ -99,8 +107,27 @@ export class Sim {
     this.puddleDrag()
     this.world.step(STEP, 8, 3)
     this.vehicle.limitTravel()
+    this.unwrapAngles()
     this.steps++
     this.maxX = Math.max(this.maxX, this.vehicle.chassis.getPosition().x)
+  }
+
+  private unwrapAngles(): void {
+    const bodies = [this.vehicle.chassis, ...this.vehicle.wheels]
+    bodies.forEach((b, i) => {
+      const raw = b.getAngle()
+      const last = this.lastRaw[i] ?? raw
+      const diff = raw - last
+      // Real rotation in one 1/60 s step is far below half a turn; a bigger jump is a wrap.
+      if (Math.abs(diff) > Math.PI) this.angleOffsets[i] = (this.angleOffsets[i] ?? 0) - 2 * Math.PI * Math.round(diff / (2 * Math.PI))
+      this.lastRaw[i] = raw
+    })
+  }
+
+  /** A body's angle with full turns kept (see angleOffsets). */
+  private angleOf(i: number): number {
+    const b = i === 0 ? this.vehicle.chassis : this.vehicle.wheels[i - 1]
+    return b.getAngle() + (this.angleOffsets[i] ?? 0)
   }
 
   state(): SimState {
@@ -108,8 +135,8 @@ export class Sim {
     const p = chassis.getPosition()
     const contacts = this.vehicle.wheelContacts()
     return {
-      chassis: { x: p.x, y: p.y, angle: chassis.getAngle() },
-      wheels: wheels.map((w) => ({ x: w.getPosition().x, y: w.getPosition().y, angle: w.getAngle() })),
+      chassis: { x: p.x, y: p.y, angle: this.angleOf(0) },
+      wheels: wheels.map((w, i) => ({ x: w.getPosition().x, y: w.getPosition().y, angle: this.angleOf(i + 1) })),
       speed: chassis.getLinearVelocity().x,
       rpm: this.vehicle.rpm(),
       distance: this.maxX - this.startX,
