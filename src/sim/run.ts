@@ -1,3 +1,5 @@
+import { Vec2 } from 'planck'
+import { LAUNCH, judgeLaunch, type LaunchKind } from './launch'
 import type { Pickup, PickupSource } from '../data/track'
 import { DriverSway, Ragdoll } from './driver'
 import type { HeightFn, Input, SimState, VehicleSpec } from './types'
@@ -71,6 +73,9 @@ export class Run {
   readonly sim: Sim
   fuel = 1
   status: RunStatus = 'running'
+  /** The start judged at GO, and seconds of its boost (or bog) left. */
+  launchKind: LaunchKind = 'normal'
+  private launchLeft = 0
   coins = { track: 0, air: 0, flips: 0, wheelies: 0, milestones: 0, rescue: 0 }
   /** Events from the last step only, for pop-ups and sounds. */
   events: RunEvent[] = []
@@ -106,6 +111,13 @@ export class Run {
     return c.track + c.air + c.flips + c.wheelies + c.milestones + c.rescue
   }
 
+  /** GO: the revs at that moment decide the start (sim/launch.ts). */
+  launch(revs: number): LaunchKind {
+    this.launchKind = judgeLaunch(revs)
+    this.launchLeft = this.launchKind === 'perfect' ? LAUNCH.perfect.seconds : this.launchKind === 'over' ? LAUNCH.over.seconds : 0
+    return this.launchKind
+  }
+
   step(rawInput: Input): void {
     this.events = []
     if (this.status !== 'running') {
@@ -116,6 +128,20 @@ export class Run {
     // On an empty tank only the brake works: it brakes, and in the air tips the nose down.
     const input = this.fuel > 0 ? rawInput : { gas: false, brake: rawInput.brake, empty: true }
 
+    const v = this.sim.vehicle
+    v.torqueScale = 1
+    if (this.launchLeft > 0 && input.gas) {
+      this.launchLeft -= STEP
+      const effect = this.launchKind === 'perfect' ? LAUNCH.perfect : LAUNCH.over
+      // The effect fades out over its last third rather than stopping dead.
+      const fade = Math.max(0, Math.min(1, this.launchLeft / (effect.seconds / 3)))
+      if (this.launchKind === 'over') v.torqueScale = 1 + (LAUNCH.over.torque - 1) * fade
+      else {
+        const mass = [v.chassis, ...v.wheels].reduce((m, b) => m + b.getMass(), 0)
+        const a = v.chassis.getAngle()
+        v.chassis.applyForceToCenter(Vec2(Math.cos(a) * mass * LAUNCH.perfect.push * fade, Math.sin(a) * mass * LAUNCH.perfect.push * fade), true)
+      }
+    } else if (!input.gas) this.launchLeft = 0
     this.sim.step(input)
     this.fuel -= STEP / (input.gas ? RULES.fuelSecondsOnGas : RULES.fuelSecondsIdle)
     this.fuel = Math.max(0, this.fuel)

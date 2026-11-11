@@ -1,3 +1,4 @@
+import { LAUNCH, type LaunchKind } from '../sim/launch'
 import type { Environment } from '../data/environments'
 import type { Pickup } from '../data/track'
 import type { HeightFn, Input, Pose, SimState, VehicleSpec } from '../sim/types'
@@ -52,6 +53,10 @@ export interface View {
   puddles?: PuddleFn
   /** Race mode: the length (the finish line's distance from the start) and the clock, seconds. */
   race?: { length: number; time: number }
+  /** Engine revs to show, 0..1: they rise and fall at the engine's own pace (sim/launch.ts). */
+  revs: number
+  /** The start countdown: seconds left before GO; shown while above 0. */
+  countdown?: number
   /** Ghost riders to race: a recorded pose, its vehicle and a name tag. */
   ghosts: { label: string; colour: string; spec: VehicleSpec; pose: GhostPose }[]
 }
@@ -80,6 +85,9 @@ export class GameRenderer {
   private backfire = false
   /** Needle position of the rev gauge, eased. */
   private needle = 0
+  /** Seconds since GO (big while the countdown runs), and how the start went. */
+  private goT = 9
+  private goKind: LaunchKind = 'normal'
   private wasAirborne = false
   private shakeAmount = 0
   private toScreen = (x: number, y: number) => ({ x, y })
@@ -314,6 +322,7 @@ export class GameRenderer {
     this.drawVignette()
     this.drawRescue(view.dt)
     if (view.showHud) this.drawHud(view)
+    if (view.showHud) this.drawCountdown(view)
     this.drawFlyingCoins(view.dt)
   }
 
@@ -724,49 +733,126 @@ export class GameRenderer {
 
   /** Rev counter: an arc with a red line, a needle, and the gear number that pops on a shift. */
   private drawRevGauge(view: View, cx: number, cy: number): void {
+    const revs = view.revs + (view.input.gas && !view.next.shifting ? 0.06 : 0)
+    this.needle += (Math.min(1, revs) - this.needle) * Math.min(1, view.dt * 24)
+    // Gear number: pops and flashes gold on a shift.
+    const k = Math.min(1, this.shiftT / 0.35)
+    this.drawDial(cx, cy, 34, this.needle, { text: `${view.next.gear}`, pop: 1 + 0.45 * Math.sin(k * Math.PI) * (1 - k), colour: k < 1 ? '#ffd23f' : '#ffffff' })
+  }
+
+  /** A rev dial: grey arc, red line from 0.86, an optional green launch window, a lit sweep and a needle. */
+  private drawDial(cx: number, cy: number, r: number, value: number, label: { text: string; pop: number; colour: string }, green?: readonly [number, number]): void {
     const { ctx } = this
-    const r = 22
-    const revs = view.next.revs + (view.input.gas && !view.next.shifting ? 0.08 : 0)
-    this.needle += (Math.min(1, revs) - this.needle) * Math.min(1, view.dt * 18)
     const a0 = Math.PI * 0.8
     const a1 = Math.PI * 2.2
     const at = (v: number) => a0 + (a1 - a0) * v
+    const red = LAUNCH.green[1]
+    const w = Math.max(5, r * 0.2)
     ctx.save()
     ctx.beginPath()
-    ctx.arc(cx, cy, r + 5, 0, Math.PI * 2)
-    ctx.fillStyle = 'rgba(16, 21, 28, 0.45)'
+    ctx.arc(cx, cy, r + w, 0, Math.PI * 2)
+    ctx.fillStyle = 'rgba(16, 21, 28, 0.5)'
     ctx.fill()
-    ctx.lineCap = 'round'
-    ctx.lineWidth = 5
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)'
+    ctx.lineCap = 'butt'
+    ctx.lineWidth = w
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'
     ctx.beginPath()
-    ctx.arc(cx, cy, r, a0, at(0.85))
+    ctx.arc(cx, cy, r, a0, at(red))
     ctx.stroke()
     ctx.strokeStyle = '#e5383b'
     ctx.beginPath()
-    ctx.arc(cx, cy, r, at(0.85), a1)
+    ctx.arc(cx, cy, r, at(red), a1)
     ctx.stroke()
+    const inGreen = green !== undefined && value >= green[0] && value <= green[1]
+    if (green) {
+      ctx.strokeStyle = inGreen ? '#7dff8a' : '#2fbf4a'
+      ctx.lineWidth = w * 1.7
+      ctx.beginPath()
+      ctx.arc(cx, cy, r, at(green[0]), at(green[1]))
+      ctx.stroke()
+      ctx.lineWidth = w
+    }
     // Lit sweep up to the needle.
-    ctx.strokeStyle = this.needle > 0.85 ? '#ff6b6b' : '#ffd23f'
+    ctx.lineCap = 'round'
+    ctx.lineWidth = w * 0.55
+    ctx.strokeStyle = value > red ? '#ff6b6b' : inGreen ? '#b6ffbd' : '#ffd23f'
     ctx.beginPath()
-    ctx.arc(cx, cy, r, a0, at(Math.max(0.001, this.needle)))
+    ctx.arc(cx, cy, r, a0, at(Math.max(0.001, value)))
     ctx.stroke()
-    const na = at(this.needle)
-    ctx.lineWidth = 3
+    // Tick marks.
+    ctx.lineWidth = Math.max(1.5, r * 0.04)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'
+    for (let i = 0; i <= 10; i++) {
+      const a = at(i / 10)
+      const inner = r - w * (i % 5 === 0 ? 1.6 : 1.1)
+      ctx.beginPath()
+      ctx.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner)
+      ctx.lineTo(cx + Math.cos(a) * (r - w * 0.6), cy + Math.sin(a) * (r - w * 0.6))
+      ctx.stroke()
+    }
+    const na = at(value)
+    ctx.lineWidth = Math.max(3, r * 0.07)
     ctx.strokeStyle = '#ffffff'
     ctx.beginPath()
-    ctx.moveTo(cx + Math.cos(na) * 6, cy + Math.sin(na) * 6)
-    ctx.lineTo(cx + Math.cos(na) * (r + 2), cy + Math.sin(na) * (r + 2))
+    ctx.moveTo(cx + Math.cos(na) * r * 0.25, cy + Math.sin(na) * r * 0.25)
+    ctx.lineTo(cx + Math.cos(na) * (r + w * 0.4), cy + Math.sin(na) * (r + w * 0.4))
     ctx.stroke()
-    // Gear number: pops and flashes gold on a shift.
-    const k = Math.min(1, this.shiftT / 0.35)
-    const pop = 1 + 0.45 * Math.sin(k * Math.PI) * (1 - k)
     ctx.translate(cx, cy + 1)
-    ctx.scale(pop, pop)
+    ctx.scale(label.pop, label.pop)
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    this.outlinedText(`${view.next.gear}`, 0, 0, 18, k < 1 ? '#ffd23f' : '#ffffff')
+    this.outlinedText(label.text, 0, 0, Math.round(r * 0.75), label.colour)
     ctx.restore()
+  }
+
+  /** The start: 3, 2, 1 over a big rev dial with the green launch window, then GO and the verdict. */
+  private drawCountdown(view: View): void {
+    const { ctx, width, height: h } = this
+    const cx = width / 2
+    const r = Math.min(90, h * 0.17)
+    const cy = h * 0.5
+    if (view.countdown !== undefined && view.countdown > 0) {
+      this.goT = 0
+      this.drawDial(cx, cy + r * 0.35, r, Math.min(1, view.revs), { text: '', pop: 1, colour: '#fff' }, LAUNCH.green)
+      const n = Math.ceil(view.countdown / LAUNCH.beat)
+      const k = 1 - (view.countdown / LAUNCH.beat - (n - 1))
+      ctx.save()
+      ctx.translate(cx, cy + r * 0.38)
+      const pop = 1 + 0.5 * Math.max(0, 1 - k * 4)
+      ctx.scale(pop, pop)
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      this.outlinedText(`${n}`, 0, 0, Math.round(r * 0.8), '#ffd23f')
+      ctx.restore()
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      this.outlinedText('Rev into the green!', cx, cy - r * 0.95, 20, '#ffffff')
+      return
+    }
+    if (this.goT > 1.4) return
+    const t = this.goT
+    this.goT += view.dt
+    const k = Math.min(1, t / 0.25)
+    const fade = Math.min(1, (1.4 - t) / 0.4)
+    ctx.save()
+    ctx.globalAlpha = Math.max(0, fade)
+    ctx.translate(cx, cy)
+    ctx.scale(0.6 + 0.4 * k + 0.15 * Math.sin(k * Math.PI), 0.6 + 0.4 * k + 0.15 * Math.sin(k * Math.PI))
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    this.outlinedText('GO!', 0, -10, Math.round(r * 0.75), '#7dff8a')
+    if (this.goKind === 'perfect') this.outlinedText('Perfect start!', 0, r * 0.5, 24, '#ffd23f')
+    else if (this.goKind === 'over') this.outlinedText('Too many revs!', 0, r * 0.5, 22, '#ff6b6b')
+    ctx.restore()
+  }
+
+  /** GO: show the verdict on the start. */
+  launch(kind: LaunchKind): void {
+    this.goKind = kind
+    this.goT = 0
+    if (kind === 'perfect') {
+      this.cheer()
+    }
   }
 
   private drawHud(view: View): void {
@@ -814,7 +900,7 @@ export class GameRenderer {
       ctx.fill()
     }
     if (low && Math.floor(this.time / 0.3) % 2 === 0) this.outlinedText(view.fuel <= 0 ? 'OUT OF FUEL' : 'LOW FUEL', x0, gy + 22, 15, '#ff6b6b')
-    if (view.spec.engine.gearbox) this.drawRevGauge(view, gx + gw + 34, gy + 6)
+    if (view.spec.engine.gearbox) this.drawRevGauge(view, gx + gw + 50, gy + 14)
 
     // Coins this run, in a pill at the top centre; it pops when a coin lands in it.
     ctx.save()

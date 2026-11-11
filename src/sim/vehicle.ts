@@ -51,6 +51,8 @@ export class Vehicle {
 
   /** Gear engaged, and steps left of the shift under way (drive is cut while shifting). */
   gear = 1
+  /** Drive torque multiplier: a launch boost (above 1) or a bogged start (below), sim/launch.ts. */
+  torqueScale = 1
   private shiftSteps = 0
   /** Steps since the last shift, and wheel speed smoothed over about a quarter second. */
   private sinceShift = 0
@@ -152,7 +154,7 @@ export class Vehicle {
         joint.setMaxMotorTorque(engine.brakeTorque)
       } else if (gas && share > 0) {
         joint.setMotorSpeed(-engine.maxWheelSpeed * 1.15)
-        joint.setMaxMotorTorque((driveTorque * share) / axleCount[w.axle])
+        joint.setMaxMotorTorque((driveTorque * share * this.torqueScale) / axleCount[w.axle])
       } else if (brake) {
         // Brakes act on every wheel, then pull the car into reverse (not with an empty tank).
         joint.setMotorSpeed(input.empty ? 0 : engine.reverseWheelSpeed)

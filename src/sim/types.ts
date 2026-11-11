@@ -69,6 +69,8 @@ export interface VehicleSpec {
     /** Wheel spin at top speed, rad/s. */
     maxWheelSpeed: number
     brakeTorque: number
+    /** Seconds the engine takes to rev from idle to the limiter out of gear (sim/launch.ts). */
+    revTime: number
     /** Wheel spin when reversing, rad/s. */
     reverseWheelSpeed: number
     /** Drag torque when no pedal is held. */

@@ -1,3 +1,4 @@
+import { EngineRevs, LAUNCH } from './sim/launch'
 import { ENVIRONMENTS, environment, heightFor, puddlesFor } from './data/environments'
 import { PickupField } from './data/track'
 import { VEHICLES, vehicleEntry } from './data/vehicles'
@@ -49,6 +50,9 @@ let driveAs: DriveAs = 'mine'
 
 type Mode = 'garage' | 'driving' | 'ending' | 'results' | 'tuning' | 'settings' | 'scores'
 let mode: Mode = 'garage'
+/** Seconds left of the start countdown, and the engine revs it shows (sim/launch.ts). */
+let countdown = 0
+let revs = new EngineRevs(0.6)
 /**
  * A round: each ticked player drives once, in turn, on the same vehicle and track; then the
  * standings. One player alone is a round of one.
@@ -308,6 +312,10 @@ function startRun(): void {
   prev = next = run.sim.state()
   popups = []
   renderer.resetCamera(next)
+  // The 3-2-1 countdown: the vehicle is held and the engine can be revved (sim/launch.ts).
+  countdown = 3 * LAUNCH.beat
+  revs = new EngineRevs(run.options.vehicle.engine.revTime)
+  sound.beep(false)
   show('driving')
 }
 
@@ -443,7 +451,17 @@ function frame(now: number): void {
   updateViewport()
   const dt = Math.min(0.1, (now - last) / 1000)
   last = now
-  if (mode === 'driving' || mode === 'ending') {
+  if (mode === 'driving' && countdown > 0) {
+    const beat = Math.ceil(countdown / LAUNCH.beat)
+    countdown -= dt
+    revs.free(controls.input.gas, dt)
+    if (countdown <= 0) {
+      const kind = run.launch(revs.revs)
+      sound.beep(true)
+      if (kind === 'perfect') sound.fanfare()
+      renderer.launch(kind)
+    } else if (Math.ceil(countdown / LAUNCH.beat) !== beat) sound.beep(false)
+  } else if (mode === 'driving' || mode === 'ending') {
     accumulator += dt
     while (accumulator >= STEP) {
       prev = next
@@ -470,7 +488,9 @@ function frame(now: number): void {
   }
   popups = popups.filter((p) => (p.age += dt) < (p.at ? 0.9 : 1.6))
   // The engine dies with the tank; it rolls on in silence.
-  sound.engine(next.revs, controls.input.gas && run.fuel > 0 && !next.shifting, mode === 'driving' && run.fuel > 0)
+  // Shown and heard revs: free revving in the countdown, else chasing the wheels at the engine's pace.
+  const shownRevs = countdown > 0 ? revs.revs : revs.follow(next.revs, dt)
+  sound.engine(shownRevs, controls.input.gas && run.fuel > 0 && !next.shifting, mode === 'driving' && run.fuel > 0)
   renderer.draw({
     prev,
     next,
@@ -492,6 +512,8 @@ function frame(now: number): void {
     puddles: puddlesFor(currentEnv()),
     race: currentMode().length ? { length: currentMode().length!, time: run.finishTime ?? run.sim.steps * STEP } : undefined,
     showHud: mode === 'driving' || mode === 'ending' || mode === 'results',
+    revs: shownRevs,
+    countdown: mode === 'driving' ? countdown : undefined,
   })
   requestAnimationFrame(frame)
 }

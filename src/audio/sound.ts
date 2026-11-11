@@ -574,6 +574,14 @@ export class Sound {
     for (const [f, d] of [[523, 0.5], [737, 0.4], [1093, 0.3]] as const) this.tone(f, 0.02, d, 'triangle', 0.1)
   }
 
+  /** Countdown beeps: a short pip for 3, 2, 1 and a long higher one for GO. */
+  beep(go: boolean): void {
+    if (go) {
+      this.tone(1175, 0, 0.42, 'square', 0.09)
+      this.tone(2350, 0, 0.3, 'sine', 0.06)
+    } else this.tone(587, 0, 0.16, 'square', 0.09)
+  }
+
   tap(): void {
     this.tone(880, 0, 0.06, 'triangle', 0.12)
   }
