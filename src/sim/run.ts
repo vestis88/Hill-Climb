@@ -16,6 +16,10 @@ export const RULES = {
   airCoinsPerSecond: 20,
   minAirTime: 0.8,
   coinsPerFlip: 100,
+  /** A landing counts when the car is within this angle of the ground (radians, about 80 degrees). */
+  landingTolerance: 1.4,
+  /** A flip counts from 2π minus this much rotation (radians): about 245 degrees. */
+  flipTolerance: 2,
   /** Coins per second of wheelie (front wheels up, back wheels down, moving), for at least minWheelie. */
   wheelieCoinsPerSecond: 15,
   minWheelie: 1,
@@ -62,6 +66,8 @@ export class Run {
   /** Distance when the run ended; the car may roll on a little afterwards. */
   endDistance: number | null = null
   private airSteps = 0
+  /** The car's angle relative to the ground on the last step with wheels down. */
+  private lastGroundRel = 0
   private wheelieSteps = 0
   private takeoffAngle = 0
   private emptySteps = 0
@@ -143,29 +149,53 @@ export class Run {
     }
   }
 
+  /**
+   * Air time and flips. Rotation is measured relative to the ground under the car, so taking off
+   * nose-up from a ramp and landing on a downslope does not eat into a flip. A jump ends when a
+   * wheel touches with the car roughly upright relative to the ground; a wheel brushing the
+   * ground mid-rotation (car sideways or upside down) does not end it. A head landing has
+   * already ended the run before this is called.
+   */
   private stunts(s: SimState): void {
     this.wheelie(s)
+    const rel = s.chassis.angle - this.slopeAngle(s.chassis.x)
     if (s.airborne) {
-      if (this.airSteps === 0) this.takeoffAngle = s.chassis.angle
+      if (this.airSteps === 0) this.takeoffAngle = this.lastGroundRel
       this.airSteps++
       return
     }
-    if (this.airSteps === 0) return
-    // Landed on the wheels (a head landing has already ended the run).
+    if (this.airSteps === 0) {
+      this.lastGroundRel = rel
+      return
+    }
+    if (Math.abs(wrapAngle(rel)) > RULES.landingTolerance) {
+      // Touching, but not upright: a brush mid-rotation. Keep counting the jump.
+      this.airSteps++
+      return
+    }
     const seconds = this.airSteps * STEP
-    const turned = Math.abs(s.chassis.angle - this.takeoffAngle)
+    const turned = Math.abs(rel - this.takeoffAngle)
     this.airSteps = 0
+    this.lastGroundRel = rel
     if (seconds >= RULES.minAirTime) {
       const value = Math.floor(seconds * RULES.airCoinsPerSecond)
       this.coins.air += value
       this.events.push({ kind: 'air', value, seconds })
     }
-    const flips = Math.floor((turned + 0.8) / TAU)
-    if (flips > 0 && Math.abs(wrapAngle(s.chassis.angle)) < 1.2) {
+    // Upright at both ends, so a real flip turns close to a whole number of turns; anything
+    // from about 245 degrees per turn counts, which no non-flip landing can reach.
+    const flips = Math.floor((turned + RULES.flipTolerance) / TAU)
+    if (flips > 0) {
       const value = flips * RULES.coinsPerFlip
       this.coins.flips += value
       this.events.push({ kind: 'flip', value, flips })
     }
+  }
+
+  /** Angle of the ground at x, radians (positive uphill). */
+  private slopeAngle(x: number): number {
+    const h = this.options.height
+    return Math.atan2(h(x + 0.5) - h(x - 0.5), 1)
   }
 
   /** Front wheels up, back wheels on the ground, moving forward: a wheelie. Paid when it ends. */
