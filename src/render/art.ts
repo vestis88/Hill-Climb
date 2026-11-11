@@ -404,7 +404,7 @@ function coil(ctx: Ctx, from: Pt, to: Pt, turns: number, width: number, colour: 
  */
 function drawMotocross(ctx: Ctx, spec: VehicleSpec, c: { body: string; dark: string; light: string }, hubs?: Pt[]): void {
   const [rear, front] = hubs ?? spec.wheels.map((w): Pt => [w.anchor.x, w.anchor.y])
-  const pivot: Pt = [-0.12, -0.02]
+  const pivot: Pt = MX_PIVOT
   const along = (p: Pt, q: Pt, t: number): Pt => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]
 
   // Rear shock, upright behind the engine, onto a linkage under the swingarm.
@@ -435,7 +435,7 @@ function drawMotocross(ctx: Ctx, spec: VehicleSpec, c: { body: string; dark: str
   // Frame: twin spar from the steering head to the swingarm pivot, cradle and subframe.
   tube(ctx, [[0.42, 0.52], [0.05, 0.3], [pivot[0], pivot[1]]], 0.1, '#b8bfca')
   tube(ctx, [[0.44, 0.44], [0.3, -0.1], [0.1, -0.24], [-0.1, -0.2]], 0.05, '#b8bfca')
-  tube(ctx, [[-0.02, 0.34], [-0.85, 0.44]], 0.045, '#8b93a1')
+  tube(ctx, [[-0.02, 0.34], [-0.91, 0.45]], 0.045, '#8b93a1')
   rrect(ctx, pivot[0] - 0.05, pivot[1] - 0.05, 0.1, 0.1, 0.05, '#5b6372')
 
   // Engine: a compact single, with crankcase, clutch cover and a finned cylinder leaning forward.
@@ -470,12 +470,14 @@ function drawMotocross(ctx: Ctx, spec: VehicleSpec, c: { body: string; dark: str
     }
   }
   // Silencer
-  tube(ctx, [[-0.46, 0.25], [-0.98, 0.37]], 0.11, '#d7dce4')
-  tube(ctx, [[-0.98, 0.37], [-1.04, 0.38]], 0.06, '#3d4450')
+  tube(ctx, [[-0.46, 0.25], [-1.04, 0.38]], 0.11, '#d7dce4')
+  tube(ctx, [[-1.04, 0.38], [-1.1, 0.39]], 0.06, '#3d4450')
 
   // Rear mudguard: long and swept up behind the seat. Its underside stays above 0.4 over the
   // tyre (the tyre top reaches 0.30 at full travel).
-  shaded(ctx, [[-0.3, 0.42], [-0.7, 0.41], [-1.08, 0.44], [-1.36, 0.56], [-1.3, 0.62], [-0.95, 0.54], [-0.3, 0.52]], c.light, c.body, c.dark)
+  // Same length as before; it moves back with the rear wheel.
+  const rf = spec.wheels[0].anchor.x + 0.78
+  shaded(ctx, [[-0.3 + rf, 0.42], [-0.7 + rf, 0.41], [-1.08 + rf, 0.44], [-1.36 + rf, 0.56], [-1.3 + rf, 0.62], [-0.95 + rf, 0.54], [-0.3 + rf, 0.52]], c.light, c.body, c.dark)
   // Side panel with the number plate.
   poly(ctx, [[-0.66, 0.28], [-0.2, 0.25], [-0.12, 0.46], [-0.72, 0.48]], '#ffffff')
   number(ctx, -0.42, 0.37, 0.17)
@@ -495,7 +497,9 @@ function drawMotocross(ctx: Ctx, spec: VehicleSpec, c: { body: string; dark: str
 
   // Upside-down fork: gold inner legs at the axle slide up into the big outer tubes held in
   // the clamps, so the fork visibly shortens as the front wheel rises.
-  const clamp: Pt = [0.36, 0.74]
+  // The clamps sit on the fork's line (the front wheel's axis), so the hub slides straight along it.
+  const fa = spec.wheels[1].axis ?? { x: 0, y: 1 }
+  const clamp: Pt = [spec.wheels[1].anchor.x + fa.x * 1.26, spec.wheels[1].anchor.y + fa.y * 1.26]
   const fx = front[0] - clamp[0]
   const fy = front[1] - clamp[1]
   const fl = Math.hypot(fx, fy) || 1
@@ -510,6 +514,29 @@ function drawMotocross(ctx: Ctx, spec: VehicleSpec, c: { body: string; dark: str
   poly(ctx, [[0.44, 0.48], [0.6, 0.52], [0.52, 0.84], [0.38, 0.8]], '#ffffff')
   number(ctx, 0.49, 0.66, 0.15)
   tube(ctx, [[0.34, 0.76], [0.32, 0.86], [0.26, 0.86]], 0.04, '#2a2f38')
+}
+
+/** The bike's swingarm pivot, chassis coordinates. */
+const MX_PIVOT: Pt = [-0.12, -0.02]
+
+/**
+ * Where to draw each wheel hub (chassis coordinates). The physics moves the bike's rear hub
+ * along a straight line across the swingarm; drawn, it sits on the swingarm's arc so the arm
+ * keeps its length. Other hubs are drawn where the physics has them.
+ */
+export function drawnHubs(spec: VehicleSpec, hubs: Pt[]): Pt[] {
+  if (spec.id !== 'scrambler') return hubs
+  return hubs.map((h, i) => {
+    const w = spec.wheels[i]
+    if (w.axle !== 'rear' || !w.axis) return h
+    // Arm length at mid travel.
+    const mid = (((w.travel?.up ?? 0) - (w.travel?.down ?? 0)) / 2)
+    const L = Math.hypot(w.anchor.x + w.axis.x * mid - MX_PIVOT[0], w.anchor.y + w.axis.y * mid - MX_PIVOT[1])
+    const dx = h[0] - MX_PIVOT[0]
+    const dy = h[1] - MX_PIVOT[1]
+    const d = Math.hypot(dx, dy) || 1
+    return [MX_PIVOT[0] + (dx / d) * L, MX_PIVOT[1] + (dy / d) * L]
+  })
 }
 
 /** The rider's race number, centred on (x, y), in chassis coordinates (y up). */
@@ -612,7 +639,7 @@ export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDrive
 /** Where each vehicle's exhaust comes out, in chassis coordinates (for smoke puffs). */
 export const EXHAUST: Record<string, Pt> = {
   runabout: [-1.62, -0.24],
-  scrambler: [-1.05, 0.38],
+  scrambler: [-1.11, 0.39],
   hauler: [-2.0, -0.35],
 }
 

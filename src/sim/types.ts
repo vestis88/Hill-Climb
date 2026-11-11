@@ -23,6 +23,11 @@ export interface WheelSpec {
   damping: number
   axle: 'rear' | 'front'
   /**
+   * Direction the hub moves as the suspension works, a unit vector in chassis coordinates
+   * (default straight up). The bike's rear follows its swingarm's swing, its front the fork.
+   */
+  axis?: Vec2
+  /**
    * Suspension travel limits, metres from the anchor along the chassis's up axis: the hub
    * stops at `up` above it (bottoming out) and `down` below it. No limits when absent.
    */
