@@ -186,4 +186,4 @@ the next time it is opened with a connection.
 the left), and resetting all progress. All sound is synthesised in the game;
 there are no audio files. Each vehicle has its own engine; the Scrambler is a
 single-cylinder two-stroke built from exhaust pulses, with pops and bangs when
-the gas is let go at high revs.
+the gas is let go at high revs, and the Hauler a rumbling cross-plane V8 built the same way.
