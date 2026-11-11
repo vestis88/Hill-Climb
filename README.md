@@ -102,6 +102,9 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
   not inputs, so they never affect the physics and still play back after a game update. If
   the device's storage is full, last-run ghosts are dropped first. Resetting progress clears
   ghosts too.
+- **Always recorded:** every run is saved as the player's last ghost (and best when it
+  went further or faster) and goes on the highscore board, test drives included; unfinished
+  races are listed as DNF with their distance, below the finishers.
 - **Highscores** (garage): the top 10 runs per track, with name, vehicle and distance, plus
   each player's best on that track.
 

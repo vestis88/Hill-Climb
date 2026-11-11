@@ -187,7 +187,7 @@ function openScores(envId: string, modeId: string): void {
     mode: m.id,
     rows: save.scores
       .filter((s) => s.env === env.id && (s.mode ?? 'endless') === m.id)
-      .map((s) => ({ name: s.name, colour: playerColour(s.name), vehicle: vehicleEntry(s.vehicle).name, result: s.time !== undefined ? formatTime(s.time) : `${Math.floor(s.distance)} m` })),
+      .map((s) => ({ name: s.name, colour: playerColour(s.name), vehicle: vehicleEntry(s.vehicle).name, result: s.time !== undefined ? formatTime(s.time) : m.length ? `DNF · ${Math.floor(s.distance)} m` : `${Math.floor(s.distance)} m` })),
     bests: PLAYERS.map((p) => {
       const t = playerTime(save, p.name, key)
       return { name: p.name, colour: p.colour, result: m.length ? (t < Infinity ? formatTime(t) : '–') : `${Math.floor(playerBest(save, p.name, env.id))} m` }
@@ -261,6 +261,9 @@ function openTuning(): void {
 /** Start a round with the ticked players, first player first. */
 function startRound(): void {
   if (!save.players.length) return
+  // A round from the garage always drives with the family's own upgrades; the Tuning screen's
+  // "Drive as" choice only applies to its own test drives.
+  driveAs = 'mine'
   round = { players: [...save.players], turn: 0, results: [] }
   startRun()
 }
@@ -316,8 +319,9 @@ function finishRun(): void {
   if (time !== undefined) save.playerTimes[me] = { ...save.playerTimes[me], [key]: Math.min(bestTime, time) }
   addScore(save, { name: me, vehicle: currentVehicle().id, env: envId, distance, mode: race.id, time })
   persist()
-  // Keep this run as the player's last ghost (and best, if it went further or faster). Not in test drives.
-  if (driveAs === 'mine' && distance > 1) storeGhost(recorder.finish({ player: me, vehicle: currentVehicle().id, env: key, distance, time }))
+  // Every run is kept as the player's last ghost (and best, if it went further or faster),
+  // test drives from the Tuning screen included.
+  if (distance > 0) storeGhost(recorder.finish({ player: me, vehicle: currentVehicle().id, env: key, distance, time }))
   const newBest = race.length ? time !== undefined && time < bestTime : distance > best
   round.results.push({ name: me, distance, time, newBest })
   const nextPlayer = round.players[round.turn + 1]
