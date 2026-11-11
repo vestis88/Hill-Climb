@@ -14,6 +14,8 @@ export interface SimOptions {
   vehicle: VehicleSpec
   height: HeightFn
   gravity?: number
+  /** Gravity while the vehicle is airborne; defaults to gravity. Lower makes jumps floatier. */
+  airGravity?: number
   /** Vehicle start position. y defaults to resting just above the ground. */
   start?: { x: number; y?: number }
   /** Friction of the ground surface. */
@@ -39,7 +41,7 @@ export class Sim {
     const x = options.start?.x ?? 0
     const lowestWheel = Math.min(...options.vehicle.wheels.map((w) => w.anchor.y - w.radius))
     const y = options.start?.y ?? options.height(x) - lowestWheel + 0.05
-    this.vehicle = new Vehicle(this.world, options.vehicle, ground, { x, y })
+    this.vehicle = new Vehicle(this.world, options.vehicle, ground, { x, y }, options.gravity ?? 10)
     this.startX = x
     this.maxX = x
   }
@@ -48,6 +50,8 @@ export class Sim {
     const x = this.vehicle.chassis.getPosition().x
     this.terrain.ensure(x - BEHIND, x + AHEAD)
     this.vehicle.applyInput(input)
+    const g = this.options.gravity ?? 10
+    this.vehicle.applyAirLift(g, this.options.airGravity ?? g)
     this.world.step(STEP, 8, 3)
     this.steps++
     this.maxX = Math.max(this.maxX, this.vehicle.chassis.getPosition().x)

@@ -81,7 +81,7 @@ describe('run rules', () => {
   it('pays for a wheelie held for over a second', () => {
     // A car tuned to wheelie easily, driven to hold the nose up: gas while it is low, ease off when high.
     const vehicle = structuredClone(runabout)
-    vehicle.airControl.groundTorque = 30
+    vehicle.airControl.groundTorque = 60
     const run = new Run({ vehicle, height: flat, pickups: fixedPickups([]), bestDistance: 1e9 })
     drive(run, () => ({ gas: run.sim.vehicle.chassis.getAngle() < 0.45, brake: false }), 6)
     drive(run, { gas: false, brake: true }, 2)

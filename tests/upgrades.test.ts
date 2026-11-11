@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { ENVIRONMENTS } from '../src/data/environments'
 import { runabout, runaboutFull, VEHICLES } from '../src/data/vehicles'
 import { applyUpgrades, BASE_LEVELS, FULL_LEVELS, MAX_LEVEL, price, type Levels, type UpgradeId } from '../src/data/upgrades'
 import { flat } from '../src/sim/terrain'
@@ -65,10 +66,10 @@ const landingBounce = (v: VehicleSpec) => {
 }
 
 /** Worst nose-up angle when flooring it from a standstill, over many pedal timings. */
-const worstLaunchPitch = (v: VehicleSpec) => {
+const worstLaunchPitch = (v: VehicleSpec, gravity = 10) => {
   let worst = 0
   for (let rest = 0; rest <= 120; rest += 12) {
-    const sim = new Sim({ vehicle: v, height: flat })
+    const sim = new Sim({ vehicle: v, height: flat, gravity })
     run(sim, NONE, rest)
     run(sim, GAS, 480, () => (worst = Math.max(worst, sim.state().chassis.angle)))
   }
@@ -169,6 +170,11 @@ describe.each(VEHICLES)('every vehicle: $name', (entry) => {
     const fourth = ids[3]
     const combos: Partial<Levels>[] = [{}, FULL_LEVELS, ...ids.map((id) => ({ [id]: MAX_LEVEL }))]
     combos.push({ engine: MAX_LEVEL, [fourth]: MAX_LEVEL }, { engine: MAX_LEVEL, tyres: MAX_LEVEL, [fourth]: MAX_LEVEL })
-    for (const levels of combos) expect(worstLaunchPitch(at(levels)), JSON.stringify(levels)).toBeLessThan(1)
-  }, 60000)
+    // At every environment's gravity: low gravity makes flipping easier (Crater Fields once flipped
+    // every car from a standstill before engine power was scaled with gravity).
+    const gravities = [...new Set(ENVIRONMENTS.map((e) => e.gravity))]
+    for (const g of gravities) {
+      for (const levels of combos) expect(worstLaunchPitch(at(levels), g), `${JSON.stringify(levels)} at gravity ${g}`).toBeLessThan(1)
+    }
+  }, 180000)
 })

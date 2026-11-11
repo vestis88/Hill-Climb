@@ -39,6 +39,7 @@ export interface RunOptions {
   vehicle: VehicleSpec
   height: HeightFn
   gravity?: number
+  airGravity?: number
   groundFriction?: number
   pickups: PickupSource
   /** Best distance so far on this track; milestones beyond it pay a bonus. */
@@ -68,8 +69,8 @@ export class Run {
   private nextMilestone: number
 
   constructor(readonly options: RunOptions) {
-    const { vehicle, height, gravity, groundFriction } = options
-    this.sim = new Sim({ vehicle, height, gravity, groundFriction })
+    const { vehicle, height, gravity, airGravity, groundFriction } = options
+    this.sim = new Sim({ vehicle, height, gravity, airGravity, groundFriction })
     options.pickups.ensure(60)
     const every = RULES.milestoneEvery
     this.nextMilestone = Math.floor(options.bestDistance / every) * every + every

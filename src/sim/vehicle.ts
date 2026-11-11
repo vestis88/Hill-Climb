@@ -11,13 +11,24 @@ export class Vehicle {
   readonly chassis: Body
   readonly wheels: Body[] = []
   readonly joints: WheelJoint[] = []
+  private readonly torqueScale: number
+  /** Steps since the wheels last touched the ground. */
+  private airSteps = 0
 
   constructor(
     private readonly world: World,
     readonly spec: VehicleSpec,
     private readonly ground: Body,
     position: { x: number; y: number },
+    /**
+     * Gravity of the world, m/s². The car's weight is what keeps the nose down, so drive and
+     * pedal pitch torques scale with gravity (a little more than proportionally, which the
+     * standstill-backflip tests showed is needed at Crater Fields' low gravity): otherwise the
+     * same engine would flip the car over backwards from a standstill. Air spin is unaffected.
+     */
+    gravity = 10,
   ) {
+    this.torqueScale = Math.min(1, (gravity / FULL_POWER_GRAVITY) ** 1.3)
     const origin = new Vec2(position.x, position.y)
 
     this.chassis = world.createDynamicBody({ position: origin })
@@ -26,7 +37,7 @@ export class Vehicle {
       friction: 0.4,
       filterGroupIndex: -1, // never collide with own wheels
     })
-    setMass(this.chassis, spec.chassis.mass, spec.chassis.centerOfMass)
+    setMass(this.chassis, spec.chassis.mass, spec.chassis.centerOfMass, spec.chassis.inertiaScale ?? 1)
 
     for (const w of spec.wheels) {
       const hub = new Vec2(origin.x + w.anchor.x, origin.y + w.anchor.y)
@@ -72,7 +83,7 @@ export class Vehicle {
     // never locks the wheels at an exact speed.
     const t = Math.min(1, Math.max(0, (1 - rpm) / TAPER))
     const taper = t * t * (3 - 2 * t)
-    const driveTorque = engine.maxTorque * (1 - engine.torqueFalloff * rpm * rpm) * taper
+    const driveTorque = engine.maxTorque * this.torqueScale * (1 - engine.torqueFalloff * rpm * rpm) * taper
 
     const contacts = this.wheelContacts()
     const axleCount = { rear: 0, front: 0 }
@@ -100,18 +111,22 @@ export class Vehicle {
     })
 
     // Pedals also pitch the chassis.
+    this.airSteps = contacts.some(Boolean) ? 0 : this.airSteps + 1
     if (gas || brake) {
       const dir = gas ? 1 : -1
       const spin = this.chassis.getAngularVelocity()
       if (contacts.some(Boolean)) {
         // On the ground: a light push that helps wheelies and nose-downs.
-        if (spin * dir < airControl.spinRate) this.chassis.applyTorque(dir * airControl.groundTorque, true)
+        if (spin * dir < airControl.spinRate) this.chassis.applyTorque(dir * airControl.groundTorque * this.torqueScale, true)
       } else {
         // In the air: steer the spin towards a fixed rate. It responds almost at once
         // and then holds that rate, instead of building up speed the longer the pedal is held.
+        // Control fades in over the first few steps in the air, so a tiny hop or bounce off the
+        // ground (common at low gravity) does not spin the car; real jumps last far longer.
+        const fadeIn = Math.min(1, this.airSteps / AIR_FADE_STEPS)
         const target = dir * airControl.spinRate
         if ((target - spin) * dir > 0) {
-          this.chassis.applyTorque(this.rigInertia() * airControl.spinResponse * (target - spin), true)
+          this.chassis.applyTorque(fadeIn * this.rigInertia() * airControl.spinResponse * (target - spin), true)
         }
       }
     }
@@ -126,6 +141,17 @@ export class Vehicle {
       inertia += wheel.getInertia() + wheel.getMass() * Vec2.dot(d, d)
     }
     return inertia
+  }
+
+  /**
+   * Lighter gravity while airborne: pushes the whole rig up by (gravity - airGravity) per kg
+   * once the wheels have left the ground. Jumps float further; grip, wheelies and engine
+   * behaviour on the ground are unchanged.
+   */
+  applyAirLift(gravity: number, airGravity: number): void {
+    if (airGravity >= gravity || this.airSteps < AIR_FADE_STEPS) return
+    const lift = gravity - airGravity
+    for (const body of [this.chassis, ...this.wheels]) body.applyForceToCenter(new Vec2(0, body.getMass() * lift), true)
   }
 
   /** Mean driven wheel spin as a share of top wheel speed, 0..1. */
@@ -152,11 +178,17 @@ export class Vehicle {
   }
 }
 
+/** At this gravity and above, engines have full power; below it, power scales down with gravity. */
+const FULL_POWER_GRAVITY = 10
+
+/** Steps (at 60 per second) over which air control fades in after leaving the ground. */
+const AIR_FADE_STEPS = 4
+
 /** Share of the speed range, below top speed, over which engine power fades out. */
 const TAPER = 0.4
 
 /** Override a body's mass and centre of mass, scaling its rotational inertia to match. */
-function setMass(body: Body, mass: number, center: { x: number; y: number }): void {
+function setMass(body: Body, mass: number, center: { x: number; y: number }, inertiaScale = 1): void {
   const data = { mass: 0, center: new Vec2(0, 0), I: 0 }
   body.getMassData(data)
   const oldCentroidI = data.I - data.mass * Vec2.dot(data.center, data.center)
@@ -164,6 +196,6 @@ function setMass(body: Body, mass: number, center: { x: number; y: number }): vo
   body.setMassData({
     mass,
     center: c,
-    I: oldCentroidI * (mass / data.mass) + mass * Vec2.dot(c, c),
+    I: oldCentroidI * (mass / data.mass) * inertiaScale + mass * Vec2.dot(c, c),
   })
 }
