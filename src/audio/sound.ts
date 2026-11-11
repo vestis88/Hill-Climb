@@ -4,7 +4,8 @@
  *
  * Engines (car and truck): detuned oscillators plus a sub, pulsed at the cylinder firing rate (the putter),
  * soft-saturated, through a low-pass filter that opens with revs, with intake noise on the gas.
- * Each vehicle has its own voice (ENGINES). The two-stroke bike is built differently: see buildTwoStroke.
+ * Each vehicle has its own voice (ENGINES). The bike and the truck are built differently, from
+ * loops of exhaust pulses (see PULSE and buildPulseEngine).
  */
 interface EngineVoice {
   /** Pitch at idle and at full revs, Hz. */
@@ -25,11 +26,64 @@ interface EngineVoice {
   waves: [OscillatorType, OscillatorType]
   volume: number
   /**
-   * Single-cylinder two-stroke: played from a loop of real-shaped exhaust pulses instead of
-   * oscillators, through a fixed expansion-chamber resonance, with pops when the gas is let go.
-   * Its idle/top are firing rates (Hz), so revs = idle..top.
+   * Played from loops of real-shaped exhaust pulses instead of oscillators (PULSE). Its idle/top
+   * are then firing rates (Hz), so revs = idle..top.
    */
-  twoStroke?: boolean
+  kind?: 'twoStroke' | 'v8'
+}
+
+/** How a pulse engine is built and driven. */
+interface PulseEngine {
+  /** Pulses per loop, share of missed pulses and roughness, on and off the gas. */
+  on: [number, number, number]
+  off: [number, number, number]
+  /** Pulse shape: a sharp crack (two-stroke) or a deep thump (V8). */
+  shape: 'crack' | 'thump'
+  /** Loudness of each firing in turn, repeating (a cross-plane V8's uneven beat). */
+  pattern?: number[]
+  /** Exhaust body resonance and the pipe resonance: [Hz, Q, dB]; pipe dB is set while driving. */
+  body: [number, number, number]
+  pipe: [number, number]
+  /** Pipe boost in dB, from throttle and revs. */
+  pipeGain: (gas: boolean, revs: number) => number
+  highpass: number
+  /** How fast revs rise and fall, seconds: a light or a heavy flywheel. */
+  lag: [number, number]
+  /** Output level on and off the gas. */
+  level: [number, number]
+  /** Pops and bangs when the gas is let go at revs. */
+  pops: boolean
+}
+
+const PULSE: Record<'twoStroke' | 'v8', PulseEngine> = {
+  // Single-cylinder two-stroke: an expansion chamber that "comes on the pipe" at high revs,
+  // and an off-throttle loop that misses and stutters ("four-stroking").
+  twoStroke: {
+    on: [24, 0, 0.3], off: [32, 0.35, 1], shape: 'crack',
+    body: [230, 1.4, 5], pipe: [760, 2.2],
+    pipeGain: (gas, revs) => (gas ? 2 + 10 * Math.max(0, revs - 0.35) : 2),
+    highpass: 45, lag: [0.05, 0.09], level: [0.32, 0.2], pops: true,
+  },
+  // Cross-plane V8: eight firings per cycle, unevenly loud, which gives the lumpy rumble at idle;
+  // deep thumps through big pipes; heavy flywheel; a looser burble off the gas.
+  v8: {
+    on: [32, 0, 0.25], off: [32, 0.12, 0.8], shape: 'thump',
+    pattern: [1, 0.55, 0.85, 0.62, 0.95, 0.5, 0.8, 0.68],
+    body: [95, 1.1, 7], pipe: [380, 1.3],
+    pipeGain: (gas, revs) => (gas ? 2 + 4 * revs : 0),
+    highpass: 28, lag: [0.12, 0.22], level: [0.42, 0.3], pops: false,
+  },
+}
+
+interface PulseGraph {
+  on: AudioBufferSourceNode
+  off: AudioBufferSourceNode
+  onGain: GainNode
+  offGain: GainNode
+  shaper: WaveShaperNode
+  pipe: BiquadFilterNode
+  filter: BiquadFilterNode
+  out: GainNode
 }
 
 const ENGINES: Record<string, EngineVoice> = {
@@ -37,9 +91,10 @@ const ENGINES: Record<string, EngineVoice> = {
   runabout: { idle: 55, top: 190, firing: 2, pulse: 0.35, grit: 2.5, cutoff: [900, 2600], sub: 0.35, noise: 0.15, waves: ['sawtooth', 'square'], volume: 0.9 },
   // Two-stroke dirt bike: ring-a-ding idle, raspy braap on the pipe, pops off the gas.
   // Firing rate 30 Hz (1800 rpm) at idle to 185 Hz (11,000 rpm) flat out.
-  scrambler: { idle: 30, top: 185, firing: 1, pulse: 0, grit: 3, cutoff: [1400, 5200], sub: 0, noise: 0.2, waves: ['square', 'square'], volume: 1, twoStroke: true },
-  // Big V8 truck: deep, burbling, heavy.
-  hauler: { idle: 34, top: 120, firing: 4, pulse: 0.5, grit: 1.8, cutoff: [450, 1500], sub: 0.8, noise: 0.1, waves: ['sawtooth', 'sawtooth'], volume: 1.1 },
+  scrambler: { idle: 30, top: 185, firing: 1, pulse: 0, grit: 3, cutoff: [1400, 5200], sub: 0, noise: 0.2, waves: ['square', 'square'], volume: 1, kind: 'twoStroke' },
+  // Big V8 truck: a lumpy rumble at idle, a deep roar on the gas.
+  // Firing rate 48 Hz (720 rpm) at idle to 300 Hz (4,500 rpm).
+  hauler: { idle: 48, top: 300, firing: 8, pulse: 0, grit: 1.6, cutoff: [380, 1700], sub: 0, noise: 0.1, waves: ['sawtooth', 'sawtooth'], volume: 1.1, kind: 'v8' },
 }
 
 export class Sound {
@@ -61,16 +116,7 @@ export class Sound {
     out: GainNode
     noiseGain: GainNode
   } | null = null
-  private bike: {
-    on: AudioBufferSourceNode
-    off: AudioBufferSourceNode
-    onGain: GainNode
-    offGain: GainNode
-    shaper: WaveShaperNode
-    pipe: BiquadFilterNode
-    filter: BiquadFilterNode
-    out: GainNode
-  } | null = null
+  private pulses: Partial<Record<'twoStroke' | 'v8', PulseGraph>> = {}
   private offline = false
   private lastGas = false
   private lastRevs = 0
@@ -100,7 +146,8 @@ export class Sound {
     this.master.connect(comp)
     this.applyVolume()
     this.buildEngine()
-    this.buildTwoStroke()
+    for (const kind of ['twoStroke', 'v8'] as const) this.pulses[kind] = this.buildPulseEngine(PULSE[kind])
+    this.applyVoice()
   }
 
   private buildEngine(): void {
@@ -161,7 +208,7 @@ export class Sound {
    * pure tone. The off-throttle loop misses and stutters, as a two-stroke does when it is not
    * loaded ("four-stroking").
    */
-  private pulseLoop(count: number, skip: number, roughness: number): AudioBuffer {
+  private pulseLoop([count, skip, roughness]: [number, number, number], shape: 'crack' | 'thump', pattern?: number[]): AudioBuffer {
     const ctx = this.ctx!
     const rate = ctx.sampleRate
     const period = Math.round(rate / 100)
@@ -171,23 +218,32 @@ export class Sound {
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
     for (let p = 0; p < count; p++) {
       const missed = rnd() < skip
-      const amp = missed ? 0.12 : 0.75 + rnd() * 0.25 * (1 + roughness)
+      const beat = pattern ? pattern[p % pattern.length] : 1
+      const amp = (missed ? 0.12 : 0.75 + rnd() * 0.25 * (1 + roughness)) * beat
       const ring = 240 + rnd() * 40
       const start = p * period + Math.floor(rnd() * period * 0.06 * roughness)
       for (let i = 0; i < period; i++) {
         const t = i / rate
         const idx = start + i
         if (idx >= data.length) break
-        const body = Math.exp(-t / 0.0016) * (1 - 2 * Math.min(1, t / 0.0006)) // spike, then suck-back
-        const tail = Math.exp(-t / 0.003) * Math.sin(2 * Math.PI * ring * t) * 0.45
-        const puff = Math.exp(-t / (0.0022 + 0.002 * roughness)) * (rnd() * 2 - 1) * (0.35 + 0.4 * roughness)
-        data[idx] += amp * (body + tail + puff)
+        if (shape === 'thump') {
+          // A big, slow pressure wave with a low ring and a little rasp.
+          const body = Math.exp(-t / 0.0045) * Math.sin(2 * Math.PI * 110 * t + 0.4)
+          const ringLow = Math.exp(-t / 0.006) * Math.sin(2 * Math.PI * (ring * 0.7) * t) * 0.3
+          const puff = Math.exp(-t / 0.002) * (rnd() * 2 - 1) * (0.2 + 0.3 * roughness)
+          data[idx] += amp * (body + ringLow + puff)
+        } else {
+          const body = Math.exp(-t / 0.0016) * (1 - 2 * Math.min(1, t / 0.0006)) // spike, then suck-back
+          const tail = Math.exp(-t / 0.003) * Math.sin(2 * Math.PI * ring * t) * 0.45
+          const puff = Math.exp(-t / (0.0022 + 0.002 * roughness)) * (rnd() * 2 - 1) * (0.35 + 0.4 * roughness)
+          data[idx] += amp * (body + tail + puff)
+        }
       }
     }
     return buffer
   }
 
-  private buildTwoStroke(): void {
+  private buildPulseEngine(cfg: PulseEngine): PulseGraph {
     const ctx = this.ctx!
     const loop = (buffer: AudioBuffer) => {
       const src = ctx.createBufferSource()
@@ -195,38 +251,33 @@ export class Sound {
       src.loop = true
       return src
     }
-    const on = loop(this.pulseLoop(24, 0, 0.3))
-    const off = loop(this.pulseLoop(32, 0.35, 1))
+    const on = loop(this.pulseLoop(cfg.on, cfg.shape, cfg.pattern))
+    const off = loop(this.pulseLoop(cfg.off, cfg.shape, cfg.pattern))
     const onGain = ctx.createGain()
     const offGain = ctx.createGain()
     const mix = ctx.createGain()
     on.connect(onGain).connect(mix)
     off.connect(offGain).connect(mix)
-    // The expansion chamber: a fixed resonance that "comes on the pipe" at high revs.
-    const pipe = ctx.createBiquadFilter()
-    pipe.type = 'peaking'
-    pipe.frequency.value = 760
-    pipe.Q.value = 2.2
-    // Hollow body of the silencer.
+    // The exhaust body, then the pipe resonance (fixed in pitch, as real pipes are).
     const body = ctx.createBiquadFilter()
     body.type = 'peaking'
-    body.frequency.value = 230
-    body.Q.value = 1.4
-    body.gain.value = 5
+    ;[body.frequency.value, body.Q.value, body.gain.value] = cfg.body
+    const pipe = ctx.createBiquadFilter()
+    pipe.type = 'peaking'
+    ;[pipe.frequency.value, pipe.Q.value] = cfg.pipe
     const shaper = ctx.createWaveShaper()
     const filter = ctx.createBiquadFilter()
     filter.type = 'lowpass'
     filter.Q.value = 0.7
     const highpass = ctx.createBiquadFilter()
     highpass.type = 'highpass'
-    highpass.frequency.value = 45
+    highpass.frequency.value = cfg.highpass
     const out = ctx.createGain()
     out.gain.value = 0
     mix.connect(body).connect(pipe).connect(shaper).connect(filter).connect(highpass).connect(out).connect(this.master!)
     on.start()
     off.start()
-    this.bike = { on, off, onGain, offGain, shaper, pipe, filter, out }
-    this.applyVoice()
+    return { on, off, onGain, offGain, shaper, pipe, filter, out }
   }
 
   private applyVoice(): void {
@@ -244,15 +295,16 @@ export class Sound {
       curve[i] = Math.tanh(x * v.grit) / Math.tanh(v.grit)
     }
     this.eng.shaper.curve = curve
-    if (this.bike) this.bike.shaper.curve = curve
-    // Only one engine sounds at a time: silence the other, cancelling its pending fades.
+    const graph = v.kind ? this.pulses[v.kind] : undefined
+    if (graph) graph.shaper.curve = curve
+    // Only one engine sounds at a time: silence the others, cancelling their pending fades.
     const silence = (g: GainNode) => {
       const now = this.ctx!.currentTime
       g.gain.cancelScheduledValues(now)
       g.gain.setValueAtTime(0, now)
     }
-    if (!v.twoStroke && this.bike) silence(this.bike.out)
-    if (v.twoStroke) silence(this.eng.out)
+    for (const [kind, other] of Object.entries(this.pulses)) if (other && kind !== v.kind) silence(other.out)
+    if (v.kind) silence(this.eng.out)
   }
 
   /** Switch the engine voice to suit a vehicle. */
@@ -279,8 +331,8 @@ export class Sound {
     const t = this.ctx.currentTime
     // Revs rise a little on the gas even when the wheels cannot spin up (climbing, wheelspin).
     const revs = Math.min(1, rpm + (gas ? 0.12 : 0))
-    if (v.twoStroke) {
-      this.twoStroke(revs, gas, running, t)
+    if (v.kind) {
+      this.pulseEngine(PULSE[v.kind], revs, gas, running, t)
       return
     }
     const f = v.idle + (v.top - v.idle) * revs
@@ -294,24 +346,24 @@ export class Sound {
     e.out.gain.setTargetAtTime(running ? v.volume * (gas ? 0.3 : 0.16) : 0, t, 0.08)
   }
 
-  private twoStroke(revs: number, gas: boolean, running: boolean, t: number): void {
-    const b = this.bike
+  private pulseEngine(cfg: PulseEngine, revs: number, gas: boolean, running: boolean, t: number): void {
+    const b = this.voice.kind ? this.pulses[this.voice.kind] : undefined
     if (!b) return
     const v = this.voice
     const f = v.idle + (v.top - v.idle) * revs
-    // Revs climb fast and drop a bit slower, like a light flywheel.
-    const lag = revs > this.lastRevs ? 0.05 : 0.09
+    // Revs climb and drop at the flywheel's pace.
+    const lag = revs > this.lastRevs ? cfg.lag[0] : cfg.lag[1]
     for (const src of [b.on, b.off]) src.playbackRate.setTargetAtTime(f / 100, t, lag)
     b.onGain.gain.setTargetAtTime(gas ? 1 : 0.15, t, 0.03)
     b.offGain.gain.setTargetAtTime(gas ? 0.1 : 0.8, t, 0.04)
-    b.pipe.gain.setTargetAtTime(gas ? 2 + 10 * Math.max(0, revs - 0.35) : 2, t, 0.06)
+    b.pipe.gain.setTargetAtTime(cfg.pipeGain(gas, revs), t, 0.06)
     const [lo, hi] = v.cutoff
     b.filter.frequency.setTargetAtTime(gas ? lo + (hi - lo) * (0.35 + 0.65 * revs) : lo * (0.6 + 0.6 * revs), t, 0.04)
-    b.out.gain.setTargetAtTime(running ? v.volume * (gas ? 0.32 : 0.2) : 0, t, 0.08)
+    b.out.gain.setTargetAtTime(running ? v.volume * (gas ? cfg.level[0] : cfg.level[1]) : 0, t, 0.08)
 
     // Pops and bangs: a burst when the gas is snapped shut at revs, then the odd crackle
     // while coasting with revs still up.
-    if (running) {
+    if (running && cfg.pops) {
       if (this.lastGas && !gas && this.lastRevs > 0.35) {
         const n = 2 + Math.floor(Math.random() * 3 + this.lastRevs * 2)
         let at = 0.03
