@@ -33,6 +33,7 @@ export const runabout: VehicleSpec = {
     brakeTorque: 30,
     reverseWheelSpeed: 14,
     idleDragTorque: 1.2,
+    gearbox: { gears: 4, shiftTime: 0.15, cut: 0.5 },
   },
   driver: { head: { x: -0.3, y: 1.05 }, headRadius: 0.2 },
   airControl: {
@@ -106,6 +107,7 @@ export const scrambler: VehicleSpec = {
     brakeTorque: 12,
     reverseWheelSpeed: 12,
     idleDragTorque: 0.4,
+    gearbox: { gears: 5, shiftTime: 0.08, cut: 0.6 },
   },
   driver: { head: { x: -0.15, y: 1.25 }, headRadius: 0.2 },
   // Owner playtests: too little grip and over-rotated in the air; keep the wheelies, rotate more
@@ -157,6 +159,7 @@ export const hauler: VehicleSpec = {
     brakeTorque: 90,
     reverseWheelSpeed: 7,
     idleDragTorque: 4,
+    gearbox: { gears: 4, shiftTime: 0.25, cut: 0.55 },
   },
   driver: { head: { x: -0.05, y: 0.95 }, headRadius: 0.22 },
   airControl: { spinRate: 1.9, spinResponse: 10, groundTorque: 10 },

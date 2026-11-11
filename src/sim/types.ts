@@ -59,6 +59,12 @@ export interface VehicleSpec {
     reverseWheelSpeed: number
     /** Drag torque when no pedal is held. */
     idleDragTorque: number
+    /**
+     * A gearbox, mostly for sound and feel: engine revs climb through each gear and drop on a
+     * shift, and drive torque is cut to `cut` (a share) for `shiftTime` seconds while shifting.
+     * Gear g tops out at (g / gears)^0.75 of top wheel speed.
+     */
+    gearbox?: { gears: number; shiftTime: number; cut: number }
   }
   /** The driver's head, for crash detection. The run ends if it touches the ground. */
   driver: { head: Vec2; headRadius: number }
@@ -105,4 +111,8 @@ export interface SimState {
   distance: number
   airborne: boolean
   wheelContacts: boolean[]
+  /** Gear engaged (1 = first), engine revs in that gear (0..1), and whether a shift is under way. */
+  gear: number
+  revs: number
+  shifting: boolean
 }

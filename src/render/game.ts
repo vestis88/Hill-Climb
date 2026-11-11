@@ -60,6 +60,12 @@ export class GameRenderer {
   private width = 0
   private height = 0
   private time = 0
+  /** Seconds since the last gear change, which way it went, and a backfire waiting to be drawn. */
+  private shiftT = 9
+  private shiftUp = true
+  private backfire = false
+  /** Needle position of the rev gauge, eased. */
+  private needle = 0
   private wasAirborne = false
   private shakeAmount = 0
   private toScreen = (x: number, y: number) => ({ x, y })
@@ -112,6 +118,16 @@ export class GameRenderer {
   /** Shake the view, e.g. on a hard landing or a crash. Strength 0..1. */
   shake(strength: number): void {
     this.shakeAmount = Math.max(this.shakeAmount, Math.min(1, strength))
+  }
+
+  /**
+   * A gear change: the gear number pops on the rev gauge, the rider rocks back on the way up,
+   * and the exhaust spits a puff and a flash of flame. Visual only.
+   */
+  gearShift(up: boolean): void {
+    this.shiftT = 0
+    this.shiftUp = up
+    if (up) this.backfire = true
   }
 
   /** A collected coin flies up to the counter (world position). */
@@ -191,6 +207,7 @@ export class GameRenderer {
     const { ctx, width, height: h } = this
     const { prev, next, alpha, height, env } = view
     this.time += view.dt
+    this.shiftT += view.dt
     this.adaptResolution(view.dt)
     const chassis = lerpPose(prev.chassis, next.chassis, alpha)
 
@@ -308,6 +325,17 @@ export class GameRenderer {
     const { next, spec, env } = view
     const dust = themeFor(env).dust
     const pipe = EXHAUST[spec.id]
+    if (pipe && this.backfire && !view.driver.ragdoll) {
+      this.backfire = false
+      const c = Math.cos(chassis.angle)
+      const s = Math.sin(chassis.angle)
+      const px = chassis.x + pipe[0] * c - pipe[1] * s
+      const py = chassis.y + pipe[0] * s + pipe[1] * c
+      const back = chassis.angle + Math.PI
+      this.particles.emit(px, py, { count: 4, speed: 2.2, colour: 'rgba(255, 170, 40, 0.95)', size: 0.11, life: 0.14, dir: back, gravity: 0 })
+      this.particles.emit(px, py, { count: 2, speed: 1.4, colour: 'rgba(255, 240, 160, 0.95)', size: 0.07, life: 0.1, dir: back, gravity: 0 })
+      this.particles.emit(px, py, { count: 4, speed: 1.2, colour: 'rgba(110, 115, 125, 0.65)', size: 0.16, life: 0.8, dir: back, up: 0.4, gravity: 0.6 })
+    }
     if (pipe && view.input.gas && !view.driver.ragdoll && Math.random() < 0.3) {
       const c = Math.cos(chassis.angle)
       const s = Math.sin(chassis.angle)
@@ -403,7 +431,10 @@ export class GameRenderer {
     ctx.save()
     ctx.translate(chassis.x, chassis.y)
     ctx.rotate(chassis.angle)
-    drawVehicle(ctx, spec, view.driver.lean, !rag, this.mood(view, chassis), hubs)
+    // Upshift: the rider rocks back with the surge, then settles.
+    const k = Math.min(1, this.shiftT / 0.35)
+    const rock = this.shiftUp && k < 1 ? 0.13 * Math.sin(k * Math.PI) * (1 - k * 0.5) : 0
+    drawVehicle(ctx, spec, view.driver.lean + rock, !rag, this.mood(view, chassis), hubs)
     ctx.restore()
     if (rag) {
       ctx.save()
@@ -472,6 +503,53 @@ export class GameRenderer {
     ctx.fillText(text, x, y)
   }
 
+  /** Rev counter: an arc with a red line, a needle, and the gear number that pops on a shift. */
+  private drawRevGauge(view: View, cx: number, cy: number): void {
+    const { ctx } = this
+    const r = 22
+    const revs = view.next.revs + (view.input.gas && !view.next.shifting ? 0.08 : 0)
+    this.needle += (Math.min(1, revs) - this.needle) * Math.min(1, view.dt * 18)
+    const a0 = Math.PI * 0.8
+    const a1 = Math.PI * 2.2
+    const at = (v: number) => a0 + (a1 - a0) * v
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(cx, cy, r + 5, 0, Math.PI * 2)
+    ctx.fillStyle = 'rgba(16, 21, 28, 0.45)'
+    ctx.fill()
+    ctx.lineCap = 'round'
+    ctx.lineWidth = 5
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)'
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, a0, at(0.85))
+    ctx.stroke()
+    ctx.strokeStyle = '#e5383b'
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, at(0.85), a1)
+    ctx.stroke()
+    // Lit sweep up to the needle.
+    ctx.strokeStyle = this.needle > 0.85 ? '#ff6b6b' : '#ffd23f'
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, a0, at(Math.max(0.001, this.needle)))
+    ctx.stroke()
+    const na = at(this.needle)
+    ctx.lineWidth = 3
+    ctx.strokeStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.moveTo(cx + Math.cos(na) * 6, cy + Math.sin(na) * 6)
+    ctx.lineTo(cx + Math.cos(na) * (r + 2), cy + Math.sin(na) * (r + 2))
+    ctx.stroke()
+    // Gear number: pops and flashes gold on a shift.
+    const k = Math.min(1, this.shiftT / 0.35)
+    const pop = 1 + 0.45 * Math.sin(k * Math.PI) * (1 - k)
+    ctx.translate(cx, cy + 1)
+    ctx.scale(pop, pop)
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    this.outlinedText(`${view.next.gear}`, 0, 0, 18, k < 1 ? '#ffd23f' : '#ffffff')
+    ctx.restore()
+  }
+
   private drawHud(view: View): void {
     const { ctx, width, height: h, safe } = this
     const x0 = Math.max(16, safe.left)
@@ -504,6 +582,7 @@ export class GameRenderer {
       ctx.fill()
     }
     if (low && Math.floor(this.time / 0.3) % 2 === 0) this.outlinedText(view.fuel <= 0 ? 'OUT OF FUEL' : 'LOW FUEL', x0, gy + 22, 15, '#ff6b6b')
+    if (view.spec.engine.gearbox) this.drawRevGauge(view, gx + gw + 34, gy + 6)
 
     // Coins this run, in a pill at the top centre; it pops when a coin lands in it.
     ctx.save()

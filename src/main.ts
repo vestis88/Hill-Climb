@@ -220,6 +220,10 @@ function handleEvents(): void {
   const s = run.sim.state()
   if (wasAirborne && !s.airborne) sound.land(Math.abs(run.sim.vehicle.chassis.getLinearVelocity().y) / 15)
   wasAirborne = s.airborne
+  if (s.gear !== prev.gear && mode === 'driving') {
+    sound.shift(s.gear > prev.gear, s.revs)
+    renderer.gearShift(s.gear > prev.gear)
+  }
   for (const e of run.events) {
     if (e.kind === 'coin') sound.coin()
     else if (e.kind === 'fuel') sound.fuel()
@@ -281,7 +285,7 @@ function frame(now: number): void {
   }
   popups = popups.filter((p) => (p.age += dt) < (p.at ? 0.9 : 1.6))
   // The engine dies with the tank; it rolls on in silence.
-  sound.engine(next.rpm, controls.input.gas && run.fuel > 0, mode === 'driving' && run.fuel > 0)
+  sound.engine(next.revs, controls.input.gas && run.fuel > 0 && !next.shifting, mode === 'driving' && run.fuel > 0)
   renderer.draw({
     prev,
     next,
