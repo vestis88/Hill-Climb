@@ -15,7 +15,26 @@ export type DriveAs = 'mine' | 'base' | 'full'
 
 const KEY = 'ridgeline.tuning'
 
-export const tuningEnabled = () => new URLSearchParams(location.search).has('tune')
+const TEST_KEY = 'ridgeline.testmode'
+
+/** Test mode: on with ?tune in the address, or with the switch in Settings (kept in this browser). */
+export function tuningEnabled(): boolean {
+  if (new URLSearchParams(location.search).has('tune')) return true
+  try {
+    return localStorage.getItem(TEST_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function setTestMode(on: boolean): void {
+  try {
+    if (on) localStorage.setItem(TEST_KEY, '1')
+    else localStorage.removeItem(TEST_KEY)
+  } catch {
+    // not persisted
+  }
+}
 
 export function defaultTuning(): Tuning {
   return { base: structuredClone(runabout), full: structuredClone(runaboutFull) }
