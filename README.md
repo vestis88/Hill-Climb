@@ -179,6 +179,30 @@ vehicle.
 
 All prices and upgrade ranges live in `src/data/` and are tuned by playtest.
 
+### Sync between devices
+
+Progress (coins, upgrades, unlocks, bests and highscores) can be shared between the
+family's iPhones and iPads through a free Firebase Realtime Database
+(`src/save/cloud.ts`, set `CLOUD_DB_URL`). In Settings, the first device taps **Start**
+and gets a family code; the others tap **Join with code**. Each device then syncs when
+the game opens, comes back to the front, and shortly after every run or purchase.
+
+Merging keeps the best of both: upgrade levels and unlocks at their highest, bests at their
+best, highscore boards combined. Coins are kept as earned and spent per device, so two
+devices playing at the same time never lose or double-count coins. Writes use Firebase's
+ETag check, so simultaneous syncs retry instead of overwriting each other. Ghosts, who is
+playing and the chosen vehicle, map and mode stay on each device. Resetting progress on a
+device also stops it syncing.
+
+Database rules (Firebase console, Realtime Database, Rules):
+
+```json
+{ "rules": { "saves": { "$code": { ".read": true, ".write": true } } } }
+```
+
+The family code (12 random characters) is the only key to a family's progress, and the
+whole list of families cannot be read.
+
 ## Develop
 
 ```

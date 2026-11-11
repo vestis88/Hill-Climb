@@ -140,6 +140,11 @@
       .rows.scores .empty { display: block; opacity: 0.7; text-align: center; border: 0; }
       .rows.standings div { padding: 6px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); }
       .players { flex-wrap: nowrap; }
+      .sync { align-items: center; gap: 10px; }
+      .sync .code { font-size: 15px; letter-spacing: 1px; color: #ffd23f; }
+      .sync .join { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+      .sync input { width: 150px; padding: 8px; border-radius: 10px; border: 0; font: 700 15px ui-monospace, monospace; text-transform: uppercase; }
+      .sync .err { color: #ff8a8a; width: 100%; text-align: right; }
       /* Maps in rows of three (six maps: two even rows). */
       .choices.envs { grid-template-columns: repeat(3, 1fr); }
       .modebar { width: 100%; max-width: 900px; display: flex; align-items: center; gap: 10px; margin-bottom: -4px; }
