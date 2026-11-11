@@ -88,7 +88,7 @@ specific:
 | Vehicle | Fourth upgrade | Why |
 |---|---|---|
 | Runabout | **Drivetrain**: power to the front wheels too | It starts rear-wheel drive; all-wheel drive climbs and pulls better |
-| Scrambler | **Lighter frame**: less weight | A bike has no front drive; less weight makes it quicker off the line |
+| Scrambler | **Flip control**: spins faster in the air | A bike has no front drive; the rider throws it round quicker, so flips (and their coins) come easier |
 | Hauler | **Lighter body**: sheds weight | It is already a full-time 4x4; less weight makes it quicker and climb better |
 
 | Upgrade | What you notice | What it changes in the physics |
@@ -97,7 +97,8 @@ specific:
 | **Tyres** | Wheels spin less on launch and on steep climbs; better braking | Tyre friction |
 | **Suspension** | Lands jumps cleanly, stays planted over bumps, harder to tip over | Spring damping, and a lower centre of weight |
 | **Drivetrain** | Steadier climbing, power on rough and slippery ground | Drive added at the front wheels |
-| **Lighter frame / body** | Quicker off the line, livelier | Chassis mass |
+| **Lighter body** | Quicker off the line, livelier | Chassis mass |
+| **Flip control** | Rotates up to 50% faster in the air and reacts sooner | Air spin rate (2.4 to 3.6 rad/s) and how quickly it is reached |
 
 Upgrades are bought separately per vehicle. There is deliberately no fuel
 upgrade: fuel stays the same for every car, so getting further comes from
@@ -110,7 +111,7 @@ on its own. Current results, seconds (DNF: the driver crashed on every try):
 | | Level 1 | 5 | 10 |
 |---|---|---|---|
 | Runabout, Green Meadows | 55.6 | 42.7 | 36.4 |
-| Scrambler, Green Meadows | 52.8 | 43.1 | 38.8 |
+| Scrambler, Green Meadows | 52.8 | 43.5 | 39.6 |
 | Hauler, Green Meadows | 55.3 | 42.6 | 35.1 |
 | Runabout, Crater Fields | DNF | 53.4 | 42.9 |
 | Hauler, Frost Pass | 61.4 | 46.9 | 37.7 |
@@ -177,4 +178,6 @@ the next time it is opened with a connection.
 
 **Settings** (in the garage): sound on/off and volume, pedals swapped (gas on
 the left), and resetting all progress. All sound is synthesised in the game;
-there are no audio files.
+there are no audio files. Each vehicle has its own engine; the Scrambler is a
+single-cylinder two-stroke built from exhaust pulses, with pops and bangs when
+the gas is let go at high revs.

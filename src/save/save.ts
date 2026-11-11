@@ -39,6 +39,12 @@ export function loadSave(): SaveData {
         l.drivetrain = 1
       }
     }
+    // The Scrambler swapped its lighter frame for flip control: carry bought levels over.
+    const bike = save.levels.scrambler as Partial<Levels> | undefined
+    if (bike?.weight && bike.weight > 1 && !bike.flip) {
+      bike.flip = bike.weight
+      bike.weight = 1
+    }
     return save
   } catch {
     return emptySave()

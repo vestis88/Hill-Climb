@@ -5,7 +5,7 @@ import type { VehicleSpec } from '../sim/types'
  * four upgrades, chosen to suit it (see VehicleEntry.upgrades); an upgrade a vehicle does not
  * have simply stays at level 1 and changes nothing.
  */
-export type UpgradeId = 'engine' | 'tyres' | 'suspension' | 'drivetrain' | 'weight'
+export type UpgradeId = 'engine' | 'tyres' | 'suspension' | 'drivetrain' | 'weight' | 'flip'
 export type Levels = Record<UpgradeId, number>
 
 export interface UpgradeInfo {
@@ -21,7 +21,7 @@ export const TYRES: UpgradeInfo = { id: 'tyres', name: 'Tyres', blurb: 'Less whe
 export const SUSPENSION: UpgradeInfo = { id: 'suspension', name: 'Suspension', blurb: 'Cleaner landings, harder to tip' }
 export const DRIVETRAIN: UpgradeInfo = { id: 'drivetrain', name: 'Drivetrain', blurb: 'Power to the front wheels too' }
 
-const ALL: UpgradeId[] = ['engine', 'tyres', 'suspension', 'drivetrain', 'weight']
+const ALL: UpgradeId[] = ['engine', 'tyres', 'suspension', 'drivetrain', 'weight', 'flip']
 const levelsAt = (n: number) => Object.fromEntries(ALL.map((id) => [id, n])) as Levels
 export const BASE_LEVELS: Levels = levelsAt(1)
 export const FULL_LEVELS: Levels = levelsAt(MAX_LEVEL)
@@ -46,6 +46,7 @@ export function applyUpgrades(base: VehicleSpec, full: VehicleSpec, levels: Leve
   const s = t('suspension')
   const d = t('drivetrain')
   const w = t('weight')
+  const f = t('flip')
   return {
     ...base,
     chassis: {
@@ -68,6 +69,11 @@ export function applyUpgrades(base: VehicleSpec, full: VehicleSpec, levels: Leve
       torqueFalloff: lerp(base.engine.torqueFalloff, full.engine.torqueFalloff, e),
       maxWheelSpeed: lerp(base.engine.maxWheelSpeed, full.engine.maxWheelSpeed, e),
       frontShare: lerp(base.engine.frontShare, full.engine.frontShare, d),
+    },
+    airControl: {
+      ...base.airControl,
+      spinRate: lerp(base.airControl.spinRate, full.airControl.spinRate, f),
+      spinResponse: lerp(base.airControl.spinResponse, full.airControl.spinResponse, f),
     },
   }
 }

@@ -114,8 +114,10 @@ export const scrambler: VehicleSpec = {
 export const scramblerFull: VehicleSpec = {
   ...scrambler,
   wheels: scrambler.wheels.map((w) => ({ ...w, friction: 1.1, damping: 0.85 })),
-  chassis: { ...scrambler.chassis, mass: 3.1, centerOfMass: { x: -0.05, y: 0.05 } },
+  chassis: { ...scrambler.chassis, centerOfMass: { x: -0.05, y: 0.05 } },
   engine: { ...scrambler.engine, maxTorque: 8, torqueFalloff: 0.35, maxWheelSpeed: 64 },
+  // Flip control: spins faster and snaps into the spin sooner in the air (owner: easier to flip).
+  airControl: { ...scrambler.airControl, spinRate: 3.6, spinResponse: 16 },
 }
 
 /**
@@ -170,7 +172,7 @@ export const VEHICLES: VehicleEntry[] = [
   },
   {
     id: 'scrambler', name: 'Scrambler', blurb: 'Light dirt bike: fast, flips easily', price: 6000, base: scrambler, full: scramblerFull,
-    upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'weight', name: 'Lighter frame', blurb: 'Less weight: quicker and nimbler' }],
+    upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'flip', name: 'Flip control', blurb: 'Spins faster in the air: easier flips' }],
     launchSafe: false,
   },
   {
