@@ -67,6 +67,15 @@ to ease off and balance the car in the air. Green Meadows has the most.
 - Crashing costs nothing except the run itself. There are no checkpoints:
   every run starts from the beginning of the track.
 
+### Modes: endless and races
+
+Pick a mode in the garage. **Endless** is the classic: drive as far as you can. **Races**
+(500 m, 1 km, 2 km) put a chequered finish arch at that distance and time you: the clock
+runs in the corner with the metres to go. Crashing or running out of fuel before the line is
+a DNF (did not finish). Coins are earned as usual. Bests, ghosts and highscores are kept per
+mode: in a race, *best* means the fastest finish, and your ghosts are your fastest and last
+runs at that length. Round standings rank finishers by time, then DNFs by how far they got.
+
 ### Players, rounds and ghosts
 
 - **Who plays:** tick Wille, Frans and/or Johan in the garage. Pressing Drive starts a round:

@@ -17,8 +17,12 @@ export interface SaveData {
   players: string[]
   /** Best distance per player, then per environment id, metres. */
   playerBest: Record<string, Record<string, number>>
-  /** Highscore board: the best runs on each track (top HIGHSCORES per environment). */
+  /** Highscore board: the best runs on each track (top HIGHSCORES per environment and mode). */
   scores: Score[]
+  /** Last chosen game mode (see data/modes.ts). */
+  modeId: string
+  /** Best race time per player, then per record key (data/modes.ts recordKey), seconds. */
+  playerTimes: Record<string, Record<string, number>>
 }
 
 export interface Score {
@@ -26,20 +30,33 @@ export interface Score {
   vehicle: string
   env: string
   distance: number
+  /** Game mode (see data/modes.ts); absent on scores from before races existed: endless. */
+  mode?: string
+  /** Race time in seconds, for a finished race. */
+  time?: number
 }
+
+const modeOf = (s: Score) => s.mode ?? 'endless'
+/** Better first: the fastest finished race, or the furthest endless run. */
+const better = (a: Score, b: Score) => (a.time !== undefined || b.time !== undefined ? (a.time ?? Infinity) - (b.time ?? Infinity) : b.distance - a.distance)
 
 /** Runs kept per track on the highscore board. */
 export const HIGHSCORES = 10
 
 /** Add a run to the board, keeping the best HIGHSCORES per track. True if it made the board. */
 export function addScore(save: SaveData, score: Score): boolean {
-  const rounded = { ...score, distance: Math.floor(score.distance) }
-  if (rounded.distance <= 0) return false
-  const others = save.scores.filter((s) => s.env !== score.env)
-  const board = [...save.scores.filter((s) => s.env === score.env), rounded].sort((a, b) => b.distance - a.distance).slice(0, HIGHSCORES)
+  const rounded = { ...score, mode: modeOf(score), distance: Math.floor(score.distance) }
+  // Races only rank finished runs; endless runs need some distance.
+  if (rounded.mode === 'endless' ? rounded.distance <= 0 : rounded.time === undefined) return false
+  const same = (s: Score) => s.env === score.env && modeOf(s) === rounded.mode
+  const others = save.scores.filter((s) => !same(s))
+  const board = [...save.scores.filter(same), rounded].sort(better).slice(0, HIGHSCORES)
   save.scores = [...others, ...board]
   return board.includes(rounded)
 }
+
+/** A player's best race time for a record key, seconds (Infinity before they finish one). */
+export const playerTime = (save: SaveData, name: string, key: string) => save.playerTimes[name]?.[key] ?? Infinity
 
 /** A player's best distance on a track, metres. */
 export const playerBest = (save: SaveData, name: string, env: string) => save.playerBest[name]?.[env] ?? 0
@@ -47,7 +64,7 @@ export const playerBest = (save: SaveData, name: string, env: string) => save.pl
 const KEY = 'ridgeline.save'
 
 export function emptySave(): SaveData {
-  return { version: 1, coins: 0, levels: {}, best: {}, unlocked: [], envId: 'meadow', vehicleId: 'runabout', players: ['Wille'], playerBest: {}, scores: [] }
+  return { version: 1, coins: 0, levels: {}, best: {}, unlocked: [], envId: 'meadow', vehicleId: 'runabout', players: ['Wille'], playerBest: {}, scores: [], modeId: 'endless', playerTimes: {} }
 }
 
 export function loadSave(): SaveData {

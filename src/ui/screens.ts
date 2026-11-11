@@ -14,6 +14,7 @@ export interface Choice {
   preview?: (canvas: HTMLCanvasElement) => void
 }
 import type { RunStatus } from '../sim/run'
+import { formatTime } from '../data/modes'
 
 /** Small original icons for the upgrade cards (inline SVG, 24x24). */
 const ICONS: Record<string, string> = {
@@ -41,6 +42,9 @@ export interface GarageView {
   /** Who can play, and who is ticked for the next round. */
   players: { name: string; colour: string; on: boolean }[]
   onTogglePlayer(name: string): void
+  /** Endless or a race length; races are timed to a finish line. */
+  modes: { id: string; name: string; on: boolean }[]
+  onMode(id: string): void
   onScores(): void
   onDrive(): void
   onTune(): void
@@ -80,6 +84,7 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
     <div class="choices">${v.vehicles.map((c) => choice('vehicle', c)).join('')}</div>
     <div class="label">${v.vehicleName} upgrades</div>
     <div class="cards">${v.upgrades.map(card).join('')}</div>
+    <div class="modebar"><span class="label">Mode</span><div class="seg">${v.modes.map((m) => `<button class="${m.on ? 'on' : ''}" data-mode="${m.id}">${m.name}</button>`).join('')}</div></div>
     <div class="choices">${v.environments.map((c) => choice('env', c)).join('')}</div>
     <div class="actions"><button class="small" data-act="scores">Highscores</button><button class="small" data-act="settings">Settings</button>${v.tuning ? '<button class="small" data-act="tune">Tuning</button>' : ''}</div>`
   // Draw each preview at its card's real size, and again whenever that size changes (rotation,
@@ -104,6 +109,7 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
     if (!b || b.disabled) return
     if (b.dataset.buy) v.onBuy(b.dataset.buy as UpgradeId)
     else if (b.dataset.player) v.onTogglePlayer(b.dataset.player)
+    else if (b.dataset.mode) v.onMode(b.dataset.mode)
     else if (b.dataset.act === 'scores') v.onScores()
     else if (b.dataset.pick) {
       const [kind, id] = b.dataset.pick.split(':')
@@ -119,6 +125,8 @@ export interface ResultsView {
   status: RunStatus | 'ended'
   distance: number
   newBest: boolean
+  /** Races: the length, and the finish time (absent when the run did not finish). */
+  race?: { length: number; time?: number; newBestTime: boolean }
   coins: { track: number; air: number; flips: number; wheelies: number; milestones: number; rescue: number }
   total: number
   bank: number
@@ -134,7 +142,7 @@ export interface ResultsView {
   onStandings(): void
 }
 
-const TITLES = { crashed: 'Crashed!', outOfFuel: 'Out of fuel', ended: 'Run ended', running: 'Run ended' }
+const TITLES = { crashed: 'Crashed!', outOfFuel: 'Out of fuel', ended: 'Run ended', running: 'Run ended', finished: 'Finished!' }
 
 export function showResults(el: HTMLElement, v: ResultsView): void {
   const row = (label: string, value: number) => (value ? `<div><span>${label}</span><span><b class="coin">●</b> ${value}</span></div>` : '')
@@ -147,7 +155,11 @@ export function showResults(el: HTMLElement, v: ResultsView): void {
     <div class="who" style="--c:${v.player.colour}">${v.player.name}</div>
     <h2>${TITLES[v.status]}</h2>
     <div class="results-total"><b class="coin">●</b> <span data-count="${v.total}">0</span></div>
-    <div>${Math.floor(v.distance)} m ${v.newBest ? '<span class="newbest">New best!</span>' : ''}</div>
+    ${v.race
+      ? v.race.time !== undefined
+        ? `<div class="racetime">${formatTime(v.race.time)} ${v.race.newBestTime ? '<span class="newbest">New best time!</span>' : ''}</div>`
+        : `<div>Did not finish: ${Math.floor(v.distance)} of ${v.race.length} m</div>`
+      : `<div>${Math.floor(v.distance)} m ${v.newBest ? '<span class="newbest">New best!</span>' : ''}</div>`}
     <div class="rows">
       ${row('Coins on the track', v.coins.track)}
       ${row('Air time', v.coins.air)}
@@ -173,7 +185,8 @@ export interface StandingsView {
   track: string
   vehicle: string
   /** This round's runs, furthest first. */
-  rows: { name: string; colour: string; distance: number; newBest: boolean }[]
+  /** Furthest (endless) or fastest (race) first, with the result already written out. */
+  rows: { name: string; colour: string; result: string; newBest: boolean }[]
   onHome(): void
   onAgain(): void
 }
@@ -184,7 +197,7 @@ export function showStandings(el: HTMLElement, v: StandingsView): void {
   el.innerHTML = `
     <h2>Round results</h2>
     <div class="best">${v.track} · ${v.vehicle}</div>
-    <div class="rows standings">${v.rows.map((r, i) => `<div style="--c:${r.colour}"><span>${medal[i] ?? ''} <b class="pname">${r.name}</b></span><span>${Math.floor(r.distance)} m ${r.newBest ? '<span class="newbest">New best!</span>' : ''}</span></div>`).join('')}</div>
+    <div class="rows standings">${v.rows.map((r, i) => `<div style="--c:${r.colour}"><span>${medal[i] ?? ''} <b class="pname">${r.name}</b></span><span>${r.result} ${r.newBest ? '<span class="newbest">New best!</span>' : ''}</span></div>`).join('')}</div>
     <div class="actions">
       <button class="big" data-act="home">Garage</button>
       <button class="big blue" data-act="again">Play again</button>
@@ -199,10 +212,14 @@ export function showStandings(el: HTMLElement, v: StandingsView): void {
 export interface ScoresView {
   tracks: { id: string; name: string }[]
   track: string
-  rows: { name: string; colour: string; vehicle: string; distance: number }[]
-  /** Each player's best on this track. */
-  bests: { name: string; colour: string; distance: number }[]
+  modes: { id: string; name: string }[]
+  mode: string
+  /** Best first, each with its distance or race time written out. */
+  rows: { name: string; colour: string; vehicle: string; result: string }[]
+  /** Each player's best on this track in this mode. */
+  bests: { name: string; colour: string; result: string }[]
   onTrack(id: string): void
+  onMode(id: string): void
   onBack(): void
 }
 
@@ -211,14 +228,16 @@ export function showScores(el: HTMLElement, v: ScoresView): void {
   el.innerHTML = `
     <h2>Highscores</h2>
     <div class="seg">${v.tracks.map((t) => `<button class="${t.id === v.track ? 'on' : ''}" data-track="${t.id}">${t.name}</button>`).join('')}</div>
+    <div class="seg">${v.modes.map((m) => `<button class="${m.id === v.mode ? 'on' : ''}" data-mode="${m.id}">${m.name}</button>`).join('')}</div>
     <div class="rows scores">
-      ${v.rows.length ? v.rows.map((r, i) => `<div style="--c:${r.colour}"><span class="rank">${i + 1}</span><b class="pname">${r.name}</b><span class="veh">${r.vehicle}</span><span class="dist">${Math.floor(r.distance)} m</span></div>`).join('') : '<div class="empty">No runs on this track yet.</div>'}
+      ${v.rows.length ? v.rows.map((r, i) => `<div style="--c:${r.colour}"><span class="rank">${i + 1}</span><b class="pname">${r.name}</b><span class="veh">${r.vehicle}</span><span class="dist">${r.result}</span></div>`).join('') : '<div class="empty">No runs on this track yet.</div>'}
     </div>
-    <div class="bests">${v.bests.map((b) => `<span style="--c:${b.colour}"><b class="pname">${b.name}</b> best ${Math.floor(b.distance)} m</span>`).join('')}</div>
+    <div class="bests">${v.bests.map((b) => `<span style="--c:${b.colour}"><b class="pname">${b.name}</b> best ${b.result}</span>`).join('')}</div>
     <div class="actions"><button class="big" data-act="back">Back</button></div>`
   el.onclick = (e) => {
     const b = (e.target as HTMLElement).closest('button')
     if (b?.dataset.track) v.onTrack(b.dataset.track)
+    else if (b?.dataset.mode) v.onMode(b.dataset.mode)
     else if (b?.dataset.act === 'back') v.onBack()
   }
 }

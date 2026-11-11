@@ -2,6 +2,7 @@ import type { Environment } from '../data/environments'
 import type { Pickup } from '../data/track'
 import type { HeightFn, Input, Pose, SimState, VehicleSpec } from '../sim/types'
 import type { GhostPose } from '../save/ghosts'
+import { formatTime } from '../data/modes'
 import { drawHead, drawnHubs, drawPickup, drawVehicle, drawWheel, EXHAUST, OUTLINE, type Mood } from './art'
 import { Particles } from './particles'
 import { drawBackdrop, drawForeground, drawGround, drawProps, drawWeather, themeFor } from './scenery'
@@ -46,6 +47,8 @@ export interface View {
   driver: { lean: number; ragdoll: { torso: Pose; head: Pose } | null }
   /** Whose turn it is, shown by the distance. */
   player?: { name: string; colour: string }
+  /** Race mode: the length (the finish line's distance from the start) and the clock, seconds. */
+  race?: { length: number; time: number }
   /** Ghost riders to race: a recorded pose, its vehicle and a name tag. */
   ghosts: { label: string; colour: string; spec: VehicleSpec; pose: GhostPose }[]
 }
@@ -242,6 +245,7 @@ export class GameRenderer {
     drawProps(ctx, env, height, left, right)
     drawGround(ctx, env, height, left, right, bottom, this.camY + this.viewWidth, this.time)
     this.drawSigns(height, left, right)
+    if (view.race && view.race.length > left - 3 && view.race.length < right + 3) this.drawFinish(height, view.race.length)
     this.drawShadow(view, chassis)
     for (const p of view.pickups) if (!p.taken && p.x > left - 1 && p.x < right + 1) drawPickup(ctx, p, this.time)
 
@@ -275,6 +279,47 @@ export class GameRenderer {
       this.slowFrames = 0
       this.resize()
     }
+  }
+
+  /** The finish line: a chequered arch over the track and a chequered strip on the ground. */
+  private drawFinish(height: HeightFn, x: number): void {
+    const { ctx } = this
+    const y = height(x)
+    const tall = 4.2
+    const chequer = (x0: number, y0: number, w: number, h: number, cols: number, rows: number) => {
+      for (let i = 0; i < cols; i++) {
+        for (let j = 0; j < rows; j++) {
+          ctx.fillStyle = (i + j) % 2 ? '#1d2433' : '#ffffff'
+          ctx.fillRect(x0 + (i * w) / cols, y0 + (j * h) / rows, w / cols + 0.002, h / rows + 0.002)
+        }
+      }
+    }
+    // Ground strip
+    chequer(x - 0.25, y - 0.12, 0.5, 0.24, 2, 1)
+    // Posts and banner
+    for (const px of [x - 1.6, x + 1.6]) {
+      ctx.fillStyle = '#d7dce4'
+      ctx.fillRect(px - 0.08, height(px), 0.16, tall + y - height(px))
+      ctx.lineWidth = 0.04
+      ctx.strokeStyle = OUTLINE
+      ctx.strokeRect(px - 0.08, height(px), 0.16, tall + y - height(px))
+    }
+    chequer(x - 1.7, y + tall - 0.1, 3.4, 0.6, 12, 2)
+    ctx.lineWidth = 0.05
+    ctx.strokeStyle = OUTLINE
+    ctx.strokeRect(x - 1.7, y + tall - 0.1, 3.4, 0.6)
+    ctx.save()
+    ctx.translate(x, y + tall + 0.95)
+    ctx.scale(1, -1)
+    ctx.font = `900 0.6px ${FONT}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.lineWidth = 0.14
+    ctx.strokeStyle = OUTLINE
+    ctx.strokeText('FINISH', 0, 0)
+    ctx.fillStyle = '#ffd23f'
+    ctx.fillText('FINISH', 0, 0)
+    ctx.restore()
   }
 
   private drawSigns(height: HeightFn, left: number, right: number): void {
@@ -612,10 +657,18 @@ export class GameRenderer {
     const y0 = Math.max(12, safe.top)
     ctx.textBaseline = 'top'
     ctx.textAlign = 'left'
-    this.outlinedText(`${Math.floor(view.next.distance)} m`, x0, y0, 20)
+    // Endless: distance so far. Race: the clock, and how far is left to the finish.
+    const headline = view.race ? formatTime(view.race.time) : `${Math.floor(view.next.distance)} m`
+    this.outlinedText(headline, x0, y0, 20)
+    if (view.race) {
+      const left = Math.max(0, Math.ceil(view.race.length - view.next.distance))
+      ctx.textAlign = 'center'
+      this.outlinedText(left > 0 ? `${left} m to go` : 'Finish!', width / 2, y0 + 36, 15, '#ffffff')
+      ctx.textAlign = 'left'
+    }
     if (view.player) {
       ctx.font = `800 20px ${FONT}`
-      const dx = ctx.measureText(`${Math.floor(view.next.distance)} m`).width + 10
+      const dx = ctx.measureText(headline).width + 10
       this.outlinedText(view.player.name, x0 + dx, y0 + 2, 17, view.player.colour)
     }
 

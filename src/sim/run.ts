@@ -39,7 +39,7 @@ export const RULES = {
   milestoneBonus: (_k: number) => 15,
 }
 
-export type RunStatus = 'running' | 'crashed' | 'outOfFuel'
+export type RunStatus = 'running' | 'crashed' | 'outOfFuel' | 'finished'
 
 export type RunEvent =
   | { kind: 'coin'; value: number; x: number; y: number }
@@ -57,6 +57,8 @@ export interface RunOptions {
   pickups: PickupSource
   /** Best distance so far on this track; milestones beyond it pay a bonus. */
   bestDistance: number
+  /** Race mode: the finish line, metres from the start. The run ends there and is timed. */
+  finish?: number
 }
 
 const TAU = Math.PI * 2
@@ -75,6 +77,8 @@ export class Run {
   ragdoll: Ragdoll | null = null
   /** Distance when the run ended; the car may roll on a little afterwards. */
   endDistance: number | null = null
+  /** Race mode: seconds from the start to the finish line, once crossed. */
+  finishTime: number | null = null
   private airSteps = 0
   /** The car's angle relative to the ground on the last step with wheels down. */
   private lastGroundRel = 0
@@ -125,6 +129,12 @@ export class Run {
     }
     this.stunts(s)
     this.milestones(s)
+    if (this.options.finish !== undefined && s.distance >= this.options.finish) {
+      this.status = 'finished'
+      this.endDistance = this.options.finish
+      this.finishTime = this.sim.steps * STEP
+      return
+    }
 
     if (this.fuel <= 0) {
       const stopped = Math.abs(s.speed) < 0.3 && !s.airborne
