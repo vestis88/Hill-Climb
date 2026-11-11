@@ -1,9 +1,9 @@
 import type { Environment } from '../data/environments'
 import type { Pickup } from '../data/track'
 import type { HeightFn, Input, Pose, SimState, VehicleSpec } from '../sim/types'
-import { drawHead, drawPickup, drawVehicle, drawWheel, EXHAUST, OUTLINE } from './art'
+import { drawHead, drawPickup, drawVehicle, drawWheel, EXHAUST, OUTLINE, type Mood } from './art'
 import { Particles } from './particles'
-import { drawBackdrop, drawGround, drawProps, drawWeather, themeFor } from './scenery'
+import { drawBackdrop, drawForeground, drawGround, drawProps, drawWeather, themeFor } from './scenery'
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const lerpPose = (a: Pose, b: Pose, t: number): Pose => ({
@@ -45,7 +45,10 @@ export interface View {
   driver: { lean: number; ragdoll: { torso: Pose; head: Pose } | null }
 }
 
-const FONT = '-apple-system, system-ui, sans-serif'
+const FONT = "ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif"
+
+/** Mud, dust or snow on the tyres, per environment. */
+const GRIME: Record<string, string> = { meadow: 'rgba(110, 76, 44, 0.9)', crater: 'rgba(190, 190, 200, 0.85)', frost: 'rgba(255, 255, 255, 0.95)' }
 
 /** Draws the game. Visual only: it reads simulation state and never changes it. */
 export class GameRenderer {
@@ -59,6 +62,15 @@ export class GameRenderer {
   private time = 0
   private wasAirborne = false
   private shakeAmount = 0
+  private toScreen = (x: number, y: number) => ({ x, y })
+  /** Coins flying from where they were picked up to the counter, and the counter's pop. */
+  private flying: { x: number; y: number; t: number }[] = []
+  private counterPop = 0
+  private vignette: CanvasGradient | null = null
+  private vignetteSize = ''
+  /** Seconds left of Pip's grin after a stunt or bonus. */
+  private cheerTime = 0
+  private airTime = 0
   /** Safe-area insets (notch, home bar, rounded corners), CSS pixels. */
   private safe = { top: 0, right: 0, bottom: 0, left: 0 }
   /** Highest pixel density to draw at; lowered automatically if frames run slow. */
@@ -92,9 +104,79 @@ export class GameRenderer {
     this.particles.clear()
   }
 
+  /** Make Pip grin for a moment, e.g. after a flip or a bonus. */
+  cheer(seconds = 1.5): void {
+    this.cheerTime = Math.max(this.cheerTime, seconds)
+  }
+
   /** Shake the view, e.g. on a hard landing or a crash. Strength 0..1. */
   shake(strength: number): void {
     this.shakeAmount = Math.max(this.shakeAmount, Math.min(1, strength))
+  }
+
+  /** A collected coin flies up to the counter (world position). */
+  coinCollected(x: number, y: number): void {
+    const p = this.toScreen(x, y)
+    this.flying.push({ x: p.x, y: p.y, t: 0 })
+  }
+
+  private drawFlyingCoins(dt: number): void {
+    const { ctx, width } = this
+    const tx = width / 2 - 30
+    const ty = Math.max(12, this.safe.top) + 12
+    this.counterPop = Math.max(0, this.counterPop - dt * 4)
+    for (const c of this.flying) {
+      c.t += dt / 0.55
+      const t = Math.min(1, c.t)
+      const e = t * t * (3 - 2 * t)
+      const x = c.x + (tx - c.x) * e
+      const y = c.y + (ty - c.y) * e - Math.sin(t * Math.PI) * 60
+      const r = 9 * (1 - 0.3 * t)
+      ctx.beginPath()
+      ctx.arc(x, y, r, 0, Math.PI * 2)
+      ctx.fillStyle = '#ffcf33'
+      ctx.fill()
+      ctx.lineWidth = 2
+      ctx.strokeStyle = '#c98a00'
+      ctx.stroke()
+      if (c.t >= 1) this.counterPop = 1
+    }
+    this.flying = this.flying.filter((c) => c.t < 1)
+  }
+
+  /** White streaks rushing past when going fast. */
+  private drawSpeedLines(view: View): void {
+    const speed = Math.abs(view.next.speed)
+    const k = Math.min(1, Math.max(0, (speed - 14) / 8))
+    if (k <= 0 || !view.showPedals) return
+    const { ctx, width, height: h } = this
+    ctx.strokeStyle = `rgba(255, 255, 255, ${0.35 * k})`
+    ctx.lineCap = 'round'
+    for (let i = 0; i < 14; i++) {
+      const y = h * (0.1 + 0.8 * ((i * 0.6180339) % 1))
+      const len = width * (0.08 + 0.1 * ((i * 0.37) % 1)) * k
+      const x = width - ((this.time * (900 + 300 * ((i * 0.53) % 1)) + i * 211) % (width + len * 2)) + len
+      ctx.lineWidth = 1.5 + (i % 3)
+      ctx.beginPath()
+      ctx.moveTo(x, y)
+      ctx.lineTo(x + len, y)
+      ctx.stroke()
+    }
+  }
+
+  /** A soft darkening towards the corners that frames the action. */
+  private drawVignette(): void {
+    const { ctx, width, height: h } = this
+    const key = `${width}x${h}`
+    if (!this.vignette || this.vignetteSize !== key) {
+      const g = ctx.createRadialGradient(width / 2, h / 2, Math.min(width, h) * 0.45, width / 2, h / 2, Math.hypot(width, h) * 0.6)
+      g.addColorStop(0, 'rgba(0,0,0,0)')
+      g.addColorStop(1, 'rgba(10, 15, 30, 0.28)')
+      this.vignette = g
+      this.vignetteSize = key
+    }
+    ctx.fillStyle = this.vignette
+    ctx.fillRect(0, 0, width, h)
   }
 
   /** A burst of sparkles, e.g. where a coin was picked up. */
@@ -130,12 +212,13 @@ export class GameRenderer {
     ctx.translate(width / 2, h * 0.58)
     ctx.scale(scale, -scale)
     ctx.translate(-this.camX, -this.camY)
+    this.toScreen = (x: number, y: number) => ({ x: width / 2 + (x - this.camX) * scale, y: h * 0.58 - (y - this.camY) * scale })
     const left = this.camX - this.viewWidth / 2 - 1
     const right = this.camX + this.viewWidth / 2 + 1
     const bottom = this.camY - (h / scale) * 0.6
 
     drawProps(ctx, env, height, left, right)
-    drawGround(ctx, env, height, left, right, bottom, this.camY + this.viewWidth)
+    drawGround(ctx, env, height, left, right, bottom, this.camY + this.viewWidth, this.time)
     this.drawSigns(height, left, right)
     this.drawShadow(view, chassis)
     for (const p of view.pickups) if (!p.taken && p.x > left - 1 && p.x < right + 1) drawPickup(ctx, p, this.time)
@@ -147,8 +230,12 @@ export class GameRenderer {
     this.drawWorldPopups(view)
     ctx.restore()
 
+    drawForeground(ctx, env, width, h, this.camX, this.time)
     drawWeather(ctx, env, width, h, this.camX, this.time)
+    this.drawSpeedLines(view)
+    this.drawVignette()
     if (view.showHud) this.drawHud(view)
+    this.drawFlyingCoins(view.dt)
   }
 
   /**
@@ -254,14 +341,38 @@ export class GameRenderer {
       const s = Math.sin(chassis.angle)
       return { x: chassis.x + x * c - y * s, y: chassis.y + x * s + y * c }
     }
-    // Suspension struts, behind the wheels and body.
+    // Suspension: a lower arm from the chassis to the hub, and a coil spring that visibly
+    // squashes as the suspension compresses. Behind the wheels and body.
     next.wheels.forEach((_, i) => {
       const w = lerpPose(prev.wheels[i], next.wheels[i], alpha)
-      const top = toWorld(spec.wheels[i].anchor.x, spec.wheels[i].anchor.y + 0.45)
+      const a = spec.wheels[i].anchor
+      const inward = a.x < 0 ? 0.45 : -0.45
+      const pivot = toWorld(a.x + inward, a.y + 0.12)
+      const top = toWorld(a.x, a.y + 0.5)
       ctx.lineCap = 'round'
-      for (const [lw, col] of [[0.16, OUTLINE], [0.1, '#8b93a1']] as const) {
+      for (const [lw, col] of [[0.17, OUTLINE], [0.11, '#5b6372']] as const) {
+        ctx.beginPath()
+        ctx.moveTo(pivot.x, pivot.y)
+        ctx.lineTo(w.x, w.y)
+        ctx.lineWidth = lw
+        ctx.strokeStyle = col
+        ctx.stroke()
+      }
+      const dx = w.x - top.x
+      const dy = w.y - top.y
+      const len = Math.hypot(dx, dy) || 1
+      const nx = -dy / len
+      const ny = dx / len
+      const coils = 6
+      const width = 0.1
+      for (const [lw, col] of [[0.09, OUTLINE], [0.05, '#f2b632']] as const) {
         ctx.beginPath()
         ctx.moveTo(top.x, top.y)
+        for (let k = 1; k < coils * 2; k++) {
+          const t = k / (coils * 2)
+          const side = k % 2 ? width : -width
+          ctx.lineTo(top.x + dx * t + nx * side, top.y + dy * t + ny * side)
+        }
         ctx.lineTo(w.x, w.y)
         ctx.lineWidth = lw
         ctx.strokeStyle = col
@@ -274,21 +385,33 @@ export class GameRenderer {
       ctx.save()
       ctx.translate(w.x, w.y)
       ctx.rotate(w.angle)
-      drawWheel(ctx, spec.wheels[i].radius)
+      const spin = (next.wheels[i].angle - prev.wheels[i].angle) * 60
+      drawWheel(ctx, spec.wheels[i].radius, { spin, grime: GRIME[view.env.id] })
       ctx.restore()
     })
     ctx.save()
     ctx.translate(chassis.x, chassis.y)
     ctx.rotate(chassis.angle)
-    drawVehicle(ctx, spec, view.driver.lean, !rag)
+    drawVehicle(ctx, spec, view.driver.lean, !rag, this.mood(view, chassis))
     ctx.restore()
     if (rag) {
       ctx.save()
       ctx.translate(rag.head.x, rag.head.y)
       ctx.rotate(rag.head.angle)
-      drawHead(ctx, spec.driver.headRadius)
+      drawHead(ctx, spec.driver.headRadius, 'worried')
       ctx.restore()
     }
+  }
+
+  /** Grin after stunts and in long jumps; worried when the car tips too far. */
+  private mood(view: View, chassis: Pose): Mood {
+    this.cheerTime = Math.max(0, this.cheerTime - view.dt)
+    this.airTime = view.next.airborne ? this.airTime + view.dt : 0
+    const tilt = Math.abs(chassis.angle - Math.PI * 2 * Math.round(chassis.angle / (Math.PI * 2)))
+    const slope = Math.atan(view.height(chassis.x + 1) - view.height(chassis.x - 1)) / 2
+    if (tilt > 1.6 || (!view.next.airborne && Math.abs(chassis.angle - slope) > 0.9)) return 'worried'
+    if (this.cheerTime > 0 || this.airTime > 0.5) return 'happy'
+    return 'normal'
   }
 
   private drawRagdollBody(torso: Pose): void {
@@ -371,7 +494,12 @@ export class GameRenderer {
     }
     if (low && Math.floor(this.time / 0.3) % 2 === 0) this.outlinedText(view.fuel <= 0 ? 'OUT OF FUEL' : 'LOW FUEL', x0, gy + 22, 15, '#ff6b6b')
 
-    // Coins this run, in a pill at the top centre
+    // Coins this run, in a pill at the top centre; it pops when a coin lands in it.
+    ctx.save()
+    const pop = 1 + 0.18 * Math.sin(this.counterPop * Math.PI)
+    ctx.translate(width / 2, y0 + 12)
+    ctx.scale(pop, pop)
+    ctx.translate(-width / 2, -(y0 + 12))
     ctx.textAlign = 'center'
     const text = `${view.runCoins}`
     ctx.font = `800 22px ${FONT}`
@@ -389,6 +517,7 @@ export class GameRenderer {
     ctx.strokeStyle = '#c98a00'
     ctx.stroke()
     this.outlinedText(text, width / 2 + 10, y0, 22, '#ffd23f')
+    ctx.restore()
 
     // Stunt and milestone pop-ups
     let row = 0

@@ -86,7 +86,7 @@ function show(m: Mode): void {
   controls.reset()
 }
 
-function openGarage(): void {
+function openGarage(justBought?: UpgradeId): void {
   const vehicle = currentVehicle()
   showGarage(garageEl, {
     coins: save.coins,
@@ -111,6 +111,7 @@ function openGarage(): void {
     onDrive: startRun,
     onTune: openTuning,
     onSettings: openSettings,
+    justBought,
   })
   show('garage')
 }
@@ -141,7 +142,8 @@ function buy(id: UpgradeId): void {
   save.coins -= cost
   save.levels[VEHICLE_ID] = { ...levels, [id]: levels[id] + 1 }
   writeSave(save)
-  openGarage()
+  sound.fanfare()
+  openGarage(id)
 }
 
 function openSettings(): void {
@@ -221,12 +223,16 @@ function handleEvents(): void {
   for (const e of run.events) {
     if (e.kind === 'coin') sound.coin()
     else if (e.kind === 'fuel') sound.fuel()
-    else if (e.kind === 'flip' || e.kind === 'milestone' || e.kind === 'air' || e.kind === 'wheelie') sound.fanfare()
+    else if (e.kind === 'flip' || e.kind === 'milestone' || e.kind === 'air' || e.kind === 'wheelie') {
+      sound.fanfare()
+      renderer.cheer()
+    }
   }
   for (const e of run.events) {
     if (e.kind === 'coin') {
       popups.push({ text: `+${e.value}`, at: { x: e.x, y: e.y }, age: 0 })
       renderer.sparkle(e.x, e.y)
+      renderer.coinCollected(e.x, e.y)
     } else if (e.kind === 'fuel') {
       popups.push({ text: 'Fuel!', at: { x: e.x, y: e.y }, age: 0 })
       renderer.sparkle(e.x, e.y, '#ff9a9a')

@@ -76,8 +76,17 @@ function tube(ctx: Ctx, pts: Pt[], width: number, colour: string): void {
 }
 
 /** A chunky tyre with tread, sidewall and a spoked rim, in the wheel's own frame. */
-export function drawWheel(ctx: Ctx, radius: number): void {
+/** How a wheel is drawn: spin speed (rad/s) for motion blur, and grime on the tyre per environment. */
+export interface WheelLook {
+  spin?: number
+  /** Colour of mud, dust or snow stuck to the tyre. */
+  grime?: string
+}
+
+export function drawWheel(ctx: Ctx, radius: number, look: WheelLook = {}): void {
   const r = radius
+  // 0 when slow, 1 when spinning fast: spokes fade into a blurred disc.
+  const blur = Math.min(1, Math.max(0, (Math.abs(look.spin ?? 0) - 10) / 20))
   // Tread blocks stick out past the tyre for a knobbly silhouette.
   ctx.fillStyle = OUTLINE
   for (let i = 0; i < 14; i++) {
@@ -116,16 +125,32 @@ export function drawWheel(ctx: Ctx, radius: number): void {
   ctx.arc(0, 0, r * 0.46, 0, Math.PI * 2)
   ctx.fillStyle = '#5b6372'
   ctx.fill()
-  // Spokes
+  // Spokes, fading into a blurred disc at speed
   ctx.strokeStyle = '#c9ced6'
   ctx.lineWidth = r * 0.12
   ctx.lineCap = 'round'
+  ctx.globalAlpha = 1 - blur * 0.85
   for (let i = 0; i < 5; i++) {
     const a = (i / 5) * Math.PI * 2
     ctx.beginPath()
     ctx.moveTo(Math.cos(a) * r * 0.12, Math.sin(a) * r * 0.12)
     ctx.lineTo(Math.cos(a) * r * 0.44, Math.sin(a) * r * 0.44)
     ctx.stroke()
+  }
+  ctx.globalAlpha = 1
+  if (blur > 0) {
+    ctx.beginPath()
+    ctx.arc(0, 0, r * 0.46, 0, Math.PI * 2)
+    ctx.fillStyle = `rgba(201, 206, 214, ${0.45 * blur})`
+    ctx.fill()
+    // Streaks around the rim
+    ctx.strokeStyle = `rgba(255, 255, 255, ${0.35 * blur})`
+    ctx.lineWidth = r * 0.05
+    for (const a of [0.3, 2.4, 4.5]) {
+      ctx.beginPath()
+      ctx.arc(0, 0, r * 0.68, a, a + 1.2)
+      ctx.stroke()
+    }
   }
   ctx.beginPath()
   ctx.arc(0, 0, r * 0.15, 0, Math.PI * 2)
@@ -134,10 +159,24 @@ export function drawWheel(ctx: Ctx, radius: number): void {
   ctx.lineWidth = LINE * 0.8
   ctx.strokeStyle = OUTLINE
   ctx.stroke()
+  // Mud, dust or snow caught in the tread
+  if (look.grime) {
+    ctx.fillStyle = look.grime
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * Math.PI * 2 + (i % 3) * 0.2
+      const rr = r * (0.82 + (i % 2) * 0.1)
+      ctx.beginPath()
+      ctx.ellipse(Math.cos(a) * rr, Math.sin(a) * rr, r * 0.11, r * 0.07, a, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
 }
 
 /** Pip's helmeted head, centred on the origin, facing +x: shaded helmet, eyes behind the visor. */
-export function drawHead(ctx: Ctx, r: number): void {
+/** Pip's face: a grin on jumps and stunts, wide eyes when tipping over. */
+export type Mood = 'normal' | 'happy' | 'worried'
+
+export function drawHead(ctx: Ctx, r: number, mood: Mood = 'normal'): void {
   const helmet = ctx.createLinearGradient(0, -r, 0, r)
   helmet.addColorStop(0, '#0e7779')
   helmet.addColorStop(1, '#2cc6c8')
@@ -166,11 +205,41 @@ export function drawHead(ctx: Ctx, r: number): void {
   ctx.strokeStyle = OUTLINE
   ctx.stroke()
   ctx.fillStyle = OUTLINE
+  ctx.strokeStyle = OUTLINE
+  ctx.lineCap = 'round'
   for (const ex of [0.42, 0.72]) {
     ctx.beginPath()
-    ctx.ellipse(r * ex, r * 0.06, r * 0.07, r * 0.11, 0, 0, Math.PI * 2)
-    ctx.fill()
+    if (mood === 'happy') {
+      // Squinting happy eyes: little arcs.
+      ctx.lineWidth = r * 0.07
+      ctx.arc(r * ex, r * 0.02, r * 0.08, 0.2, Math.PI - 0.2)
+      ctx.stroke()
+    } else if (mood === 'worried') {
+      // Wide eyes: white with a small pupil.
+      ctx.ellipse(r * ex, r * 0.08, r * 0.1, r * 0.13, 0, 0, Math.PI * 2)
+      ctx.fillStyle = '#ffffff'
+      ctx.fill()
+      ctx.lineWidth = r * 0.03
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(r * (ex + 0.02), r * 0.08, r * 0.045, 0, Math.PI * 2)
+      ctx.fillStyle = OUTLINE
+      ctx.fill()
+    } else {
+      ctx.ellipse(r * ex, r * 0.06, r * 0.07, r * 0.11, 0, 0, Math.PI * 2)
+      ctx.fill()
+    }
   }
+  // Mouth, just under the visor edge
+  ctx.lineWidth = r * 0.06
+  ctx.beginPath()
+  if (mood === 'happy') ctx.arc(r * 0.6, -r * 0.12, r * 0.13, Math.PI + 0.3, Math.PI * 2 - 0.3, true)
+  else if (mood === 'worried') ctx.ellipse(r * 0.62, -r * 0.18, r * 0.05, r * 0.06, 0, 0, Math.PI * 2)
+  else {
+    ctx.moveTo(r * 0.5, -r * 0.17)
+    ctx.lineTo(r * 0.7, -r * 0.15)
+  }
+  ctx.stroke()
   ctx.fillStyle = 'rgba(190, 230, 255, 0.35)'
   ctx.beginPath()
   ctx.moveTo(r * 0.02, r * 0.3)
@@ -186,8 +255,20 @@ export function drawHead(ctx: Ctx, r: number): void {
 }
 
 /** Pip's body from the seat (origin) up the y axis, with the head on top. */
-export function drawDriver(ctx: Ctx, headRadius: number, torso: number, hands?: Pt): void {
+export function drawDriver(ctx: Ctx, headRadius: number, torso: number, hands?: Pt, mood: Mood = 'normal', foot?: Pt): void {
   const neck = torso - headRadius - 0.08
+  // Legs first, behind the body: thigh forward to the knee, shin down to the foot.
+  if (foot) {
+    const knee: Pt = [foot[0] * 0.7 + 0.05, Math.max(foot[1] + 0.25, 0.12)]
+    tube(ctx, [[0, 0.08], knee, foot], 0.13, '#2b3f6a')
+    ctx.beginPath()
+    ctx.ellipse(foot[0] + 0.05, foot[1] - 0.02, 0.1, 0.06, 0, 0, Math.PI * 2)
+    ctx.fillStyle = '#3d2a1e'
+    ctx.fill()
+    ctx.lineWidth = LINE * 0.8
+    ctx.strokeStyle = OUTLINE
+    ctx.stroke()
+  }
   const shoulder: Pt = [0.04, neck - 0.1]
   const hand: Pt = hands ?? [0.4, torso * 0.45]
   const elbow: Pt = [(shoulder[0] + hand[0]) / 2 - 0.02, (shoulder[1] + hand[1]) / 2 - 0.07]
@@ -208,7 +289,7 @@ export function drawDriver(ctx: Ctx, headRadius: number, torso: number, hands?: 
   tube(ctx, [[-0.08, neck], [-0.26, neck - 0.07], [-0.38, neck - 0.04]], 0.075, '#ff8a2a')
   ctx.save()
   ctx.translate(0, torso)
-  drawHead(ctx, headRadius)
+  drawHead(ctx, headRadius, mood)
   ctx.restore()
 }
 
@@ -216,16 +297,18 @@ export function drawDriver(ctx: Ctx, headRadius: number, torso: number, hands?: 
  * The vehicle body in chassis coordinates, with the seated driver drawn at `lean`
  * unless the driver has been thrown out (ragdoll).
  */
-export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDriver: boolean): void {
+export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDriver: boolean, mood: Mood = 'normal'): void {
   const c = VEHICLE_COLOURS[spec.id] ?? VEHICLE_COLOURS.runabout
   const { head, headRadius } = spec.driver
   const seat: Pt = [head.x, head.y - 0.75]
+  // Where Pip's feet rest, relative to the seat: pedals in the cars, the footpeg on the bike.
+  const feet: Record<string, Pt> = { runabout: [0.55, -0.2], scrambler: [0.12, -0.42], hauler: [0.55, -0.25] }
   const driver = (hands?: Pt) => {
     if (!withDriver) return
     ctx.save()
     ctx.translate(seat[0], seat[1])
     ctx.rotate(lean)
-    drawDriver(ctx, headRadius, 0.75, hands)
+    drawDriver(ctx, headRadius, 0.75, hands, mood, feet[spec.id])
     ctx.restore()
   }
 

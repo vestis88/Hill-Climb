@@ -51,6 +51,12 @@ interface Theme {
   sun: { colour: string; glow: string; x: number; y: number; r: number } | null
   clouds: { light: string; shade: string } | null
   stars: boolean
+  /** Animated life in the sky. */
+  birds?: boolean
+  shootingStars?: boolean
+  aurora?: boolean
+  /** Foreground silhouettes that pass in front along the bottom edge. */
+  foreground: { colour: string; kind: 'grass' | 'rocks' | 'drifts' }
   layers: Layer[]
   haze: string
   ground: { top: string; deep: string; specks: string[]; stone: string; stoneDark: string }
@@ -60,10 +66,13 @@ interface Theme {
 
 const THEMES: Record<string, Theme> = {
   meadow: {
-    sky: ['#3f93e0', '#8cc8f2', '#e4f3fb'],
-    sun: { colour: '#fff4c2', glow: 'rgba(255, 240, 180, 0.55)', x: 0.8, y: 0.17, r: 0.06 },
-    clouds: { light: '#ffffff', shade: '#d6e8f5' },
+    // Sunny morning: blue overhead, a warm glow low on the horizon.
+    sky: ['#3f93e0', '#9ccff0', '#fbe9cf'],
+    sun: { colour: '#fff1b8', glow: 'rgba(255, 228, 160, 0.6)', x: 0.8, y: 0.2, r: 0.06 },
+    clouds: { light: '#ffffff', shade: '#e8dfe6' },
     stars: false,
+    birds: true,
+    foreground: { colour: '#2f6b2c', kind: 'grass' },
     layers: [
       { speed: 3, base: 0.6, height: 0.36, shape: 'mountain', scale: 140, colour: '#9db9d4', shade: '#86a5c4', snow: { colour: '#f4f8fc', depth: 0.09, line: 0.62 } },
       { speed: 9, base: 0.68, height: 0.2, shape: 'hill', scale: 220, colour: '#86b996', shade: '#77aa88', trees: { kind: 'round', colour: '#689f7c', light: '#7cb18f', density: 0.55, size: 9 } },
@@ -79,6 +88,8 @@ const THEMES: Record<string, Theme> = {
     sun: null,
     clouds: null,
     stars: true,
+    shootingStars: true,
+    foreground: { colour: '#26243a', kind: 'rocks' },
     layers: [
       { speed: 3, base: 0.62, height: 0.3, shape: 'mountain', scale: 110, colour: '#3b3762', shade: '#302d53' },
       { speed: 9, base: 0.7, height: 0.16, shape: 'hill', scale: 160, colour: '#4a4668', shade: '#3f3b5b', trees: { kind: 'rock', colour: '#3c3856', light: '#565274', density: 0.35, size: 10 } },
@@ -90,16 +101,19 @@ const THEMES: Record<string, Theme> = {
     dust: '#b7b8c2',
   },
   frost: {
-    sky: ['#6ea7d8', '#b4d4ee', '#f0f7fc'],
-    sun: { colour: '#ffffff', glow: 'rgba(255, 255, 255, 0.5)', x: 0.78, y: 0.2, r: 0.05 },
-    clouds: { light: '#ffffff', shade: '#dde9f4' },
+    // Snowy dusk: deep blue to rose, a low pale sun, an aurora overhead.
+    sky: ['#3b4f8f', '#9a8fc0', '#f3c9c0'],
+    sun: { colour: '#fff3e8', glow: 'rgba(255, 210, 200, 0.55)', x: 0.78, y: 0.42, r: 0.05 },
+    clouds: { light: '#f7ecf2', shade: '#c9b8d3' },
     stars: false,
+    aurora: true,
+    foreground: { colour: '#e6eef8', kind: 'drifts' },
     layers: [
-      { speed: 3, base: 0.6, height: 0.42, shape: 'mountain', scale: 120, colour: '#a6bfd8', shade: '#8aa6c3', snow: { colour: '#ffffff', depth: 0.16, line: 0.45 } },
+      { speed: 3, base: 0.6, height: 0.42, shape: 'mountain', scale: 120, colour: '#a79fc6', shade: '#857ead', snow: { colour: '#fbeff2', depth: 0.16, line: 0.45 } },
       { speed: 9, base: 0.69, height: 0.2, shape: 'hill', scale: 200, colour: '#c4d6e8', shade: '#afc5dc', trees: { kind: 'snowpine', colour: '#6f8eaa', light: '#ffffff', density: 0.55, size: 11 } },
       { speed: 20, base: 0.79, height: 0.15, shape: 'hill', scale: 170, colour: '#dbe7f2', shade: '#c7d8e9', trees: { kind: 'snowpine', colour: '#56758f', light: '#ffffff', density: 0.5, size: 17 } },
     ],
-    haze: 'rgba(240, 247, 252, 0.4)',
+    haze: 'rgba(246, 222, 222, 0.35)',
     ground: { top: '#6c7e93', deep: '#37424f', specks: ['#7b8ea3', '#56677a', '#8a9db1'], stone: '#8094a8', stoneDark: '#4f5f71' },
     surface: { kind: 'snow', main: '#f4f9fd', dark: '#bcd2e6', light: '#ffffff' },
     dust: '#ffffff',
@@ -260,6 +274,10 @@ export function drawBackdrop(ctx: Ctx, env: Environment, w: number, h: number, c
     }
   }
 
+  if (t.aurora) drawAurora(ctx, w, h, time, camX)
+  if (t.birds) drawBirds(ctx, w, h, time, camX)
+  if (t.shootingStars) drawShootingStar(ctx, w, h, time)
+
   t.layers.forEach((layer, li) => {
     const offset = camX * layer.speed
     // Layers rise a little when the car climbs, nearer layers more.
@@ -328,6 +346,119 @@ export function drawBackdrop(ctx: Ctx, env: Environment, w: number, h: number, c
   })
 }
 
+/** Rippling green and violet curtains of light. */
+function drawAurora(ctx: Ctx, w: number, h: number, time: number, camX: number): void {
+  ctx.save()
+  ctx.globalCompositeOperation = 'lighter'
+  for (const [colour, base, amp, speed, salt] of [
+    ['rgba(90, 255, 170, 0.16)', 0.16, 0.06, 0.25, 1],
+    ['rgba(140, 120, 255, 0.12)', 0.24, 0.05, 0.18, 2],
+  ] as const) {
+    for (let band = 0; band < 3; band++) {
+      ctx.beginPath()
+      for (let x = 0; x <= w + 10; x += 10) {
+        const gx = x + camX * 1.2
+        const y = h * (base + band * 0.025) + h * amp * Math.sin(gx * 0.006 + time * speed + salt + band) + h * 0.02 * Math.sin(gx * 0.017 - time * 0.4)
+        if (x === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
+      }
+      for (let x = w + 10; x >= 0; x -= 10) {
+        const gx = x + camX * 1.2
+        const y = h * (base + band * 0.025 + 0.09) + h * amp * Math.sin(gx * 0.006 + time * speed + salt + band + 0.4)
+        ctx.lineTo(x, y)
+      }
+      ctx.closePath()
+      ctx.fillStyle = colour
+      ctx.fill()
+    }
+  }
+  ctx.restore()
+}
+
+/** A few birds flapping slowly across the sky. */
+function drawBirds(ctx: Ctx, w: number, h: number, time: number, camX: number): void {
+  ctx.strokeStyle = 'rgba(40, 50, 70, 0.7)'
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  const unit = Math.min(w, h)
+  for (let i = 0; i < 5; i++) {
+    const span = w + 200
+    const x = ((((hash01(i, 51) * span + time * (18 + 10 * hash01(i, 52)) - camX * 4) % span) + span) % span) - 100
+    const y = h * (0.12 + 0.2 * hash01(i, 53)) + Math.sin(time * 0.7 + i) * 6
+    const s = unit * (0.012 + 0.008 * hash01(i, 54))
+    const flap = Math.sin(time * (6 + i) + i * 2)
+    ctx.lineWidth = Math.max(1.2, s * 0.25)
+    ctx.beginPath()
+    ctx.moveTo(x - s, y - s * 0.6 * flap)
+    ctx.quadraticCurveTo(x - s * 0.4, y - s * 0.2, x, y)
+    ctx.quadraticCurveTo(x + s * 0.4, y - s * 0.2, x + s, y - s * 0.6 * flap)
+    ctx.stroke()
+  }
+}
+
+/** Now and then a shooting star streaks across the sky. */
+function drawShootingStar(ctx: Ctx, w: number, h: number, time: number): void {
+  const period = 5
+  const k = Math.floor(time / period)
+  const t = (time % period) / 0.9
+  if (t > 1) return
+  const x0 = w * (0.15 + 0.6 * hash01(k, 61))
+  const y0 = h * (0.05 + 0.2 * hash01(k, 62))
+  const len = Math.min(w, h) * 0.35
+  const x = x0 + len * t
+  const y = y0 + len * 0.35 * t
+  const g = ctx.createLinearGradient(x - len * 0.35, y - len * 0.12, x, y)
+  g.addColorStop(0, 'rgba(255,255,255,0)')
+  g.addColorStop(1, `rgba(255,255,255,${0.9 * (1 - t)})`)
+  ctx.strokeStyle = g
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(x - len * 0.35, y - len * 0.12)
+  ctx.lineTo(x, y)
+  ctx.stroke()
+}
+
+/**
+ * Dark silhouettes passing along the bottom edge, in front of everything, moving faster than
+ * the track for depth: grass clumps, rocks or snowdrifts.
+ */
+export function drawForeground(ctx: Ctx, env: Environment, w: number, h: number, camX: number, time: number): void {
+  const f = themeFor(env).foreground
+  const speed = 55
+  const offset = camX * speed
+  const slot = 140
+  ctx.fillStyle = f.colour
+  ctx.globalAlpha = f.kind === 'drifts' ? 0.85 : 0.9
+  for (let k = Math.floor(offset / slot) - 1; k * slot - offset < w + slot; k++) {
+    if (hash01(k, env.seed + 71) > 0.55) continue
+    const x = k * slot - offset + hash01(k, env.seed + 72) * slot * 0.5
+    const size = Math.min(w, h) * (0.06 + 0.06 * hash01(k, env.seed + 73))
+    const y = h + size * 0.15
+    ctx.beginPath()
+    if (f.kind === 'grass') {
+      const sway = Math.sin(time * 1.6 + k) * size * 0.12
+      for (let b = -4; b <= 4; b++) {
+        const bx = x + b * size * 0.12
+        const bh = size * (0.7 + 0.5 * hash01(k * 9 + b, 74))
+        ctx.moveTo(bx - size * 0.06, y)
+        ctx.quadraticCurveTo(bx + sway * 0.5, y - bh * 0.6, bx + sway + b * size * 0.04, y - bh)
+        ctx.lineTo(bx + size * 0.06, y)
+      }
+    } else if (f.kind === 'rocks') {
+      ctx.moveTo(x - size, y)
+      ctx.lineTo(x - size * 0.7, y - size * 0.6)
+      ctx.lineTo(x - size * 0.1, y - size * 0.85)
+      ctx.lineTo(x + size * 0.6, y - size * 0.5)
+      ctx.lineTo(x + size, y)
+    } else {
+      ctx.ellipse(x, y, size * 1.4, size * 0.55, 0, Math.PI, Math.PI * 2)
+    }
+    ctx.closePath()
+    ctx.fill()
+  }
+  ctx.globalAlpha = 1
+}
+
 // ---------------------------------------------------------------------------------------
 // Ground (world space)
 
@@ -385,7 +516,7 @@ function groundPattern(ctx: Ctx, env: Environment): CanvasPattern | null {
 }
 
 /** Ground fill with texture and depth shading, a grass, dust or snow edge, and its details. */
-export function drawGround(ctx: Ctx, env: Environment, height: HeightFn, left: number, right: number, bottom: number, top: number): void {
+export function drawGround(ctx: Ctx, env: Environment, height: HeightFn, left: number, right: number, bottom: number, top: number, time = 0): void {
   const t = themeFor(env)
   const step = 0.25
   const pts: [number, number][] = []
@@ -451,7 +582,8 @@ export function drawGround(ctx: Ctx, env: Environment, height: HeightFn, left: n
       const x = i * 0.14
       const y = height(x)
       const hgt = 0.12 + 0.16 * hash01(i, 31) + (hash01(i, 32) > 0.94 ? 0.2 : 0)
-      const lean = (hash01(i, 33) - 0.5) * 0.12
+      // Each blade leans a little, and sways in a breeze that rolls along the track.
+      const lean = (hash01(i, 33) - 0.5) * 0.12 + 0.05 * Math.sin(time * 2 + x * 0.6)
       ctx.moveTo(x - 0.05, y - 0.02)
       ctx.lineTo(x + lean, y + hgt)
       ctx.lineTo(x + 0.05, y - 0.02)
