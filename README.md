@@ -78,6 +78,21 @@ to ease off and balance the car in the air. Green Meadows has the most.
 - Crashing costs nothing except the run itself. There are no checkpoints:
   every run starts from the beginning of the track.
 
+### The start
+
+Every run opens with a quick 3, 2, 1, GO (0.7 s a beat, with beeps). The vehicle is held while
+a big rev counter shows in the middle of the screen; the gas revs the engine. Revs inside the
+green window (66–86 %) at GO give a **perfect start**: a push for about a second, through the
+centre of mass so it cannot flip the vehicle (about half a second quicker to 30 m). Revs past
+it (the limiter, if the gas is simply held) are **too many revs**: wheelspin bogs the drive to
+45 % for 0.6 s. Anything lower is a normal start. Races and ghosts start their clocks at GO.
+
+Each engine revs at its own pace (`engine.revTime`, idle to the limiter out of gear): the
+Scrambler's two-stroke 0.35 s, the Runabout's four 0.6 s, the Marsh Rover 0.85 s and the
+Hauler's V8 1.1 s. So the two-stroke needs quick taps to hold the green, while the V8 swells
+slowly. While driving, the rev counter and the engine sound follow the wheels at the same pace
+(code: `src/sim/launch.ts`).
+
 ### Modes: endless and races
 
 Pick a mode in the garage. **Endless** is the classic: drive as far as you can. **Races**
