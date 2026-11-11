@@ -85,7 +85,7 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
     <div class="label">${v.vehicleName} upgrades</div>
     <div class="cards">${v.upgrades.map(card).join('')}</div>
     <div class="modebar"><span class="label">Mode</span><div class="seg">${v.modes.map((m) => `<button class="${m.on ? 'on' : ''}" data-mode="${m.id}">${m.name}</button>`).join('')}</div></div>
-    <div class="choices">${v.environments.map((c) => choice('env', c)).join('')}</div>
+    <div class="choices envs">${v.environments.map((c) => choice('env', c)).join('')}</div>
     <div class="actions"><button class="small" data-act="scores">Highscores</button><button class="small" data-act="settings">Settings</button>${v.tuning ? '<button class="small" data-act="tune">Tuning</button>' : ''}</div>`
   // Draw each preview at its card's real size, and again whenever that size changes (rotation,
   // browser bars, layout switching): a canvas drawn at one size and shown at another looks stretched.

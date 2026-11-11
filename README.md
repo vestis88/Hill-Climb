@@ -32,8 +32,13 @@ can, and the Scrambler can at any time.
 | Green Meadows | free | Rolling grassy hills, many jumps; slightly light gravity (9) |
 | Crater Fields | 4,000 coins | Low gravity (4.2), big crests and long floaty jumps; flips come easily |
 | Frost Pass | 10,000 coins | Icy ground with far less grip, steeper and bumpier |
+| Dune Sea | 7,000 coins | Long rolling sand dunes, loose sand (less grip), big dune jumps; fast. Cacti and blowing sand |
+| Red Canyon | 14,000 coins | Steep rocky climbs with good grip; rare, gentle jumps (kickers on steep ground were unsurvivable). Red cliffs at late afternoon |
+| Moonlit Woods | 20,000 coins | Night forest: muddy and slippery, bumpy with roots. Moon, stars, fireflies, glowing mushrooms |
 
-Gravity is the same in the air as on the ground.
+Gravity is the same in the air as on the ground. A test checks that a
+half-upgraded Runabout and Hauler can get through the first 300 m of every
+map (`tests/stages.test.ts`).
 
 Every environment is endless and the same every run: the hills grow taller
 and steeper with distance, up to a limit, so there is always further to go.

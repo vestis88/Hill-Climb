@@ -52,6 +52,44 @@ export const ENVIRONMENTS: Environment[] = [
     terrain: { flatStart: 15, amplitude: 2.9, wavelength: 28, crests: 2, bumps: 0.35, growPerKm: 1.8, maxGrow: 3.2, jumps: { spacing: 90, chance: 0.45, height: 1.1, ramp: 6, from: 80 } },
     palette: { skyTop: '#9cc6e6', skyBottom: '#e8f3fb', ground: '#7e8fa3', surface: '#f4f8fc', far: '#b9cde0', near: '#9fb6cc' },
   },
+  {
+    id: 'dunes',
+    name: 'Dune Sea',
+    blurb: 'Long sandy dunes, loose and fast',
+    price: 7000,
+    gravity: 9.5,
+    // Loose sand: less grip than grass, so launches spin and climbs need feathering.
+    groundFriction: 0.6,
+    seed: 41,
+    terrain: { flatStart: 15, amplitude: 4.2, wavelength: 62, crests: 1.6, bumps: 0.08, growPerKm: 1.2, maxGrow: 2.8, jumps: { spacing: 80, chance: 0.6, height: 1.5, ramp: 9, from: 55 } },
+    palette: { skyTop: '#3d8fd6', skyBottom: '#f9dca6', ground: '#c4904f', surface: '#f1d29a', far: '#d99a6c', near: '#f0cd8f' },
+  },
+  {
+    id: 'canyon',
+    name: 'Red Canyon',
+    blurb: 'Steep, rocky climbs with a good grip',
+    price: 14000,
+    gravity: 10,
+    // Grippy rock: power and balance decide the climbs, not wheelspin.
+    groundFriction: 1.0,
+    seed: 53,
+    // Steep and rocky; jumps kept rare and gentle, since kickers on steep ground threw every
+    // vehicle onto its head (stage-time check).
+    terrain: { flatStart: 15, amplitude: 3.6, wavelength: 36, crests: 2.8, bumps: 0.3, growPerKm: 1.6, maxGrow: 3.4, jumps: { spacing: 90, chance: 0.4, height: 1.0, ramp: 10, from: 60 } },
+    palette: { skyTop: '#5a8fd0', skyBottom: '#f6d2a8', ground: '#8a4a2c', surface: '#d9875a', far: '#b5583a', near: '#d98757' },
+  },
+  {
+    id: 'woods',
+    name: 'Moonlit Woods',
+    blurb: 'Night forest: muddy, rooty, fireflies',
+    price: 20000,
+    gravity: 9.5,
+    // Mud: slippery, and roots make it bumpy.
+    groundFriction: 0.5,
+    seed: 67,
+    terrain: { flatStart: 15, amplitude: 3.2, wavelength: 34, crests: 2.4, bumps: 0.45, growPerKm: 1.6, maxGrow: 3, jumps: { spacing: 65, chance: 0.6, height: 1.2, ramp: 7, from: 50 } },
+    palette: { skyTop: '#0b1530', skyBottom: '#3e5a7a', ground: '#3a281b', surface: '#2f6a3a', far: '#1d2d4c', near: '#25443f' },
+  },
 ]
 
 export const environment = (id: string) => ENVIRONMENTS.find((e) => e.id === id) ?? ENVIRONMENTS[0]
