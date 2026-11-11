@@ -1,4 +1,4 @@
-import type { HeightFn, Input, VehicleSpec } from './types'
+import type { HeightFn, Input, VehicleSpec, PuddleFn } from './types'
 import { Sim, STEP } from './world'
 
 /**
@@ -16,13 +16,13 @@ export interface StageResult {
 export function stageTime(
   vehicle: VehicleSpec,
   height: HeightFn,
-  opts: { gravity?: number; groundFriction?: number; length?: number; limit?: number; cautions?: number[] } = {},
+  opts: { gravity?: number; groundFriction?: number; puddles?: PuddleFn; length?: number; limit?: number; cautions?: number[] } = {},
 ): StageResult {
   const length = opts.length ?? 500
   const limit = opts.limit ?? 120
   let best: StageResult = { time: null, caution: null }
   for (const caution of opts.cautions ?? [0.15, 0.3, 0.45]) {
-    const sim = new Sim({ vehicle, height, gravity: opts.gravity, groundFriction: opts.groundFriction })
+    const sim = new Sim({ vehicle, height, gravity: opts.gravity, groundFriction: opts.groundFriction, puddles: opts.puddles })
     const headR = vehicle.driver.headRadius
     for (let i = 0; i < limit / STEP; i++) {
       const s = sim.state()

@@ -34,6 +34,20 @@ export interface WheelSpec {
   travel?: { up: number; down: number }
 }
 
+/** A stretch of water, mud or slush on the track: it drags the vehicle back and costs grip. */
+export interface Puddle {
+  start: number
+  end: number
+  kind: 'water' | 'mud' | 'slush'
+  /** Slowing: share of speed lost per second while all wheels are in it. */
+  drag: number
+  /** Grip multiplier for wheels in it. */
+  grip: number
+}
+
+/** The puddle at a track position, if any. Must be deterministic. */
+export type PuddleFn = (x: number) => Puddle | null
+
 export interface VehicleSpec {
   id: string
   chassis: {
@@ -66,6 +80,11 @@ export interface VehicleSpec {
      */
     gearbox?: { gears: number; shiftTime: number; cut: number }
   }
+  /**
+   * Built for water and snow (the Marsh Rover): puddles neither slow it nor cost grip, and its
+   * studded paddle tyres never grip less than `minGrip` (ice, snow, sand).
+   */
+  amphibious?: { minGrip: number }
   /** The driver's head, for crash detection. The run ends if it touches the ground. */
   driver: { head: Vec2; headRadius: number }
   airControl: {

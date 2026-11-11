@@ -1,6 +1,6 @@
 import { Vec2, World } from 'planck'
 import { TerrainStreamer, TERRAIN_FRICTION } from './terrain'
-import type { HeightFn, Input, SimState, VehicleSpec } from './types'
+import type { HeightFn, Input, PuddleFn, SimState, VehicleSpec } from './types'
 import { Vehicle } from './vehicle'
 
 /** Fixed simulation step. Rendering interpolates; physics never uses real time. */
@@ -18,6 +18,8 @@ export interface SimOptions {
   start?: { x: number; y?: number }
   /** Friction of the ground surface. */
   groundFriction?: number
+  /** Puddles on the track (water, mud, slush). */
+  puddles?: PuddleFn
 }
 
 /** Deterministic game simulation. No DOM, no clock, no Math.random. */
@@ -42,12 +44,59 @@ export class Sim {
     this.vehicle = new Vehicle(this.world, options.vehicle, ground, { x, y })
     this.startX = x
     this.maxX = x
+
+    // Grip per wheel contact: puddles cost grip; the Marsh Rover's studs keep a minimum.
+    const { puddles } = options
+    const amphibious = options.vehicle.amphibious
+    if (puddles || amphibious) {
+      const wheels = new Set(this.vehicle.wheels)
+      this.world.on('pre-solve', (contact) => {
+        const a = contact.getFixtureA().getBody()
+        const b = contact.getFixtureB().getBody()
+        const wheel = wheels.has(a) ? a : wheels.has(b) ? b : null
+        if (!wheel || (a !== ground && b !== ground)) return
+        let f = contact.getFriction()
+        // Studs bite only on slippery ground (snow, ice, mud, sand); on grass and rock the
+        // soft balloon tyres are all it has.
+        if (amphibious && (options.groundFriction ?? TERRAIN_FRICTION) < 0.7) f = Math.max(f, amphibious.minGrip)
+        else {
+          const p = puddles?.(wheel.getPosition().x)
+          if (p) f *= p.grip
+        }
+        contact.setFriction(f)
+      })
+    }
+  }
+
+  /** Puddles drag the vehicle back in proportion to speed and to how many wheels are in. */
+  private puddleDrag(): void {
+    const { puddles, vehicle: spec } = this.options
+    if (!puddles || spec.amphibious) return
+    const contacts = this.vehicle.wheelContacts()
+    let drag = 0
+    this.vehicle.wheels.forEach((w, i) => {
+      const p = contacts[i] ? puddles(w.getPosition().x) : null
+      if (p) drag += p.drag / this.vehicle.wheels.length
+    })
+    if (drag === 0) return
+    const bodies = [this.vehicle.chassis, ...this.vehicle.wheels]
+    for (const body of bodies) {
+      const v = body.getLinearVelocity()
+      body.applyForceToCenter(new Vec2(-v.x * drag * body.getMass(), 0), true)
+    }
+  }
+
+  /** The puddle under a wheel touching the ground, for splashes (renderer). */
+  puddleUnder(wheel: number): ReturnType<PuddleFn> {
+    if (!this.options.puddles || !this.vehicle.wheelContacts()[wheel]) return null
+    return this.options.puddles(this.vehicle.wheels[wheel].getPosition().x)
   }
 
   step(input: Input): void {
     const x = this.vehicle.chassis.getPosition().x
     this.terrain.ensure(x - BEHIND, x + AHEAD)
     this.vehicle.applyInput(input)
+    this.puddleDrag()
     this.world.step(STEP, 8, 3)
     this.vehicle.limitTravel()
     this.steps++

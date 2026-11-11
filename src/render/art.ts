@@ -9,6 +9,7 @@ export const VEHICLE_COLOURS: Record<string, { body: string; dark: string; light
   runabout: { body: '#e2542f', dark: '#a8371b', light: '#f58a62' },
   scrambler: { body: '#2fae5f', dark: '#1d7a40', light: '#6fd391' },
   hauler: { body: '#f2b632', dark: '#b98318', light: '#ffd877' },
+  rover: { body: '#1fb5a8', dark: '#12796f', light: '#6fe0d4' },
 }
 
 type Ctx = CanvasRenderingContext2D
@@ -83,10 +84,13 @@ export interface WheelLook {
   grime?: string
   /** Motocross wheel: thin knobbly tyre on a big wire-spoked rim. */
   mx?: boolean
+  /** Balloon tyre with paddle treads (Marsh Rover). */
+  paddle?: boolean
 }
 
 export function drawWheel(ctx: Ctx, radius: number, look: WheelLook = {}): void {
   if (look.mx) return drawMxWheel(ctx, radius, look)
+  if (look.paddle) return drawPaddleWheel(ctx, radius, look)
   const r = radius
   // 0 when slow, 1 when spinning fast: spokes fade into a blurred disc.
   const blur = Math.min(1, Math.max(0, (Math.abs(look.spin ?? 0) - 10) / 20))
@@ -170,6 +174,67 @@ export function drawWheel(ctx: Ctx, radius: number, look: WheelLook = {}): void 
       const rr = r * (0.82 + (i % 2) * 0.1)
       ctx.beginPath()
       ctx.ellipse(Math.cos(a) * rr, Math.sin(a) * rr, r * 0.11, r * 0.07, a, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+}
+
+/** A fat balloon tyre with chunky paddles, on a small yellow rim. */
+function drawPaddleWheel(ctx: Ctx, r: number, look: WheelLook): void {
+  const blur = Math.min(1, Math.max(0, (Math.abs(look.spin ?? 0) - 10) / 20))
+  ctx.fillStyle = OUTLINE
+  for (let i = 0; i < 10; i++) {
+    ctx.save()
+    ctx.rotate((i / 10) * Math.PI * 2)
+    ctx.beginPath()
+    ctx.moveTo(r * 0.9, -r * 0.16)
+    ctx.lineTo(r * 1.12, -r * 0.05)
+    ctx.lineTo(r * 1.12, r * 0.05)
+    ctx.lineTo(r * 0.9, r * 0.16)
+    ctx.closePath()
+    ctx.fill()
+    ctx.restore()
+  }
+  ctx.beginPath()
+  ctx.arc(0, 0, r, 0, Math.PI * 2)
+  ctx.fillStyle = '#30353f'
+  ctx.fill()
+  ctx.lineWidth = LINE
+  ctx.strokeStyle = OUTLINE
+  ctx.stroke()
+  // Soft sidewall bulge
+  ctx.beginPath()
+  ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2)
+  ctx.lineWidth = r * 0.12
+  ctx.strokeStyle = '#3e4450'
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.arc(0, 0, r * 0.42, 0, Math.PI * 2)
+  ctx.fillStyle = '#f2b632'
+  ctx.fill()
+  ctx.lineWidth = LINE
+  ctx.strokeStyle = OUTLINE
+  ctx.stroke()
+  ctx.globalAlpha = 1 - blur * 0.8
+  ctx.fillStyle = '#b98318'
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2
+    ctx.beginPath()
+    ctx.arc(Math.cos(a) * r * 0.27, Math.sin(a) * r * 0.27, r * 0.05, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.globalAlpha = 1
+  ctx.beginPath()
+  ctx.arc(0, 0, r * 0.12, 0, Math.PI * 2)
+  ctx.fillStyle = '#e8ecf2'
+  ctx.fill()
+  ctx.stroke()
+  if (look.grime) {
+    ctx.fillStyle = look.grime
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * Math.PI * 2 + (i % 3) * 0.2
+      ctx.beginPath()
+      ctx.ellipse(Math.cos(a) * r * 0.9, Math.sin(a) * r * 0.9, r * 0.12, r * 0.07, a, 0, Math.PI * 2)
       ctx.fill()
     }
   }
@@ -562,7 +627,7 @@ export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDrive
   const { head, headRadius } = spec.driver
   const seat: Pt = [head.x, head.y - 0.75]
   // Where Pip's feet rest, relative to the seat: pedals in the cars, the footpeg on the bike.
-  const feet: Record<string, Pt> = { runabout: [0.55, -0.2], scrambler: [0.1, -0.46], hauler: [0.55, -0.25] }
+  const feet: Record<string, Pt> = { runabout: [0.55, -0.2], scrambler: [0.1, -0.46], hauler: [0.55, -0.25], rover: [0.5, -0.25] }
   const driver = (hands?: Pt) => {
     if (!withDriver) return
     ctx.save()
@@ -575,6 +640,25 @@ export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDrive
   if (spec.id === 'scrambler') {
     drawMotocross(ctx, spec, c, hubs)
     driver([0.48, 0.84 - seat[1]])
+    return
+  }
+
+  if (spec.id === 'rover') {
+    // Marsh Rover: a little amphibious boat-buggy with a snorkel exhaust and float bumpers.
+    tube(ctx, [[-1.0, 0.3], [-1.08, 1.0], [-0.9, 1.08]], 0.1, '#5b6372')
+    tube(ctx, [[-0.95, 0.35], [-0.75, 1.05], [-0.35, 1.05]], 0.08, '#b8bfca')
+    driver([0.62, 0.62 - seat[1]])
+    shaded(ctx, [[-1.3, -0.15], [1.2, -0.15], [1.5, 0.22], [0.6, 0.38], [-0.95, 0.38], [-1.4, 0.2]], c.light, c.body, c.dark)
+    // Waterline stripe and rivets
+    poly(ctx, [[-1.32, 0.02], [1.32, 0.02], [1.38, 0.1], [-1.36, 0.1]], 'rgba(255,255,255,0.85)', false)
+    for (let i = 0; i < 6; i++) rrect(ctx, -1.0 + i * 0.4, 0.22, 0.05, 0.05, 0.025, c.dark, false)
+    // Float bumpers front and back
+    rrect(ctx, 1.35, -0.12, 0.3, 0.24, 0.12, '#ff8a2a')
+    rrect(ctx, -1.6, -0.08, 0.28, 0.22, 0.11, '#ff8a2a')
+    // Handlebar, headlight
+    tube(ctx, [[0.45, 0.38], [0.6, 0.66], [0.7, 0.66]], 0.05, '#2a2f38')
+    glow(ctx, 1.42, 0.2, 0.5, 'rgba(255, 240, 170, 0.5)')
+    rrect(ctx, 1.3, 0.14, 0.14, 0.12, 0.05, '#fff6c8')
     return
   }
 
@@ -641,6 +725,7 @@ export const EXHAUST: Record<string, Pt> = {
   runabout: [-1.62, -0.24],
   scrambler: [-1.11, 0.39],
   hauler: [-2.0, -0.35],
+  rover: [-0.9, 1.08],
 }
 
 const COIN_COLOURS = [

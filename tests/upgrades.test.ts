@@ -152,7 +152,14 @@ describe.each(VEHICLES)('every vehicle: $name', (entry) => {
     // not grip, limits steep climbs, so braking shows the gain).
     const base = climb(entry.base, 30)
     const tyres = at({ tyres: MAX_LEVEL })
-    expect(climb(tyres, 30) > base + 1 || brakingDistance(tyres) < brakingDistance(entry.base) * 0.9).toBe(true)
+    // (Or, where the base engine is the limit on the slope, they climb further once the engine
+    // is maxed too: the Marsh Rover's soft balloon tyres.)
+    const engineMax = at({ engine: MAX_LEVEL })
+    expect(
+      climb(tyres, 30) > base + 1 ||
+        brakingDistance(tyres) < brakingDistance(entry.base) * 0.9 ||
+        climb(at({ engine: MAX_LEVEL, tyres: MAX_LEVEL }), 35) > climb(engineMax, 35) + 1,
+    ).toBe(true)
     const fourth = entry.upgrades[3].id
     if (fourth === 'drivetrain') expect(climb(at({ drivetrain: MAX_LEVEL }), 30)).toBeGreaterThan(base + 1)
     if (fourth === 'weight') {

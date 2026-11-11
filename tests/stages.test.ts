@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ENVIRONMENTS, environment, heightFor } from '../src/data/environments'
+import { ENVIRONMENTS, environment, heightFor, puddlesFor } from '../src/data/environments'
 import { applyUpgrades, BASE_LEVELS, type Levels } from '../src/data/upgrades'
 import { VEHICLES } from '../src/data/vehicles'
 import { stageTime } from '../src/sim/stage'
@@ -8,7 +8,7 @@ import { stageTime } from '../src/sim/stage'
 describe('upgrades make stages quicker', () => {
   const env = environment('meadow')
   const height = heightFor(env)
-  const opts = { gravity: env.gravity, groundFriction: env.groundFriction, length: 300 }
+  const opts = { gravity: env.gravity, groundFriction: env.groundFriction, puddles: puddlesFor(env), length: 300 }
   const at = (entry: (typeof VEHICLES)[number], level: number) =>
     applyUpgrades(entry.base, entry.full, Object.fromEntries(Object.keys(BASE_LEVELS).map((k) => [k, level])) as Levels)
 
@@ -31,7 +31,7 @@ describe('every map can be driven', () => {
     for (const id of ['runabout', 'hauler']) {
       const entry = VEHICLES.find((v) => v.id === id)!
       const spec = applyUpgrades(entry.base, entry.full, Object.fromEntries(Object.keys(BASE_LEVELS).map((k) => [k, 5])) as Levels)
-      expect(stageTime(spec, height, { gravity: env.gravity, groundFriction: env.groundFriction, length: 300 }).time, `${id} on ${env.name}`).not.toBeNull()
+      expect(stageTime(spec, height, { gravity: env.gravity, groundFriction: env.groundFriction, puddles: puddlesFor(env), length: 300 }).time, `${id} on ${env.name}`).not.toBeNull()
     }
   }, 60000)
 })

@@ -172,6 +172,56 @@ export const haulerFull: VehicleSpec = {
   engine: { ...hauler.engine, maxTorque: 90, torqueFalloff: 0.15, maxWheelSpeed: 32 },
 }
 
+/**
+ * Marsh Rover: a light amphibious buggy on big balloon paddle tyres. Puddles do not slow it and
+ * on slippery ground (snow, ice, mud, sand) its studs never grip less than 0.7 (others get about
+ * 0.4 to 0.65 on ice), so it shines there; on grass and rock it runs on soft balloon tyres.
+ * Stage times: the best on Frost Pass and Moonlit Woods at low and mid levels, level with the
+ * (dearer) Hauler when fully upgraded, and about even with the others on dry maps. Base spec.
+ */
+export const rover: VehicleSpec = {
+  id: 'rover',
+  chassis: {
+    polygon: [
+      { x: -1.25, y: -0.2 },
+      { x: 1.2, y: -0.2 },
+      { x: 1.45, y: 0.2 },
+      { x: 0.6, y: 0.35 },
+      { x: -0.9, y: 0.35 },
+      { x: -1.35, y: 0.15 },
+    ],
+    mass: 8,
+    centerOfMass: { x: 0, y: -0.05 },
+  },
+  wheels: [
+    { anchor: { x: -0.95, y: -0.5 }, radius: 0.55, mass: 1, friction: 0.4, springHz: 3.2, damping: 0.55, axle: 'rear' },
+    { anchor: { x: 0.95, y: -0.5 }, radius: 0.55, mass: 1, friction: 0.4, springHz: 3.2, damping: 0.55, axle: 'front' },
+  ],
+  engine: {
+    maxTorque: 28,
+    frontShare: 0.3,
+    torqueFalloff: 0.5,
+    maxWheelSpeed: 21,
+    // Strong brakes, so grip (the Tyres upgrade) decides how fast it stops.
+    brakeTorque: 60,
+    reverseWheelSpeed: 9,
+    idleDragTorque: 1.5,
+    gearbox: { gears: 3, shiftTime: 0.15, cut: 0.5 },
+  },
+  amphibious: { minGrip: 0.7 },
+  driver: { head: { x: -0.2, y: 1.05 }, headRadius: 0.2 },
+  // No extra pedal push on the ground: with this much torque it would flip at launch.
+  airControl: { spinRate: 2.2, spinResponse: 11, groundTorque: 0 },
+}
+
+export const roverFull: VehicleSpec = {
+  ...rover,
+  wheels: rover.wheels.map((w) => ({ ...w, friction: 0.95, damping: 0.8 })),
+  chassis: { ...rover.chassis, mass: 6.5, centerOfMass: { x: 0, y: -0.35 } },
+  engine: { ...rover.engine, maxTorque: 42, torqueFalloff: 0.35, maxWheelSpeed: 33 },
+  amphibious: { minGrip: 0.95 },
+}
+
 export const VEHICLES: VehicleEntry[] = [
   {
     id: 'runabout', name: 'Runabout', blurb: 'Small, light, easy to handle', price: 0, base: runabout, full: runaboutFull,
@@ -186,6 +236,11 @@ export const VEHICLES: VehicleEntry[] = [
   {
     id: 'hauler', name: 'Hauler', blurb: 'Heavy 4x4: slow, climbs anything', price: 15000, base: hauler, full: haulerFull,
     upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'weight', name: 'Lighter body', blurb: 'Sheds weight: quicker off the line and up hills' }],
+    launchSafe: true,
+  },
+  {
+    id: 'rover', name: 'Marsh Rover', blurb: 'Amphibious: floats through puddles, grips on snow and ice', price: 10000, base: rover, full: roverFull,
+    upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'weight', name: 'Lighter hull', blurb: 'Less weight: quicker off the line and up hills' }],
     launchSafe: true,
   },
 ]

@@ -2,6 +2,7 @@ import type { Environment } from '../data/environments'
 import type { Pickup } from '../data/track'
 import type { HeightFn, Input, Pose, SimState, VehicleSpec } from '../sim/types'
 import type { GhostPose } from '../save/ghosts'
+import type { Puddle, PuddleFn } from '../sim/types'
 import { formatTime } from '../data/modes'
 import { drawHead, drawnHubs, drawPickup, drawVehicle, drawWheel, EXHAUST, OUTLINE, type Mood } from './art'
 import { Particles } from './particles'
@@ -47,6 +48,8 @@ export interface View {
   driver: { lean: number; ragdoll: { torso: Pose; head: Pose } | null }
   /** Whose turn it is, shown by the distance. */
   player?: { name: string; colour: string }
+  /** Puddles on the track, to draw and splash through. */
+  puddles?: PuddleFn
   /** Race mode: the length (the finish line's distance from the start) and the clock, seconds. */
   race?: { length: number; time: number }
   /** Ghost riders to race: a recorded pose, its vehicle and a name tag. */
@@ -291,6 +294,7 @@ export class GameRenderer {
 
     drawProps(ctx, env, height, left, right)
     drawGround(ctx, env, height, left, right, bottom, this.camY + this.viewWidth, this.time)
+    this.drawPuddles(view, left, right)
     this.drawSigns(height, left, right)
     if (view.race && view.race.length > left - 3 && view.race.length < right + 3) this.drawFinish(height, view.race.length)
     this.drawShadow(view, chassis)
@@ -327,6 +331,60 @@ export class GameRenderer {
       this.maxDpr = this.maxDpr > 1.5 ? 1.5 : 1
       this.slowTime = 0
       this.resize()
+    }
+  }
+
+  /**
+   * Puddles: a shiny pool lying on the ground, following its shape. Water is blue, mud glossy
+   * brown, slush grey-white.
+   */
+  private drawPuddles(view: View, left: number, right: number): void {
+    const fn = view.puddles
+    if (!fn) return
+    const { ctx } = this
+    const found: Puddle[] = []
+    for (let x = left; x < right; x += 0.5) {
+      const p = fn(x)
+      if (p && !found.includes(p)) found.push(p)
+    }
+    const look = {
+      water: { fill: 'rgba(90, 160, 225, 0.85)', edge: 'rgba(40, 90, 150, 0.9)', shine: 'rgba(255, 255, 255, 0.7)' },
+      mud: { fill: 'rgba(74, 50, 30, 0.95)', edge: 'rgba(40, 26, 16, 1)', shine: 'rgba(200, 170, 130, 0.55)' },
+      slush: { fill: 'rgba(205, 222, 238, 0.95)', edge: 'rgba(140, 165, 190, 0.9)', shine: 'rgba(255, 255, 255, 0.9)' },
+    }
+    for (const p of found) {
+      const c = look[p.kind]
+      const steps = Math.max(4, Math.ceil((p.end - p.start) / 0.5))
+      // Ends taper; the pool sits a touch above the ground and dips a little into it.
+      const yAt = (i: number) => view.height(p.start + ((p.end - p.start) * i) / steps)
+      ctx.beginPath()
+      for (let i = 0; i <= steps; i++) {
+        const x = p.start + ((p.end - p.start) * i) / steps
+        const taper = Math.sin((Math.PI * i) / steps)
+        ctx.lineTo(x, yAt(i) + 0.05 + 0.06 * taper)
+      }
+      for (let i = steps; i >= 0; i--) {
+        const x = p.start + ((p.end - p.start) * i) / steps
+        const taper = Math.sin((Math.PI * i) / steps)
+        ctx.lineTo(x, yAt(i) - 0.16 * taper)
+      }
+      ctx.closePath()
+      ctx.fillStyle = c.fill
+      ctx.fill()
+      ctx.lineWidth = 0.04
+      ctx.strokeStyle = c.edge
+      ctx.stroke()
+      // A glint along the surface, shimmering.
+      ctx.strokeStyle = c.shine
+      ctx.lineWidth = 0.05
+      ctx.lineCap = 'round'
+      const a = 0.2 + 0.08 * Math.sin(this.time * 2 + p.start)
+      ctx.beginPath()
+      for (let i = Math.floor(steps * a); i <= Math.ceil(steps * (a + 0.3)); i++) {
+        const x = p.start + ((p.end - p.start) * i) / steps
+        ctx.lineTo(x, yAt(i) + 0.09)
+      }
+      ctx.stroke()
     }
   }
 
@@ -443,6 +501,17 @@ export class GameRenderer {
       const py = chassis.y + pipe[0] * s + pipe[1] * c
       this.particles.emit(px, py, { count: 1, speed: 0.6, colour: 'rgba(120, 125, 135, 0.6)', size: 0.12, life: 0.7, dir: chassis.angle + Math.PI, up: 0.5, gravity: 0.6 })
     }
+    // Splashes from wheels running through a puddle, more the faster it goes.
+    if (view.puddles && !view.driver.ragdoll) {
+      const speed = Math.abs(next.speed)
+      const splash = { water: 'rgba(150, 200, 245, 0.85)', mud: 'rgba(80, 55, 34, 0.95)', slush: 'rgba(235, 242, 250, 0.95)' }
+      next.wheels.forEach((w, i) => {
+        const p = next.wheelContacts[i] ? view.puddles!(w.x) : null
+        if (!p || speed < 1 || Math.random() > Math.min(0.9, speed / 10)) return
+        const r = spec.wheels[i].radius
+        this.particles.emit(w.x - r * 0.3, w.y - r * 0.7, { count: 2 + Math.floor(speed / 5), speed: 1.5 + speed * 0.25, colour: splash[p.kind], size: 0.1, life: 0.55, dir: Math.PI * 0.75, up: 1.5, gravity: -9 })
+      })
+    }
     next.wheels.forEach((w, i) => {
       if (!next.wheelContacts[i]) return
       const r = spec.wheels[i].radius
@@ -478,7 +547,7 @@ export class GameRenderer {
         ctx.save()
         ctx.translate(c.x + hx * cos - hy * sin, c.y + hx * sin + hy * cos)
         ctx.rotate(wheelAngles[i])
-        drawWheel(ctx, r, { mx: g.spec.id === 'scrambler' })
+        drawWheel(ctx, r, { mx: g.spec.id === 'scrambler', paddle: g.spec.id === 'rover' })
         ctx.restore()
       })
       ctx.translate(c.x, c.y)
@@ -575,7 +644,7 @@ export class GameRenderer {
       ctx.translate(at.x, at.y)
       ctx.rotate(w.angle)
       const spin = (next.wheels[i].angle - prev.wheels[i].angle) * 60
-      drawWheel(ctx, spec.wheels[i].radius, { spin, grime: GRIME[view.env.id], mx: spec.id === 'scrambler' })
+      drawWheel(ctx, spec.wheels[i].radius, { spin, grime: GRIME[view.env.id], mx: spec.id === 'scrambler', paddle: spec.id === 'rover' })
       ctx.restore()
     })
     ctx.save()

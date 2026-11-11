@@ -59,6 +59,8 @@ export interface RunOptions {
   bestDistance: number
   /** Race mode: the finish line, metres from the start. The run ends there and is timed. */
   finish?: number
+  /** Puddles on the track. */
+  puddles?: import('./types').PuddleFn
 }
 
 const TAU = Math.PI * 2
@@ -92,8 +94,8 @@ export class Run {
   private nextMilestone: number
 
   constructor(readonly options: RunOptions) {
-    const { vehicle, height, gravity, groundFriction } = options
-    this.sim = new Sim({ vehicle, height, gravity, groundFriction })
+    const { vehicle, height, gravity, groundFriction, puddles } = options
+    this.sim = new Sim({ vehicle, height, gravity, groundFriction, puddles })
     options.pickups.ensure(60)
     const every = RULES.milestoneEvery
     this.nextMilestone = Math.floor(options.bestDistance / every) * every + every
