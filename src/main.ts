@@ -12,8 +12,10 @@ import type { SimState } from './sim/types'
 import { STEP } from './sim/world'
 import { showGarage, showResults } from './ui/screens'
 import { loadSettings, saveSettings, showSettings } from './ui/settings'
+import { trackViewport, updateViewport } from './ui/viewport'
 import { loadTuning, showTuning, tuningEnabled, type DriveAs } from './ui/tuning'
 
+trackViewport()
 const $ = (id: string) => document.getElementById(id) as HTMLElement
 const canvas = $('game') as HTMLCanvasElement
 const garageEl = $('garage')
@@ -235,6 +237,7 @@ let last = performance.now()
 let accumulator = 0
 
 function frame(now: number): void {
+  updateViewport()
   const dt = Math.min(0.1, (now - last) / 1000)
   last = now
   if (mode === 'driving' || mode === 'ending') {

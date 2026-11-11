@@ -14,9 +14,10 @@
     <link rel="icon" type="image/png" href="./icon-192.png" />
     <meta name="apple-mobile-web-app-title" content="Ridgeline" />
     <style>
-      /* iPad can report a screen height that stops short of the home bar, leaving a strip of
-         page background visible. A solid ground colour (never white) makes any such strip blend
-         in with the ground, and the canvas also extends down behind the home bar. */
+      /* Sizing: iOS Safari's "100%" page height is measured with its toolbars showing, so it
+         can stop short of the real screen and leave a strip at the bottom. Everything full-screen
+         is sized from --app-h instead, which src/ui/viewport.ts keeps equal to the visible height
+         (window.innerHeight). The ground-coloured page background is only a fallback. */
       :root {
         --safe-top: env(safe-area-inset-top, 0px);
         --safe-right: env(safe-area-inset-right, 0px);
@@ -24,9 +25,10 @@
         --safe-left: env(safe-area-inset-left, 0px);
       }
       html { margin: 0; height: 100%; overflow: hidden; background-color: #6b4a2f; }
-      body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+      body { margin: 0; height: var(--app-h, 100dvh); overflow: hidden; background: transparent; }
+      .full { position: fixed; top: 0; left: 0; width: 100%; height: var(--app-h, 100dvh); }
       body {
-        position: fixed; inset: 0;
+        position: fixed; top: 0; left: 0; width: 100%;
         touch-action: none; overscroll-behavior: none;
         -webkit-user-select: none; user-select: none;
         -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
@@ -35,7 +37,7 @@
       #game {
         display: block; position: fixed; z-index: 0;
         top: 0; left: 0;
-        width: 100%; height: calc(100% + var(--safe-bottom));
+        width: 100%; height: var(--app-h, 100dvh);
       }
       #endRun {
         position: fixed; z-index: 5;
@@ -45,11 +47,13 @@
       }
       .hidden { display: none !important; }
       .screen {
-        position: fixed; inset: 0; z-index: 6; overflow-y: auto;
+        position: fixed; top: 0; left: 0; width: 100%; height: var(--app-h, 100dvh); z-index: 6; overflow-y: auto;
         padding: max(16px, var(--safe-top)) max(16px, var(--safe-right)) max(16px, var(--safe-bottom)) max(16px, var(--safe-left));
         box-sizing: border-box; background: linear-gradient(160deg, rgba(18, 32, 58, 0.92), rgba(30, 22, 52, 0.9));
         -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
         display: flex; flex-direction: column; align-items: center; gap: 12px;
+        /* Centred when everything fits; "safe" falls back to the top when it would overflow. */
+        justify-content: safe center;
         touch-action: manipulation;
       }
       .screen h1 { margin: 0; font-size: 26px; }
@@ -104,14 +108,27 @@
       .seg { display: inline-flex; border-radius: 10px; overflow: hidden; }
       .seg button { border: 0; padding: 8px 12px; font: 700 13px -apple-system, system-ui, sans-serif; background: rgba(255, 255, 255, 0.12); color: #fff; }
       .seg button.on { background: #2f80ed; }
-      @media (max-height: 420px) {
-        .screen { gap: 8px; }
-        .card { padding: 8px; gap: 4px; }
-        .card .blurb { min-height: 0; }
-        button.big { font-size: 18px; padding: 10px 32px; }
+      /* Landscape phones: keep vehicles and upgrade buttons on screen without scrolling. */
+      @media (max-height: 430px) {
+        .screen { gap: 6px; padding-top: max(10px, var(--safe-top)); padding-bottom: max(10px, var(--safe-bottom)); }
+        .screen h1 { font-size: 21px; }
+        .coins { font-size: 18px; }
+        button.big { font-size: 17px; padding: 8px 26px; }
+        .bar button.big { padding: 7px 24px; }
+        .label { font-size: 11px; margin-bottom: -3px; }
+        .cards, .choices { gap: 6px; }
+        .card { padding: 6px 8px; gap: 3px; }
+        .card .name { font-size: 14px; }
+        .card .blurb, button.choice .blurb { display: none; }
+        .pips i { height: 6px; }
+        button.buy { padding: 7px 6px; font-size: 13px; }
+        button.choice { padding: 5px 8px; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 2px 8px; }
+        button.choice .name { font-size: 13px; }
+        button.choice .price { font-size: 12px; }
+        canvas.thumb { height: 30px; width: 64px; margin: 0; }
       }
       #rotate {
-        display: none; position: fixed; inset: 0; z-index: 10;
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: var(--app-h, 100dvh); z-index: 10;
         background: #1b2330; align-items: center; justify-content: center;
         font-size: 20px; text-align: center; padding: 24px;
       }
