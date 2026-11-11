@@ -24,6 +24,8 @@ export interface Ghost {
   distance: number
   /** Race time in seconds, for a finished race. */
   time?: number
+  /** When it was recorded (ms since 1970), so the newest "last" ghost wins when syncing. */
+  at?: number
   wheels: number
   /** Delta-encoded integers, `stride` per frame. */
   data: number[]
@@ -65,7 +67,7 @@ export class GhostRecorder {
   finish(meta: { player: string; vehicle: string; env: string; distance: number; time?: number }): Ghost {
     const n = stride(this.wheels)
     const data = this.raw.map((v, i) => (i < n ? v : v - this.raw[i - n]))
-    return { v: 1, ...meta, wheels: this.wheels, data }
+    return { v: 1, ...meta, at: Date.now(), wheels: this.wheels, data }
   }
 }
 
@@ -142,7 +144,7 @@ export function storeGhost(ghost: Ghost): void {
   }
   const best = loadGhost(ghost.player, ghost.env, 'best')
   // Races: the fastest finished run; endless: the furthest.
-  const isBest = !best || (ghost.time !== undefined || best.time !== undefined ? (ghost.time ?? Infinity) < (best.time ?? Infinity) : ghost.distance > best.distance)
+  const isBest = !best || betterGhost(ghost, best)
   if (isBest && !put('best')) {
     clearGhosts('last')
     put('best')
@@ -150,6 +152,46 @@ export function storeGhost(ghost: Ghost): void {
   if (!put('last')) {
     clearGhosts('last')
     put('last')
+  }
+}
+
+/** True when ghost `a` should be kept over `b` as a best: the faster race, else the further run. */
+export function betterGhost(a: { time?: number; distance: number }, b: { time?: number; distance: number }): boolean {
+  if (a.time !== undefined || b.time !== undefined) return (a.time ?? Infinity) < (b.time ?? Infinity)
+  return a.distance > b.distance
+}
+
+export interface StoredGhost {
+  player: string
+  env: string
+  kind: 'best' | 'last'
+  ghost: Ghost
+}
+
+/** Every ghost stored on this device (for syncing). */
+export function listGhosts(): StoredGhost[] {
+  const out: StoredGhost[] = []
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (!k?.startsWith('ridgeline.ghost.')) continue
+      const kind = k.endsWith('.best') ? 'best' : k.endsWith('.last') ? 'last' : null
+      const g = kind ? (JSON.parse(localStorage.getItem(k) ?? 'null') as Ghost | null) : null
+      if (kind && g?.v === 1 && Array.isArray(g.data)) out.push({ player: g.player, env: g.env, kind, ghost: g })
+    }
+  } catch {
+    // Storage unavailable.
+  }
+  return out
+}
+
+/** Store a ghost from another device as this device's best or last (no comparison). */
+export function putGhost(kind: 'best' | 'last', ghost: Ghost): boolean {
+  try {
+    localStorage.setItem(key(ghost.player, ghost.env, kind), JSON.stringify(ghost))
+    return true
+  } catch {
+    return false
   }
 }
 
