@@ -582,6 +582,20 @@ export class Sound {
     } else this.tone(587, 0, 0.16, 'square', 0.09)
   }
 
+  /** The engine bogging at a lazy start: a few low, labouring chugs. */
+  bog(): void {
+    for (let i = 0; i < 5; i++) {
+      this.tone(48 + i * 4, i * 0.13, 0.16, 'sawtooth', 0.16, 40)
+      this.noise(i * 0.13, 0.08, 0.25, 260)
+    }
+  }
+
+  /** Tyres breaking loose: a rising squeal under a burst of grit. */
+  wheelspin(): void {
+    this.noise(0, 0.9, 0.45, 2400)
+    this.tone(900, 0, 0.8, 'sawtooth', 0.035, 1300)
+  }
+
   tap(): void {
     this.tone(880, 0, 0.06, 'triangle', 0.12)
   }

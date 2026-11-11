@@ -525,7 +525,12 @@ export class GameRenderer {
       if (!next.wheelContacts[i]) return
       const r = spec.wheels[i].radius
       const driven = spec.wheels[i].axle === 'rear' || spec.engine.frontShare > 0
-      if (driven && view.input.gas && Math.random() < 0.35) {
+      // Wheelspin: the tyre surface far outruns the vehicle, so it throws smoke and dirt.
+      const surface = Math.abs(next.wheels[i].angle - view.prev.wheels[i].angle) * 60 * r
+      if (driven && surface > Math.abs(next.speed) * 1.6 + 3) {
+        this.particles.emit(w.x - r * 0.5, w.y - r * 0.85, { count: 2, speed: 1.2, colour: 'rgba(225, 225, 230, 0.7)', size: 0.3, life: 1.1, dir: Math.PI * 0.8, up: 0.9, gravity: 0.4 })
+        this.particles.emit(w.x - r * 0.6, w.y - r * 0.8, { count: 2, speed: 3.5, colour: dust, size: 0.12, life: 0.5, dir: Math.PI * 0.88, up: 1 })
+      } else if (driven && view.input.gas && Math.random() < 0.35) {
         this.particles.emit(w.x - r * 0.6, w.y - r * 0.8, { count: 1, speed: 1.5, colour: dust, size: 0.12, life: 0.6, dir: Math.PI * 0.85, up: 0.4 })
       }
     })

@@ -53,6 +53,9 @@ let mode: Mode = 'garage'
 /** Seconds left of the start countdown, and the engine revs it shows (sim/launch.ts). */
 let countdown = 0
 let revs = new EngineRevs(0.6)
+/** Seconds of engine bog left after a start below the green; it begins with the first gas. */
+let bogLeft = 0
+let bogStarted = false
 /**
  * A round: each ticked player drives once, in turn, on the same vehicle and track; then the
  * standings. One player alone is a round of one.
@@ -314,6 +317,8 @@ function startRun(): void {
   renderer.resetCamera(next)
   // The 3-2-1 countdown: the vehicle is held and the engine can be revved (sim/launch.ts).
   countdown = 3 * LAUNCH.beat
+  bogLeft = 0
+  bogStarted = false
   revs = new EngineRevs(run.options.vehicle.engine.revTime)
   sound.beep(false)
   show('driving')
@@ -459,6 +464,8 @@ function frame(now: number): void {
       const kind = run.launch(revs.revs)
       sound.beep(true)
       if (kind === 'perfect') sound.fanfare()
+      else if (kind === 'over') sound.wheelspin()
+      else bogLeft = LAUNCH.bogSeconds
       renderer.launch(kind)
     } else if (Math.ceil(countdown / LAUNCH.beat) !== beat) sound.beep(false)
   } else if (mode === 'driving' || mode === 'ending') {
@@ -489,7 +496,16 @@ function frame(now: number): void {
   popups = popups.filter((p) => (p.age += dt) < (p.at ? 0.9 : 1.6))
   // The engine dies with the tank; it rolls on in silence.
   // Shown and heard revs: free revving in the countdown, else chasing the wheels at the engine's pace.
-  const shownRevs = countdown > 0 ? revs.revs : revs.follow(next.revs, dt)
+  // A bog (revs below the green at GO): the revs sag low and chug before they pick up.
+  if (bogLeft > 0 && mode === 'driving') {
+    if (controls.input.gas && !bogStarted) {
+      bogStarted = true
+      sound.bog()
+    }
+    if (bogStarted) bogLeft -= dt
+  }
+  const sag = bogStarted && bogLeft > 0 ? 0.08 + 0.3 * (1 - bogLeft / LAUNCH.bogSeconds) : 1
+  const shownRevs = countdown > 0 ? revs.revs : revs.follow(Math.min(next.revs, sag), dt)
   sound.engine(shownRevs, controls.input.gas && run.fuel > 0 && !next.shifting, mode === 'driving' && run.fuel > 0)
   renderer.draw({
     prev,
