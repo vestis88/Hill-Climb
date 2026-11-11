@@ -387,12 +387,14 @@ function handleEvents(): void {
       renderer.sparkle(e.x, e.y)
       renderer.coinCollected(e.x, e.y)
     } else if (e.kind === 'fuel') {
-      popups.push({ text: e.bonus ? `Made it on empty!  +${e.bonus}` : 'Fuel!', at: { x: e.x, y: e.y }, age: 0 })
+      // A rescue gets its own big banner (renderer.fuelRescue); a normal can a small popup.
+      if (!e.bonus) popups.push({ text: 'Fuel!', at: { x: e.x, y: e.y }, age: 0 })
       if (e.bonus) {
         sound.fanfare()
+        sound.coin()
         renderer.cheer()
-      }
-      renderer.sparkle(e.x, e.y, '#ff9a9a')
+        renderer.fuelRescue(e.x, e.y, e.bonus)
+      } else renderer.sparkle(e.x, e.y, '#ff9a9a')
     }
     else if (e.kind === 'air') popups.push({ text: `Air ${e.seconds.toFixed(1)} s  +${e.value}`, age: 0 })
     else if (e.kind === 'wheelie') popups.push({ text: `Wheelie ${Math.floor(e.metres)} m  +${e.value}`, age: 0 })
@@ -472,6 +474,9 @@ function ghostPoses() {
     return pose && pose.fade > 0 ? [{ label: g.label, colour: g.colour, spec: vehicleEntry(g.track.ghost.vehicle).base, pose }] : []
   })
 }
+
+// Development only: lets screenshot scripts trigger effects without playing to them.
+if (import.meta.env.DEV) (window as unknown as { __game: unknown }).__game = { renderer }
 
 // Offline play and home-screen install (published builds only).
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
