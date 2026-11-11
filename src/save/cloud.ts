@@ -1,4 +1,5 @@
 import { mergeInto, syncedPart, writeSave, type SaveData, type SyncedSave } from './save'
+import { betterGhost, listGhosts, putGhost, type Ghost } from './ghosts'
 
 /**
  * Cloud sync: progress is shared between the family's devices through a Firebase Realtime
@@ -7,6 +8,12 @@ import { mergeInto, syncedPart, writeSave, type SaveData, type SyncedSave } from
  * mergeInto keeps the best of both and never loses coins), and writes the result back, using
  * Firebase's ETag check so two devices syncing at the same moment cannot overwrite each other.
  *
+ * Ghosts sync too, separately because they are bigger (about 50 KB each): a small index lists
+ * each ghost the family has (player, track and mode, best or last, distance, time, when) and
+ * only ghosts that are missing or beaten are sent either way. A better best wins; for "last",
+ * the most recent run wins.
+ *
+ * Layout: families/<code>/save, families/<code>/ghostIndex, families/<code>/ghosts/<id>.
  * The database address is set in CLOUD_DB_URL below. Without it, sync stays switched off.
  * The family code is the only key to the data, so it is long and random.
  */
@@ -49,6 +56,16 @@ function configuredUrl(): string {
     return ''
   }
 }
+
+/** What the ghost index records about each ghost. */
+interface GhostMeta {
+  distance: number
+  time?: number
+  at?: number
+}
+const metaOf = (g: Ghost): GhostMeta => ({ distance: g.distance, ...(g.time !== undefined ? { time: g.time } : {}), at: g.at ?? 0 })
+/** A Firebase-safe id for a player's ghost on a track and mode: "Wille~meadow_race500~best". */
+const ghostId = (player: string, env: string, kind: 'best' | 'last') => `${player}~${env.replace(/[.$#[\]/]/g, '_')}~${kind}`
 
 type Fetch = (url: string, init?: RequestInit) => Promise<Response>
 
@@ -132,8 +149,40 @@ export class CloudSync {
     this.onState()
   }
 
+  /** Send ghosts the cloud lacks or that beat its copy; fetch the ones that beat this device's. */
+  private async syncGhosts(family: string): Promise<void> {
+    const got = await this.fetchFn(`${family}/ghostIndex.json`, { cache: 'no-store' })
+    if (!got.ok) throw new Error(`ghost index ${got.status}`)
+    const remote = ((await got.json()) ?? {}) as Record<string, GhostMeta>
+    const local = new Map(listGhosts().map((s) => [ghostId(s.player, s.env, s.kind), s]))
+    const wins = (kind: 'best' | 'last', a: GhostMeta, b: GhostMeta) => (kind === 'best' ? betterGhost(a, b) : (a.at ?? 0) > (b.at ?? 0))
+    const updates: Record<string, GhostMeta> = {}
+    for (const [id, s] of local) {
+      const meta = metaOf(s.ghost)
+      const r = remote[id]
+      if (r && !wins(s.kind, meta, r)) continue
+      const put = await this.fetchFn(`${family}/ghosts/${id}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(s.ghost) })
+      if (!put.ok) throw new Error(`ghost write ${put.status}`)
+      updates[id] = meta
+    }
+    if (Object.keys(updates).length) {
+      const patch = await this.fetchFn(`${family}/ghostIndex.json`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates) })
+      if (!patch.ok) throw new Error(`ghost index write ${patch.status}`)
+    }
+    for (const [id, r] of Object.entries(remote)) {
+      if (updates[id]) continue
+      const kind = id.endsWith('~best') ? 'best' : 'last'
+      const mine = local.get(id)
+      if (mine && !wins(kind, r, metaOf(mine.ghost))) continue
+      const res = await this.fetchFn(`${family}/ghosts/${id}.json`, { cache: 'no-store' })
+      const ghost = res.ok ? ((await res.json()) as Ghost | null) : null
+      if (ghost?.v === 1 && Array.isArray(ghost.data)) putGhost(kind, ghost)
+    }
+  }
+
   private async run(): Promise<void> {
-    const where = `${this.url.replace(/\/$/, '')}/saves/${this.code}.json`
+    const family = `${this.url.replace(/\/$/, '')}/families/${this.code}`
+    const where = `${family}/save.json`
     this.setState('syncing')
     try {
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -154,6 +203,7 @@ export class CloudSync {
         // 412: another device wrote in between; read its progress and try again.
         if (put.status === 412) continue
         if (!put.ok) throw new Error(`write ${put.status}`)
+        await this.syncGhosts(family)
         this.setState('ok')
         return
       }

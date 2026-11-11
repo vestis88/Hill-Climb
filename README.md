@@ -196,14 +196,18 @@ the game opens, comes back to the front, and shortly after every run or purchase
 Merging keeps the best of both: upgrade levels and unlocks at their highest, bests at their
 best, highscore boards combined. Coins are kept as earned and spent per device, so two
 devices playing at the same time never lose or double-count coins. Writes use Firebase's
-ETag check, so simultaneous syncs retry instead of overwriting each other. Ghosts, who is
-playing and the chosen vehicle, map and mode stay on each device. Resetting progress on a
+ETag check, so simultaneous syncs retry instead of overwriting each other.
+
+Ghosts sync too: a small index in the cloud lists each player's best and last ghost per
+track and mode, and only ghosts that are missing or beaten are sent either way (a better
+best wins; for "last", the most recent run wins). Who is playing and the chosen vehicle,
+map and mode stay on each device. Resetting progress on a
 device also stops it syncing.
 
 Database rules (Firebase console, Realtime Database, Rules):
 
 ```json
-{ "rules": { "saves": { "$code": { ".read": true, ".write": true } } } }
+{ "rules": { "families": { "$code": { ".read": true, ".write": true } } } }
 ```
 
 The family code (12 random characters) is the only key to a family's progress, and the

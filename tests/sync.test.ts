@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { BASE_LEVELS } from '../src/data/upgrades'
 import { CloudSync, normaliseCode, showCode } from '../src/save/cloud'
+import { loadGhost, putGhost, type Ghost } from '../src/save/ghosts'
 import { addScore, earn, emptySave, loadSave, mergeInto, spend, syncedPart } from '../src/save/save'
 
 function fakeStorage() {
@@ -110,19 +111,21 @@ function fakeFirebase() {
   let version = 0
   const etags = new Map<string, string>()
   const fetchFn = async (url: string, init?: RequestInit) => {
-    const key = url.replace(/^.*\/saves\//, '')
-    if (!init?.method || init.method === 'GET') {
+    const key = url.replace(/^https:\/\/[^/]+\//, '')
+    const method = init?.method ?? 'GET'
+    if (method === 'GET') {
       const body = db.get(key) ?? 'null'
       return new Response(body, { status: 200, headers: { ETag: etags.get(key) ?? 'null_etag' } })
     }
-    const want = (init.headers as Record<string, string>)['if-match']
+    const want = (init?.headers as Record<string, string> | undefined)?.['if-match']
     if (want && want !== (etags.get(key) ?? 'null_etag')) return new Response('', { status: 412 })
-    const text = String(init.body)
+    const text = String(init?.body)
     // Firebase rejects keys with dots.
     if (/"[^"]*\.[^"]*":/.test(text.replace(/"\d+(\.\d+)?"/g, ''))) return new Response('bad key', { status: 400 })
-    db.set(key, text)
+    const merged = method === 'PATCH' ? JSON.stringify({ ...JSON.parse(db.get(key) ?? '{}'), ...JSON.parse(text) }) : text
+    db.set(key, merged)
     etags.set(key, `e${++version}`)
-    return new Response(text, { status: 200 })
+    return new Response(merged, { status: 200 })
   }
   return { db, fetchFn: fetchFn as unknown as (u: string, i?: RequestInit) => Promise<Response> }
 }
@@ -175,3 +178,41 @@ describe('cloud sync (fake Firebase)', () => {
     expect(normaliseCode('abcd efgh jkmn')).toBe('ABCDEFGHJKMN')
   })
 })
+
+describe('ghost sync (fake Firebase)', () => {
+  const ghost = (player: string, env: string, distance: number, at: number, time?: number): Ghost => ({ v: 1, player, vehicle: 'runabout', env, distance, time, at, wheels: 2, data: [1, 2, 3, 4, 5, 6, 7, 8, 9] })
+
+  it('ghosts recorded on one device appear on the other, and the better best wins', async () => {
+    const fb = fakeFirebase()
+    // Device A: Wille's best 500 m on Green Meadows, and a 500 m race in 70 s.
+    ;(globalThis as { localStorage?: unknown }).localStorage = fakeStorage()
+    const storeA = globalThis.localStorage
+    putGhost('best', ghost('Wille', 'meadow', 500, 1))
+    putGhost('last', ghost('Wille', 'meadow', 300, 2))
+    putGhost('best', ghost('Wille', 'meadow.race500', 500, 1, 70))
+    const a = new CloudSync(emptySave(), 'https://x.firebaseio.com', fb.fetchFn)
+    const code = await a.createFamily()
+    expect(a.state).toBe('ok')
+
+    // Device B: its own, better race ghost (64 s) and an older last run.
+    ;(globalThis as { localStorage?: unknown }).localStorage = fakeStorage()
+    const storeB = globalThis.localStorage
+    putGhost('best', ghost('Wille', 'meadow.race500', 500, 5, 64))
+    putGhost('last', ghost('Wille', 'meadow', 200, 0))
+    const b = new CloudSync(emptySave(), 'https://x.firebaseio.com', fb.fetchFn)
+    await b.join(code)
+    expect(b.state).toBe('ok')
+    expect(loadGhost('Wille', 'meadow', 'best')!.distance).toBe(500) // fetched from A
+    expect(loadGhost('Wille', 'meadow', 'last')!.distance).toBe(300) // A's is newer
+    expect(loadGhost('Wille', 'meadow.race500', 'best')!.time).toBe(64) // B's own is better
+
+    // Back on A: it receives B's faster race ghost.
+    ;(globalThis as { localStorage?: unknown }).localStorage = storeA
+    await a.syncNow()
+    expect(loadGhost('Wille', 'meadow.race500', 'best')!.time).toBe(64)
+    void storeB
+    // Ghost ids are Firebase-safe (no dots).
+    expect([...fb.db.keys()].some((k) => k.includes('ghosts/Wille~meadow_race500~best'))).toBe(true)
+  })
+})
+
