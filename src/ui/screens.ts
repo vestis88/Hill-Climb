@@ -15,6 +15,15 @@ export interface Choice {
 }
 import type { RunStatus } from '../sim/run'
 
+/** Small original icons for the upgrade cards (inline SVG, 24x24). */
+const ICONS: Record<string, string> = {
+  engine: '<rect x="5" y="9" width="14" height="10" rx="2" fill="#8b93a1"/><rect x="8" y="4" width="8" height="6" rx="1.5" fill="#c9ced6"/><rect x="2" y="12" width="3" height="4" rx="1" fill="#5b6372"/><rect x="19" y="12" width="3" height="4" rx="1" fill="#5b6372"/><circle cx="12" cy="14" r="2.2" fill="#ffb020"/>',
+  tyres: '<circle cx="12" cy="12" r="9.5" fill="#2a2f38"/><circle cx="12" cy="12" r="5" fill="#c9ced6"/><circle cx="12" cy="12" r="1.8" fill="#5b6372"/><g fill="#5b6372"><rect x="11" y="1.5" width="2" height="3"/><rect x="11" y="19.5" width="2" height="3"/><rect x="1.5" y="11" width="3" height="2"/><rect x="19.5" y="11" width="3" height="2"/></g>',
+  suspension: '<rect x="4" y="2" width="16" height="3" rx="1" fill="#8b93a1"/><rect x="4" y="19" width="16" height="3" rx="1" fill="#8b93a1"/><path d="M12 5 L17 7.5 L7 10 L17 12.5 L7 15 L17 17.5 L12 19" fill="none" stroke="#f2b632" stroke-width="2" stroke-linejoin="round"/>',
+  drivetrain: '<circle cx="8" cy="12" r="5" fill="none" stroke="#c9ced6" stroke-width="3" stroke-dasharray="2.2 1.8"/><circle cx="17" cy="12" r="4" fill="none" stroke="#8b93a1" stroke-width="3" stroke-dasharray="2 1.6"/><circle cx="8" cy="12" r="1.6" fill="#c9ced6"/><circle cx="17" cy="12" r="1.3" fill="#8b93a1"/>',
+  weight: '<path d="M5 19 C 7 9, 13 4, 20 3 C 18 10, 13 16, 5 19 Z" fill="#e8ecf2"/><path d="M5 19 L 15 9" stroke="#8b93a1" stroke-width="1.5"/>',
+}
+
 export interface GarageView {
   coins: number
   vehicleName: string
@@ -31,6 +40,8 @@ export interface GarageView {
   onDrive(): void
   onTune(): void
   onSettings(): void
+  /** The upgrade just bought, to play its card animation once. */
+  justBought?: UpgradeId
 }
 
 let thumbObserver: ResizeObserver | undefined
@@ -40,9 +51,10 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
     const level = v.levels[u.id]
     const maxed = level >= MAX_LEVEL
     const cost = maxed ? 0 : price(level + 1)
-    const pips = Array.from({ length: MAX_LEVEL }, (_, i) => `<i class="${i < level ? 'on' : ''}"></i>`).join('')
-    return `<div class="card">
-      <div class="name">${u.name}</div>
+    const bought = v.justBought === u.id
+    const pips = Array.from({ length: MAX_LEVEL }, (_, i) => `<i class="${i < level ? 'on' : ''} ${bought && i === level - 1 ? 'new' : ''}"></i>`).join('')
+    return `<div class="card ${bought ? 'bought' : ''}">
+      <div class="name"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[u.id] ?? ''}</svg>${u.name}</div>
       <div class="pips">${pips}</div>
       <div class="blurb">${u.blurb}</div>
       <button class="buy" data-buy="${u.id}" ${maxed || cost > v.coins ? 'disabled' : ''}>${maxed ? 'Maxed' : `Upgrade ● ${cost}`}</button>
@@ -111,6 +123,7 @@ export function showResults(el: HTMLElement, v: ResultsView): void {
   const row = (label: string, value: number) => (value ? `<div><span>${label}</span><span><b class="coin">●</b> ${value}</span></div>` : '')
   el.innerHTML = `
     <h2>${TITLES[v.status]}</h2>
+    <div class="results-total"><b class="coin">●</b> <span data-count="${v.total}">0</span></div>
     <div>${Math.floor(v.distance)} m ${v.newBest ? '<span class="newbest">New best!</span>' : ''}</div>
     <div class="rows">
       ${row('Coins on the track', v.coins.track)}
@@ -118,16 +131,30 @@ export function showResults(el: HTMLElement, v: ResultsView): void {
       ${row('Flips', v.coins.flips)}
       ${row('Wheelies', v.coins.wheelies)}
       ${row('Distance bonus', v.coins.milestones)}
-      <div class="total"><span>This run</span><span><b class="coin">●</b> ${v.total}</span></div>
+      <div class="total"><span>This run</span><span><b class="coin">●</b> <span data-count="${v.total}">0</span></span></div>
       <div><span>You have</span><span><b class="coin">●</b> ${v.bank}</span></div>
     </div>
     <div class="actions">
       <button class="big" data-act="garage">Garage</button>
-      <button class="big" data-act="again" style="background:#2f80ed">Drive again</button>
+      <button class="big blue" data-act="again">Drive again</button>
     </div>`
+  countUp(el)
   el.onclick = (e) => {
     const b = (e.target as HTMLElement).closest('button')
     if (b?.dataset.act === 'garage') v.onGarage()
     else if (b?.dataset.act === 'again') v.onAgain()
   }
+}
+
+/** Numbers marked data-count tick up from 0 to their value over about a second. */
+function countUp(el: HTMLElement): void {
+  const spans = [...el.querySelectorAll<HTMLElement>('[data-count]')]
+  const start = performance.now()
+  const tick = (now: number) => {
+    const t = Math.min(1, (now - start) / 1000)
+    const e = 1 - (1 - t) ** 3
+    for (const s of spans) s.textContent = String(Math.round(Number(s.dataset.count) * e))
+    if (t < 1 && el.isConnected) requestAnimationFrame(tick)
+  }
+  requestAnimationFrame(tick)
 }
