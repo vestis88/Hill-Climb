@@ -31,6 +31,8 @@ export interface GarageView {
   onSettings(): void
 }
 
+let thumbObserver: ResizeObserver | undefined
+
 export function showGarage(el: HTMLElement, v: GarageView): void {
   const card = (u: (typeof UPGRADES)[number]) => {
     const level = v.levels[u.id]
@@ -59,13 +61,23 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
     <div class="cards">${UPGRADES.map(card).join('')}</div>
     <div class="choices">${v.environments.map((c) => choice('env', c)).join('')}</div>
     <div class="actions"><button class="small" data-act="settings">Settings</button>${v.tuning ? '<button class="small" data-act="tune">Tuning</button>' : ''}</div>`
-  // Draw the previews once the garage is laid out on screen (canvases have no size while hidden).
-  requestAnimationFrame(() => {
-    for (const c of [...v.vehicles.map((x) => ['vehicle', x] as const), ...v.environments.map((x) => ['env', x] as const)]) {
-      const canvas = el.querySelector<HTMLCanvasElement>(`canvas[data-thumb="${c[0]}:${c[1].id}"]`)
-      if (canvas && c[1].preview) c[1].preview(canvas)
+  // Draw each preview at its card's real size, and again whenever that size changes (rotation,
+  // browser bars, layout switching): a canvas drawn at one size and shown at another looks stretched.
+  thumbObserver?.disconnect()
+  thumbObserver = new ResizeObserver((entries) => {
+    for (const entry of entries) {
+      const canvas = entry.target as HTMLCanvasElement
+      if (canvas.clientWidth && canvas.clientHeight) previews.get(canvas)?.(canvas)
     }
   })
+  const previews = new Map<HTMLCanvasElement, (c: HTMLCanvasElement) => void>()
+  for (const c of [...v.vehicles.map((x) => ['vehicle', x] as const), ...v.environments.map((x) => ['env', x] as const)]) {
+    const canvas = el.querySelector<HTMLCanvasElement>(`canvas[data-thumb="${c[0]}:${c[1].id}"]`)
+    if (canvas && c[1].preview) {
+      previews.set(canvas, c[1].preview)
+      thumbObserver.observe(canvas)
+    }
+  }
   el.onclick = (e) => {
     const b = (e.target as HTMLElement).closest('button')
     if (!b || b.disabled) return
