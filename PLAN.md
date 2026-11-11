@@ -133,7 +133,7 @@ listed files and should not edit others except to wire itself in.
 | P3 (done: `sim/driver.ts`; sway is visual only so handling is unchanged, ragdoll takes over on a crash) | Driver ragdoll and crash detection | `sim/driver.ts` | Landing on the roof ends the run; a hard but upright landing does not |
 | P4 (done: `sim/terrain.ts`, chunks of 64 m streamed around the car) | Procedural terrain with chunk streaming and difficulty ramp | `sim/terrain.ts` | Endless drive at 60 fps; identical terrain for the same seed |
 | P5 (done; numbers in `sim/run.ts` RULES) | Run rules: fuel, canisters, coins, distance, stunt detection, run end and payout | `sim/run.ts` | Scripted-input tests verify fuel-out, flip counting, payouts |
-| P6 | Handling pass on the first vehicle using the sandbox: tune the **base** (worst) values and the **fully upgraded** values, plus numeric regression tests for both ends (0-to-top-speed time, wheelie onset, air rotation rate, max climbable slope). The sandbox needs a switch between base and fully upgraded | `data/vehicles.ts`, `tests/handling/` | **Owner playtest approves both ends.** Nothing in later phases starts before this |
+| P6 (done) | Handling pass on the first vehicle using the sandbox: tune the **base** (worst) values and the **fully upgraded** values, plus numeric regression tests for both ends (0-to-top-speed time, wheelie onset, air rotation rate, max climbable slope). The sandbox needs a switch between base and fully upgraded | `data/vehicles.ts`, `tests/handling/` | **Owner playtest approves both ends.** Nothing in later phases starts before this |
 
 ### Phase 2: upgrades and content (parallel, tier C unless noted)
 
@@ -187,7 +187,7 @@ frame-time budget (60 fps on an iPhone 11, automatic resolution drop as the safe
 | G11 (done) | Backgrounds v2 | A time-of-day mood per environment (sunny morning, starry night, snowy dusk), a foreground layer that passes in front of the track, animated life (birds, windmills, shooting stars, aurora) |
 | G12 (done) | Effects | Speed lines at top speed, dust trails, landing shockwaves, coins that fly to the counter, counter pop, soft vignette and glow on lights |
 | G13 (done) | Menus v2 | Garage with the selected vehicle idling and bouncing on a stage, purchase animation, icons for each upgrade, results screen that counts coins up, a custom rounded display font |
-| G14 | Graphics check | Screenshot pass on iPhone SE, iPhone 16 Pro Max and iPad sizes; frame-time check with the 4x CPU slowdown |
+| G14 (done) | Graphics check | Screenshot pass on iPhone SE, iPhone 16 Pro Max and iPad sizes; frame-time check with the 4x CPU slowdown. Result: no layout faults (rotate prompt fixed); the resolution fallback now reacts after 2 s instead of 120 frames, and the static sky is cached. At 4x slowdown in a GPU-less browser: about 30 fps (iPhone SE size), 25 (16 Pro Max), 13 (iPad Pro 11); real devices draw on the GPU and should do much better |
 
 ## 5. Next steps after the first version
 
