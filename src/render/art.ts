@@ -434,29 +434,29 @@ function drawMotocross(ctx: Ctx, spec: VehicleSpec, c: { body: string; dark: str
 
   // Frame: twin spar from the steering head to the swingarm pivot, cradle and subframe.
   tube(ctx, [[0.42, 0.52], [0.05, 0.3], [pivot[0], pivot[1]]], 0.1, '#b8bfca')
-  tube(ctx, [[0.44, 0.44], [0.32, -0.12], [0.08, -0.26], [-0.12, -0.2]], 0.06, '#b8bfca')
+  tube(ctx, [[0.44, 0.44], [0.3, -0.1], [0.1, -0.24], [-0.1, -0.2]], 0.05, '#b8bfca')
   tube(ctx, [[-0.02, 0.34], [-0.85, 0.44]], 0.045, '#8b93a1')
   rrect(ctx, pivot[0] - 0.05, pivot[1] - 0.05, 0.1, 0.1, 0.05, '#5b6372')
 
-  // Engine: crankcase, clutch cover, and the finned cylinder leaning forward.
-  rrect(ctx, -0.2, -0.27, 0.46, 0.28, 0.08, '#5b6372')
+  // Engine: a compact single, with crankcase, clutch cover and a finned cylinder leaning forward.
+  rrect(ctx, -0.1, -0.22, 0.3, 0.19, 0.06, '#5b6372')
   ctx.beginPath()
-  ctx.arc(0.0, -0.13, 0.1, 0, Math.PI * 2)
+  ctx.arc(0.02, -0.13, 0.065, 0, Math.PI * 2)
   ctx.fillStyle = '#8b93a1'
   ctx.fill()
   ctx.stroke()
-  poly(ctx, [[0.04, -0.02], [0.26, -0.02], [0.34, 0.26], [0.1, 0.28]], '#8b93a1')
-  for (let i = 0; i < 4; i++) {
-    const y = 0.03 + i * 0.06
-    tube(ctx, [[0.03 + y * 0.25, y], [0.29 + y * 0.25, y]], 0.018, '#5b6372')
+  poly(ctx, [[0.07, -0.04], [0.2, -0.04], [0.25, 0.14], [0.11, 0.15]], '#8b93a1')
+  for (let i = 0; i < 3; i++) {
+    const y = 0.0 + i * 0.045
+    tube(ctx, [[0.07 + y * 0.28, y], [0.21 + y * 0.28, y]], 0.014, '#5b6372')
   }
-  rrect(ctx, 0.08, 0.25, 0.26, 0.07, 0.03, '#3d4450')
+  rrect(ctx, 0.1, 0.13, 0.16, 0.045, 0.02, '#3d4450')
 
   // Expansion chamber: out of the front of the cylinder, down, a fat belly under the engine,
   // tapering back up to the silencer under the side panel.
   const pipe: [Pt, number][] = [
-    [[0.3, 0.1], 0.06], [[0.44, 0.02], 0.07], [[0.47, -0.12], 0.09], [[0.36, -0.24], 0.11],
-    [[0.16, -0.3], 0.12], [[-0.06, -0.29], 0.1], [[-0.26, -0.16], 0.08], [[-0.4, 0.06], 0.06], [[-0.48, 0.24], 0.05],
+    [[0.22, 0.05], 0.045], [[0.33, 0.0], 0.055], [[0.37, -0.1], 0.07], [[0.28, -0.2], 0.085],
+    [[0.1, -0.25], 0.09], [[-0.08, -0.23], 0.075], [[-0.24, -0.12], 0.06], [[-0.37, 0.07], 0.05], [[-0.46, 0.24], 0.045],
   ]
   for (const [w, col] of [[LINE * 2, OUTLINE], [0, '#6b7380'], [-0.06, '#9aa2ae']] as const) {
     ctx.lineCap = 'round'
@@ -485,9 +485,13 @@ function drawMotocross(ctx: Ctx, spec: VehicleSpec, c: { body: string; dark: str
   shaded(ctx, [[-0.02, 0.5], [0.42, 0.55], [0.56, 0.36], [0.44, 0.1], [0.24, 0.12], [0.1, 0.32]], c.light, c.body, c.dark)
   poly(ctx, [[0.16, 0.36], [0.5, 0.34], [0.46, 0.27], [0.14, 0.29]], '#ffffff', false)
 
-  // Front mudguard, high on the bottom fork clamp (fixed to the chassis): above the tyre at
-  // full travel too (underside 0.38 over the hub; the tyre top reaches 0.30).
-  shaded(ctx, [[0.48, 0.47], [0.78, 0.38], [1.06, 0.4], [1.26, 0.5], [1.18, 0.53], [0.96, 0.47], [0.78, 0.45], [0.52, 0.53]], c.light, c.body, c.dark)
+  // Front mudguard, high on the bottom fork clamp (fixed to the chassis), arched over the
+  // tyre: underside 0.43 over the hub, above the tyre top at full travel (0.32 with knobs).
+  const fh = spec.wheels[1].anchor.x
+  shaded(ctx, [
+    [fh - 0.34, 0.34], [fh - 0.16, 0.41], [fh, 0.43], [fh + 0.2, 0.41], [fh + 0.42, 0.35],
+    [fh + 0.45, 0.39], [fh + 0.2, 0.47], [fh, 0.49], [fh - 0.16, 0.47], [fh - 0.34, 0.39],
+  ], c.light, c.body, c.dark)
 
   // Upside-down fork: gold inner legs at the axle slide up into the big outer tubes held in
   // the clamps, so the fork visibly shortens as the front wheel rises.

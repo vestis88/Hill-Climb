@@ -234,7 +234,11 @@ function handleEvents(): void {
       renderer.sparkle(e.x, e.y)
       renderer.coinCollected(e.x, e.y)
     } else if (e.kind === 'fuel') {
-      popups.push({ text: 'Fuel!', at: { x: e.x, y: e.y }, age: 0 })
+      popups.push({ text: e.bonus ? `Made it on empty!  +${e.bonus}` : 'Fuel!', at: { x: e.x, y: e.y }, age: 0 })
+      if (e.bonus) {
+        sound.fanfare()
+        renderer.cheer()
+      }
       renderer.sparkle(e.x, e.y, '#ff9a9a')
     }
     else if (e.kind === 'air') popups.push({ text: `Air ${e.seconds.toFixed(1)} s  +${e.value}`, age: 0 })
@@ -276,7 +280,8 @@ function frame(now: number): void {
     if (mode === 'ending' && (endTimer -= dt) <= 0) finishRun()
   }
   popups = popups.filter((p) => (p.age += dt) < (p.at ? 0.9 : 1.6))
-  sound.engine(next.rpm, controls.input.gas && run.fuel > 0, mode === 'driving')
+  // The engine dies with the tank; it rolls on in silence.
+  sound.engine(next.rpm, controls.input.gas && run.fuel > 0, mode === 'driving' && run.fuel > 0)
   renderer.draw({
     prev,
     next,

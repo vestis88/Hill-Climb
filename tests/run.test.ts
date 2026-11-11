@@ -22,15 +22,44 @@ describe('run rules', () => {
     expect(pickups.map((p) => p.taken)).toEqual([true, true, true])
   })
 
-  it('runs out of fuel and ends the run once stopped; a fuel can refills the tank', () => {
+  it('runs out of fuel, rolls on, and ends the run once stopped; a fuel can refills the tank', () => {
     const run = new Run({ vehicle: runabout, height: flat, pickups: fixedPickups([]), bestDistance: 1e9 })
-    drive(run, GAS, RULES.fuelSecondsOnGas + RULES.outOfFuelTimeout + 2)
+    drive(run, GAS, RULES.fuelSecondsOnGas + 1)
+    expect(run.fuel).toBe(0)
+    // Still rolling a second after the tank ran dry.
+    expect(run.status).toBe('running')
+    drive(run, GAS, 60)
     expect(run.status).toBe('outOfFuel')
 
     const refuel = new Run({ vehicle: runabout, height: flat, pickups: fixedPickups([{ kind: 'fuel', x: 30, y: 0.9, value: 0 }]), bestDistance: 1e9 })
     refuel.fuel = 0.2
     drive(refuel, GAS, 6)
     expect(refuel.fuel).toBeGreaterThan(0.9)
+    expect(refuel.coins.rescue).toBe(0)
+  })
+
+  it('on an empty tank keeps rolling downhill, and a can reached on empty refuels and pays a bonus', () => {
+    const downhill = (x: number) => -0.2 * x
+    const can: Pickup = { kind: 'fuel', x: 30, y: -6 + 0.9, value: 0 }
+    const run = new Run({ vehicle: runabout, height: downhill, pickups: fixedPickups([can]), bestDistance: 1e9 })
+    run.fuel = 0
+    drive(run, NONE, 10)
+    expect(run.status).toBe('running')
+    expect(can.taken).toBe(true)
+    expect(run.fuel).toBeGreaterThan(0.8)
+    expect(run.coins.rescue).toBe(RULES.emptyRescueBonus)
+    expect(run.totalCoins).toBeGreaterThanOrEqual(RULES.emptyRescueBonus)
+  })
+
+  it('on an empty tank the gas does nothing and the brake cannot reverse', () => {
+    for (const input of [GAS, { gas: false, brake: true }]) {
+      const run = new Run({ vehicle: runabout, height: flat, pickups: fixedPickups([]), bestDistance: 1e9 })
+      run.fuel = 0
+      drive(run, NONE, 0.5)
+      for (let i = 0; i < 120 && run.status === 'running'; i++) run.step(input)
+      expect(Math.abs(run.sim.vehicle.chassis.getPosition().x)).toBeLessThan(0.3)
+      expect(run.status).toBe('outOfFuel')
+    }
   })
 
   it('ends the run when the driver lands on their head', () => {

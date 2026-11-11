@@ -9,8 +9,14 @@ export const RULES = {
   fuelSecondsOnGas: 40,
   /** Seconds of fuel with no gas. */
   fuelSecondsIdle: 90,
-  /** After the tank runs dry, the run ends once the car has stopped (or after this long). */
-  outOfFuelTimeout: 6,
+  /**
+   * After the tank runs dry the car rolls on: the run ends once it has stood still for
+   * emptyStopSeconds, or made no new ground for emptyStuckSeconds (rocking in a dip).
+   * Rolling into a fuel can on empty refuels and pays emptyRescueBonus (owner's rule).
+   */
+  emptyStopSeconds: 1,
+  emptyStuckSeconds: 8,
+  emptyRescueBonus: 100,
   pickupRadius: 1.1,
   /** Coins per second in the air, for jumps of at least minAirTime. Raised after owner playtest. */
   airCoinsPerSecond: 20,
@@ -34,7 +40,7 @@ export type RunStatus = 'running' | 'crashed' | 'outOfFuel'
 
 export type RunEvent =
   | { kind: 'coin'; value: number; x: number; y: number }
-  | { kind: 'fuel'; x: number; y: number }
+  | { kind: 'fuel'; x: number; y: number; /** Coins for reaching it on an empty tank. */ bonus: number }
   | { kind: 'air'; value: number; seconds: number }
   | { kind: 'flip'; value: number; flips: number; direction: 'back' | 'front' }
   | { kind: 'wheelie'; value: number; seconds: number }
@@ -58,7 +64,7 @@ export class Run {
   readonly sim: Sim
   fuel = 1
   status: RunStatus = 'running'
-  coins = { track: 0, air: 0, flips: 0, wheelies: 0, milestones: 0 }
+  coins = { track: 0, air: 0, flips: 0, wheelies: 0, milestones: 0, rescue: 0 }
   /** Events from the last step only, for pop-ups and sounds. */
   events: RunEvent[] = []
   /** The driver's sway while driving, and the ragdoll after a crash. */
@@ -71,7 +77,10 @@ export class Run {
   private lastGroundRel = 0
   private wheelieSteps = 0
   private takeoffAngle = 0
-  private emptySteps = 0
+  private stoppedSteps = 0
+  /** Furthest point reached on an empty tank, and steps since it last moved on. */
+  private emptyBestX = -Infinity
+  private stuckSteps = 0
   private nextMilestone: number
 
   constructor(readonly options: RunOptions) {
@@ -84,7 +93,7 @@ export class Run {
 
   get totalCoins(): number {
     const c = this.coins
-    return c.track + c.air + c.flips + c.wheelies + c.milestones
+    return c.track + c.air + c.flips + c.wheelies + c.milestones + c.rescue
   }
 
   step(rawInput: Input): void {
@@ -94,7 +103,8 @@ export class Run {
       this.sim.step({ gas: false, brake: false })
       return
     }
-    const input = this.fuel > 0 ? rawInput : { gas: false, brake: rawInput.brake }
+    // On an empty tank only the brake works: it brakes, and in the air tips the nose down.
+    const input = this.fuel > 0 ? rawInput : { gas: false, brake: rawInput.brake, empty: true }
 
     this.sim.step(input)
     this.fuel -= STEP / (input.gas ? RULES.fuelSecondsOnGas : RULES.fuelSecondsIdle)
@@ -113,12 +123,20 @@ export class Run {
     this.milestones(s)
 
     if (this.fuel <= 0) {
-      this.emptySteps++
       const stopped = Math.abs(s.speed) < 0.3 && !s.airborne
-      if ((stopped && this.emptySteps > 30) || this.emptySteps * STEP > RULES.outOfFuelTimeout) {
+      this.stoppedSteps = stopped ? this.stoppedSteps + 1 : 0
+      if (s.chassis.x > this.emptyBestX + 0.5) {
+        this.emptyBestX = s.chassis.x
+        this.stuckSteps = 0
+      } else this.stuckSteps++
+      if (this.stoppedSteps * STEP >= RULES.emptyStopSeconds || this.stuckSteps * STEP >= RULES.emptyStuckSeconds) {
         this.status = 'outOfFuel'
         this.endDistance = s.distance
       }
+    } else {
+      this.stoppedSteps = 0
+      this.stuckSteps = 0
+      this.emptyBestX = -Infinity
     }
   }
 
@@ -144,8 +162,10 @@ export class Run {
         this.coins.track += p.value
         this.events.push({ kind: 'coin', value: p.value, x: p.x, y: p.y })
       } else {
+        const bonus = this.fuel <= 0 ? RULES.emptyRescueBonus : 0
+        this.coins.rescue += bonus
         this.fuel = 1
-        this.events.push({ kind: 'fuel', x: p.x, y: p.y })
+        this.events.push({ kind: 'fuel', x: p.x, y: p.y, bonus })
       }
     }
   }
