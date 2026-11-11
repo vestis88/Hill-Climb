@@ -66,6 +66,9 @@ export class Sim {
       distance: this.maxX - this.startX,
       airborne: !contacts.some(Boolean),
       wheelContacts: contacts,
+      gear: this.vehicle.gear,
+      revs: this.vehicle.revs(),
+      shifting: this.vehicle.shifting,
     }
   }
 }

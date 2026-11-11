@@ -118,6 +118,7 @@ export class Sound {
   } | null = null
   private pulses: Partial<Record<'twoStroke' | 'v8', PulseGraph>> = {}
   private offline = false
+  private vehicleId = 'runabout'
   private lastGas = false
   private lastRevs = 0
   private lastEngineCall = 0
@@ -309,6 +310,7 @@ export class Sound {
 
   /** Switch the engine voice to suit a vehicle. */
   setVehicle(id: string): void {
+    this.vehicleId = id
     this.voice = ENGINES[id] ?? ENGINES.runabout
     this.applyVoice()
   }
@@ -323,16 +325,24 @@ export class Sound {
     if (this.master) this.master.gain.value = this.enabled ? this.volume * 0.6 : 0
   }
 
-  /** Engine note from wheel spin (0..1) and throttle; running false fades it out. */
+  /**
+   * Engine note from engine revs (0..1, from the gearbox) and throttle; running false fades it
+   * out. Held flat out at the top of the revs (wheels spinning in the air), it bounces off the
+   * rev limiter.
+   */
   engine(rpm: number, gas: boolean, running: boolean): void {
     if (!this.ctx || !this.eng) return
     const e = this.eng
     const v = this.voice
     const t = this.ctx.currentTime
     // Revs rise a little on the gas even when the wheels cannot spin up (climbing, wheelspin).
-    const revs = Math.min(1, rpm + (gas ? 0.12 : 0))
+    const revs = Math.min(1, rpm + (gas ? 0.08 : 0))
+    // Rev limiter: the ignition cuts in and out about 14 times a second.
+    const limiter = gas && running && revs >= 0.995 && Math.floor(t * 14) % 2 === 1
     if (v.kind) {
-      this.pulseEngine(PULSE[v.kind], revs, gas, running, t)
+      const graph = this.pulses[v.kind]
+      this.pulseEngine(PULSE[v.kind], revs, gas && !limiter, running, t)
+      if (limiter && graph) graph.onGain.gain.setTargetAtTime(0.25, t, 0.004)
       return
     }
     const f = v.idle + (v.top - v.idle) * revs
@@ -343,7 +353,7 @@ export class Sound {
     const [lo, hi] = v.cutoff
     e.filter.frequency.setTargetAtTime(lo + (hi - lo) * (gas ? 0.4 + 0.6 * revs : 0.15 * revs), t, 0.06)
     e.noiseGain.gain.setTargetAtTime(gas ? v.noise * (0.3 + revs) : 0, t, 0.05)
-    e.out.gain.setTargetAtTime(running ? v.volume * (gas ? 0.3 : 0.16) : 0, t, 0.08)
+    e.out.gain.setTargetAtTime(running ? v.volume * (limiter ? 0.12 : gas ? 0.3 : 0.16) : 0, t, limiter ? 0.004 : 0.08)
   }
 
   private pulseEngine(cfg: PulseEngine, revs: number, gas: boolean, running: boolean, t: number): void {
@@ -404,6 +414,59 @@ export class Sound {
     src.connect(band).connect(g).connect(this.master)
     src.start(t)
     this.tone(80 + Math.random() * 30, start, 0.09, 'sine', 0.8 * strength, 38)
+  }
+
+  /**
+   * A gear change: a mechanical clunk for every vehicle, plus each one's own character on the
+   * way up: a turbo's blow-off whoosh (Runabout), an exhaust crack (Scrambler) or a deep blat
+   * (Hauler). The rev drop itself comes from the gearbox. One-shot nodes only, a few per minute.
+   */
+  shift(up: boolean, revs: number): void {
+    if (!this.ctx || !this.master) return
+    this.clunk(up ? 0.8 : 0.55)
+    if (!up) return
+    if (this.vehicleId === 'runabout') this.blowOff()
+    else if (this.vehicleId === 'scrambler') this.pop(0.015, 0.45 + 0.3 * revs)
+    else if (this.vehicleId === 'hauler') {
+      this.blat(0.02, 0.8)
+      this.blat(0.09, 0.55)
+    }
+  }
+
+  /** The gearbox: a short metallic knock. */
+  private clunk(strength: number): void {
+    this.noise(0, 0.045, 0.35 * strength, 900)
+    this.tone(95, 0, 0.06, 'triangle', 0.22 * strength, 60)
+    this.tone(1240, 0.005, 0.03, 'sine', 0.03 * strength)
+  }
+
+  /** A turbo's blow-off valve: a hiss that falls in pitch. */
+  private blowOff(): void {
+    const ctx = this.ctx!
+    const t = ctx.currentTime + 0.02
+    const length = 0.32
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * length), ctx.sampleRate)
+    const data = buffer.getChannelData(0)
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
+    const src = ctx.createBufferSource()
+    src.buffer = buffer
+    const band = ctx.createBiquadFilter()
+    band.type = 'bandpass'
+    band.Q.value = 2.5
+    band.frequency.setValueAtTime(3600, t)
+    band.frequency.exponentialRampToValueAtTime(900, t + length)
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(0.35, t + 0.02)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + length)
+    src.connect(band).connect(g).connect(this.master!)
+    src.start(t)
+  }
+
+  /** A deep exhaust blat from a big engine. */
+  private blat(start: number, strength: number): void {
+    this.noise(start, 0.09, 0.5 * strength, 320)
+    this.tone(52, start, 0.12, 'sawtooth', 0.22 * strength, 38)
   }
 
   private tone(freq: number, start: number, length: number, type: OscillatorType, gain: number, slideTo?: number): void {

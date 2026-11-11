@@ -187,3 +187,12 @@ the left), and resetting all progress. All sound is synthesised in the game;
 there are no audio files. Each vehicle has its own engine; the Scrambler is a
 single-cylinder two-stroke built from exhaust pulses, with pops and bangs when
 the gas is let go at high revs, and the Hauler a rumbling cross-plane V8 built the same way.
+
+**Gears.** Every vehicle has a gearbox (Runabout 4, Scrambler 5, Hauler 4), mostly for sound
+and feel: the engine note climbs through each gear and drops on the shift, with a clunk and
+each vehicle's own shift sound (the Runabout's turbo blow-off, the Scrambler's exhaust crack,
+the Hauler's deep blat). Held flat out in the air, it bounces off the rev limiter. On screen, a
+rev gauge shows the gear, which pops on a shift; the exhaust spits flame and the rider rocks
+back. The only effect on driving is a brief, partial torque cut while shifting (0.08 to 0.25 s),
+which costs about 1% on stage times. Shifts are decided from smoothed wheel speed, never in the
+air, and at least 0.7 s apart, so the box does not hunt over bumps.

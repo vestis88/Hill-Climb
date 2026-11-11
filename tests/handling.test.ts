@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runabout, scrambler, scramblerFull } from '../src/data/vehicles'
+import { runabout, scrambler, scramblerFull, VEHICLES } from '../src/data/vehicles'
 import { flat, testHills } from '../src/sim/terrain'
 import type { Input } from '../src/sim/types'
 import { Sim, STEP } from '../src/sim/world'
@@ -260,4 +260,37 @@ describe('scrambler back-wheel landings (owner: land balanced to keep the wheeli
     expect(r.landedAt).toBeGreaterThan(0)
     expect(r.frontDown).toBeGreaterThan(1.5)
   })
+})
+
+describe('gearbox (sound and feel; owner: minimal effect on performance)', () => {
+  for (const entry of VEHICLES) {
+    it(`${entry.name}: shifts up through the gears on flat ground, without hunting`, () => {
+      const v = entry.full
+      const sim = new Sim({ vehicle: v, height: flat, gravity: 9 })
+      const shifts: number[] = []
+      let gear = 1
+      let shiftingSteps = 0
+      for (let i = 0; i < 900; i++) {
+        const a = sim.state().chassis.angle
+        sim.step({ gas: a < 0.3, brake: false })
+        const s = sim.state()
+        if (s.shifting) shiftingSteps++
+        if (s.gear !== gear) {
+          shifts.push(i)
+          gear = s.gear
+        }
+      }
+      expect(gear).toBe(v.engine.gearbox!.gears)
+      for (let k = 1; k < shifts.length; k++) expect(shifts[k] - shifts[k - 1]).toBeGreaterThan(40)
+      expect(shiftingSteps).toBeGreaterThan(0)
+      // The brief torque cuts cost little: within 3% of the distance covered without a gearbox.
+      const ground = (spec: typeof v) => {
+        const sim2 = new Sim({ vehicle: spec, height: flat, gravity: 9 })
+        for (let i = 0; i < 900; i++) sim2.step({ gas: sim2.state().chassis.angle < 0.3, brake: false })
+        return sim2.state().chassis.x
+      }
+      const without = { ...v, engine: { ...v.engine, gearbox: undefined } }
+      expect(sim.state().chassis.x).toBeGreaterThan(ground(without) * 0.97)
+    })
+  }
 })

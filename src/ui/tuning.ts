@@ -68,7 +68,7 @@ interface Field {
   set(v: VehicleSpec, value: number): void
 }
 
-const eng = (key: keyof VehicleSpec['engine'], label: string, min: number, max: number, step: number): Field => ({
+const eng = (key: Exclude<keyof VehicleSpec['engine'], 'gearbox'>, label: string, min: number, max: number, step: number): Field => ({
   label, min, max, step,
   get: (v) => v.engine[key],
   set: (v, x) => (v.engine[key] = x),

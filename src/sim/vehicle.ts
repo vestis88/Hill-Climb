@@ -49,6 +49,51 @@ export class Vehicle {
     }
   }
 
+  /** Gear engaged, and steps left of the shift under way (drive is cut while shifting). */
+  gear = 1
+  private shiftSteps = 0
+  /** Steps since the last shift, and wheel speed smoothed over about a quarter second. */
+  private sinceShift = 0
+  private smoothRpm = 0
+
+  get shifting(): boolean {
+    return this.shiftSteps > 0
+  }
+
+  /** Engine revs in the current gear, 0..1 (wheel speed without a gearbox). */
+  revs(): number {
+    const box = this.spec.engine.gearbox
+    if (!box) return this.rpm()
+    return Math.min(1, this.rpm() / gearTop(this.gear, box.gears))
+  }
+
+  /**
+   * Shift up near the top of a gear on the gas, and down when revs sag. Decided from smoothed
+   * wheel speed, never in the air, and at least 0.7 s apart (sooner only to save a stall), so
+   * bumps and wheel spin do not make it hunt. Call once per step.
+   */
+  private updateGearbox(gas: boolean, grounded: boolean): void {
+    const box = this.spec.engine.gearbox
+    if (!box) return
+    this.smoothRpm += (this.rpm() - this.smoothRpm) * 0.07
+    this.sinceShift++
+    if (this.shiftSteps > 0) {
+      this.shiftSteps--
+      return
+    }
+    if (!grounded) return
+    const revs = this.smoothRpm / gearTop(this.gear, box.gears)
+    const settled = this.sinceShift > 42
+    if (gas && settled && revs > 0.93 && this.gear < box.gears) {
+      this.gear++
+      this.shiftSteps = Math.round(box.shiftTime * 60)
+      this.sinceShift = 0
+    } else if (this.gear > 1 && ((settled && revs < 0.4) || revs < 0.2)) {
+      this.gear--
+      this.sinceShift = 0
+    }
+  }
+
   /** Steps left in which a fresh back-wheel landing limits the rider's wheelie control. */
   private landingSteps = 0
   private wasAirborne = false
@@ -88,7 +133,10 @@ export class Vehicle {
     // never locks the wheels at an exact speed.
     const t = Math.min(1, Math.max(0, (1 - rpm) / TAPER))
     const taper = t * t * (3 - 2 * t)
-    const driveTorque = engine.maxTorque * (1 - engine.torqueFalloff * rpm * rpm) * taper
+    this.updateGearbox(input.gas && !input.brake, this.wheelContacts().some(Boolean))
+    // While shifting, the drive is briefly cut.
+    const shiftCut = this.shiftSteps > 0 && engine.gearbox ? engine.gearbox.cut : 1
+    const driveTorque = engine.maxTorque * (1 - engine.torqueFalloff * rpm * rpm) * taper * shiftCut
 
     const contacts = this.wheelContacts()
     const axleCount = { rear: 0, front: 0 }
@@ -247,6 +295,9 @@ export class Vehicle {
 
 /** Share of the speed range, below top speed, over which engine power fades out. */
 const TAPER = 0.4
+
+/** Share of top wheel speed at which a gear tops out: lower gears are shorter. */
+export const gearTop = (gear: number, gears: number) => Math.pow(gear / gears, 0.75)
 
 /** Override a body's mass and centre of mass, scaling its rotational inertia to match. */
 function setMass(body: Body, mass: number, center: { x: number; y: number }, inertiaScale = 1): void {

@@ -26,10 +26,10 @@ const topSpeed = (v: VehicleSpec) => {
   return sim.state().speed
 }
 
-/** Metres to stop from top speed after 4 s of gas, braking on flat ground. */
+/** Metres to stop from 7 m/s (or the best speed reached in 10 s), braking on flat ground. */
 const brakingDistance = (v: VehicleSpec) => {
   const sim = new Sim({ vehicle: v, height: flat })
-  for (let i = 0; i < 240; i++) sim.step(rider(sim))
+  for (let i = 0; i < 600 && sim.state().speed < 7; i++) sim.step(rider(sim))
   const x0 = sim.state().chassis.x
   for (let i = 0; i < 600 && sim.state().speed > 0.2; i++) sim.step({ gas: false, brake: true })
   return sim.state().chassis.x - x0
