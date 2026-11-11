@@ -56,7 +56,10 @@ export interface View {
 const FONT = "ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif"
 
 /** Mud, dust or snow on the tyres, per environment. */
-const GRIME: Record<string, string> = { meadow: 'rgba(110, 76, 44, 0.9)', crater: 'rgba(190, 190, 200, 0.85)', frost: 'rgba(255, 255, 255, 0.95)' }
+const GRIME: Record<string, string> = {
+  meadow: 'rgba(110, 76, 44, 0.9)', crater: 'rgba(190, 190, 200, 0.85)', frost: 'rgba(255, 255, 255, 0.95)',
+  dunes: 'rgba(232, 200, 143, 0.9)', canyon: 'rgba(190, 100, 60, 0.9)', woods: 'rgba(70, 48, 30, 0.95)',
+}
 
 /** Draws the game. Visual only: it reads simulation state and never changes it. */
 export class GameRenderer {

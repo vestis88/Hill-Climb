@@ -140,6 +140,8 @@
       .rows.scores .empty { display: block; opacity: 0.7; text-align: center; border: 0; }
       .rows.standings div { padding: 6px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); }
       .players { flex-wrap: nowrap; }
+      /* Maps in rows of three (six maps: two even rows). */
+      .choices.envs { grid-template-columns: repeat(3, 1fr); }
       .modebar { width: 100%; max-width: 900px; display: flex; align-items: center; gap: 10px; margin-bottom: -4px; }
       .modebar .label { width: auto; margin: 0; }
       .racetime { font-size: 26px; font-weight: 900; font-variant-numeric: tabular-nums; }
@@ -152,7 +154,7 @@
       #tune label { display: grid; grid-template-columns: 1fr 60px; gap: 2px 8px; font-size: 13px; }
       #tune input[type=range] { grid-column: 1 / -1; width: 100%; }
       #tune textarea { width: 100%; height: 120px; font: 11px ui-monospace, monospace; }
-      .seg { display: inline-flex; border-radius: 10px; overflow: hidden; }
+      .seg { display: inline-flex; flex-wrap: wrap; justify-content: center; border-radius: 10px; overflow: hidden; }
       .seg button { border: 0; padding: 8px 12px; font: 700 13px ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif; background: rgba(255, 255, 255, 0.12); color: #fff; }
       .seg button.on { background: #2f80ed; }
       /* Landscape phones (every iPhone is under 500 points tall in landscape; the smallest iPad

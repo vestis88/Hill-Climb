@@ -43,7 +43,7 @@ interface Layer {
   colour: string
   shade: string
   snow?: { colour: string; depth: number; line: number }
-  trees?: { kind: 'round' | 'pine' | 'rock' | 'snowpine'; colour: string; light: string; density: number; size: number }
+  trees?: { kind: 'round' | 'pine' | 'rock' | 'snowpine' | 'cactus'; colour: string; light: string; density: number; size: number }
 }
 
 interface Theme {
@@ -51,6 +51,8 @@ interface Theme {
   sun: { colour: string; glow: string; x: number; y: number; r: number } | null
   clouds: { light: string; shade: string } | null
   stars: boolean
+  /** A ringed planet hangs in the sky (Crater Fields). */
+  planet?: boolean
   /** Animated life in the sky. */
   birds?: boolean
   shootingStars?: boolean
@@ -88,6 +90,7 @@ const THEMES: Record<string, Theme> = {
     sun: null,
     clouds: null,
     stars: true,
+    planet: true,
     shootingStars: true,
     foreground: { colour: '#26243a', kind: 'rocks' },
     layers: [
@@ -120,6 +123,62 @@ const THEMES: Record<string, Theme> = {
   },
 }
 
+THEMES.dunes = {
+  // Golden afternoon over the desert: clear sky, a big hot sun, mesas on the horizon.
+  sky: ['#3d8fd6', '#9fcde9', '#f9dca6'],
+  sun: { colour: '#fffbe6', glow: 'rgba(255, 236, 170, 0.7)', x: 0.7, y: 0.18, r: 0.075 },
+  clouds: null,
+  stars: false,
+  birds: true,
+  foreground: { colour: '#b07a4a', kind: 'rocks' },
+  layers: [
+    { speed: 3, base: 0.62, height: 0.26, shape: 'mountain', scale: 170, colour: '#d99a6c', shade: '#c4855a' },
+    { speed: 9, base: 0.7, height: 0.16, shape: 'hill', scale: 260, colour: '#e8bf84', shade: '#d9ac6f', trees: { kind: 'cactus', colour: '#5f8f4a', light: '#7aa85f', density: 0.22, size: 11 } },
+    { speed: 20, base: 0.8, height: 0.14, shape: 'hill', scale: 220, colour: '#f0cd8f', shade: '#e3bb78', trees: { kind: 'cactus', colour: '#4f7f3c', light: '#6c9a52', density: 0.28, size: 17 } },
+  ],
+  haze: 'rgba(255, 230, 190, 0.4)',
+  ground: { top: '#d9a864', deep: '#9c6a3a', specks: ['#e6b977', '#b98348', '#f2cb8c'], stone: '#c08f5a', stoneDark: '#8c5f34' },
+  surface: { kind: 'dust', main: '#f1d29a', dark: '#d6b075', light: '#fbe6bd' },
+  dust: '#e8c88f',
+}
+
+THEMES.canyon = {
+  // Late afternoon in a red canyon: tall cliffs, warm light low in the west.
+  sky: ['#4f86c9', '#e9b48a', '#f6d2a8'],
+  sun: { colour: '#fff1d6', glow: 'rgba(255, 196, 140, 0.6)', x: 0.22, y: 0.32, r: 0.06 },
+  clouds: { light: '#fff3e6', shade: '#f0cdb6' },
+  stars: false,
+  birds: true,
+  foreground: { colour: '#6e2f1c', kind: 'rocks' },
+  layers: [
+    { speed: 3, base: 0.6, height: 0.46, shape: 'mountain', scale: 95, colour: '#b5583a', shade: '#9a4630' },
+    { speed: 9, base: 0.7, height: 0.2, shape: 'mountain', scale: 140, colour: '#c9714a', shade: '#b4603c', trees: { kind: 'rock', colour: '#a85636', light: '#d98a5f', density: 0.35, size: 10 } },
+    { speed: 20, base: 0.8, height: 0.14, shape: 'hill', scale: 150, colour: '#d98757', shade: '#c77548', trees: { kind: 'rock', colour: '#a14f2f', light: '#e09466', density: 0.45, size: 15 } },
+  ],
+  haze: 'rgba(255, 210, 170, 0.35)',
+  ground: { top: '#b9653f', deep: '#6e3320', specks: ['#c97549', '#8d4426', '#da8a5c'], stone: '#c27a52', stoneDark: '#7c3c22' },
+  surface: { kind: 'dust', main: '#d9875a', dark: '#b8673f', light: '#eaa77c' },
+  dust: '#d98d62',
+}
+
+THEMES.woods = {
+  // A moonlit night in the forest: stars, a big moon, fireflies drifting over the track.
+  sky: ['#0b1530', '#1f3560', '#3e5a7a'],
+  sun: { colour: '#f4f1dc', glow: 'rgba(210, 225, 255, 0.35)', x: 0.75, y: 0.2, r: 0.05 },
+  clouds: { light: '#3c5276', shade: '#2c3e5e' },
+  stars: true,
+  foreground: { colour: '#0c1c14', kind: 'grass' },
+  layers: [
+    { speed: 3, base: 0.62, height: 0.28, shape: 'hill', scale: 160, colour: '#1d2d4c', shade: '#17253f', trees: { kind: 'pine', colour: '#15233c', light: '#1d2f4d', density: 0.7, size: 12 } },
+    { speed: 9, base: 0.7, height: 0.2, shape: 'hill', scale: 200, colour: '#20374f', shade: '#1a2e44', trees: { kind: 'pine', colour: '#152a3c', light: '#1f3a52', density: 0.75, size: 17 } },
+    { speed: 20, base: 0.8, height: 0.15, shape: 'hill', scale: 170, colour: '#22403a', shade: '#1b3530', trees: { kind: 'pine', colour: '#132a22', light: '#22463a', density: 0.7, size: 24 } },
+  ],
+  haze: 'rgba(80, 110, 150, 0.25)',
+  ground: { top: '#4a3424', deep: '#22160f', specks: ['#5a4030', '#2e1f14', '#6b4c36'], stone: '#5c4a3c', stoneDark: '#33261c' },
+  surface: { kind: 'grass', main: '#2f6a3a', dark: '#21502b', light: '#4d8f52' },
+  dust: '#6b5340',
+}
+
 export const themeFor = (env: Environment) => THEMES[env.id] ?? THEMES.meadow
 
 // ---------------------------------------------------------------------------------------
@@ -141,6 +200,15 @@ function drawTreeShape(ctx: Ctx, kind: NonNullable<Layer['trees']>['kind'], x: n
     ctx.fillStyle = light
     ctx.beginPath()
     ctx.arc(x - size * 0.12, y - size * 0.8, size * 0.16, 0, Math.PI * 2)
+    ctx.fill()
+  } else if (kind === 'cactus') {
+    const wdt = size * 0.13
+    ctx.beginPath()
+    ctx.roundRect(x - wdt / 2, y - size * 0.95, wdt, size * 0.95, wdt / 2)
+    ctx.roundRect(x - size * 0.32, y - size * 0.62, wdt * 0.8, size * 0.3, wdt / 2)
+    ctx.roundRect(x - size * 0.32, y - size * 0.4, size * 0.3, wdt * 0.8, wdt / 2)
+    ctx.roundRect(x + size * 0.2, y - size * 0.75, wdt * 0.8, size * 0.32, wdt / 2)
+    ctx.roundRect(x + wdt * 0.3, y - size * 0.5, size * 0.22, wdt * 0.8, wdt / 2)
     ctx.fill()
   } else if (kind === 'pine' || kind === 'snowpine') {
     for (let k = 0; k < 3; k++) {
@@ -190,7 +258,7 @@ function drawStaticSky(ctx: Ctx, t: ReturnType<typeof themeFor>, w: number, h: n
   sky.addColorStop(1, t.sky[2])
   ctx.fillStyle = sky
   ctx.fillRect(0, 0, w, h)
-  if (t.stars) {
+  if (t.planet) {
     // A blue-green planet with a soft atmosphere and a thin ring.
     const px = w * 0.76
     const py = h * 0.22
@@ -270,7 +338,9 @@ export function drawBackdrop(ctx: Ctx, env: Environment, w: number, h: number, c
       const sx = (((hash01(i, 1) * w * 1.6 - camX * 1.5) % w) + w) % w
       const sy = hash01(i, 3) * h * 0.65
       // Not in front of the planet (in the cached sky).
-      if (Math.hypot(sx - w * 0.76, sy - h * 0.22) < unit * 0.12) continue
+      if (t.planet && Math.hypot(sx - w * 0.76, sy - h * 0.22) < unit * 0.12) continue
+      // Nor in front of the moon.
+      if (t.sun && Math.hypot(sx - w * t.sun.x, sy - h * t.sun.y) < unit * t.sun.r * 1.4) continue
       const twinkle = 0.55 + 0.45 * Math.sin(time * (1 + hash01(i, 4) * 2) + i)
       const r = hash01(i, 2) > 0.9 ? 1.6 : 0.9
       ctx.fillStyle = `rgba(255,255,255,${(0.3 + 0.6 * hash01(i, 5)) * twinkle})`
@@ -691,6 +761,21 @@ export function drawProps(ctx: Ctx, env: Environment, height: HeightFn, left: nu
       else if (kind < 0.75) crystals(ctx)
       else if (kind < 0.88) beacon(ctx)
       else boulder(ctx, '#6a6876', '#8a8896')
+    } else if (env.id === 'dunes') {
+      if (kind < 0.4) cactus(ctx)
+      else if (kind < 0.6) boulder(ctx, '#c08f5a', '#e0b27a')
+      else if (kind < 0.8) tumbleweed(ctx)
+      else bones(ctx)
+    } else if (env.id === 'canyon') {
+      if (kind < 0.5) boulder(ctx, '#a85636', '#d98a5f')
+      else if (kind < 0.7) boulder(ctx, '#8d4426', '#c27a52')
+      else if (kind < 0.88) cactus(ctx)
+      else signpost(ctx)
+    } else if (env.id === 'woods') {
+      if (kind < 0.45) pineTree(ctx, '#1d3a2c', '#2a5040', false)
+      else if (kind < 0.7) mushrooms(ctx, i)
+      else if (kind < 0.88) log(ctx)
+      else boulder(ctx, '#4a4440', '#6a625a')
     } else {
       if (kind < 0.5) pineTree(ctx, '#3d5f78', '#4f7590', true)
       else if (kind < 0.7) boulder(ctx, '#8ea2b6', '#ffffff')
@@ -699,6 +784,101 @@ export function drawProps(ctx: Ctx, env: Environment, height: HeightFn, left: nu
     }
     ctx.restore()
   }
+}
+
+function cactus(ctx: Ctx): void {
+  const arm = (x: number, y: number, w: number, h: number) => {
+    ctx.beginPath()
+    ctx.roundRect(x, y, w, h, Math.min(w, h) / 2)
+    outlineFill(ctx, '#5f9a4a')
+  }
+  arm(-0.45, 0.9, 0.18, 0.75)
+  arm(-0.45, 0.85, 0.42, 0.18)
+  arm(0.27, 1.2, 0.18, 0.65)
+  arm(0.05, 1.15, 0.4, 0.18)
+  arm(-0.14, 0, 0.28, 2.1)
+  ctx.strokeStyle = 'rgba(30, 60, 20, 0.5)'
+  ctx.lineWidth = 0.03
+  ctx.beginPath()
+  ctx.moveTo(0, 0.1)
+  ctx.lineTo(0, 2)
+  ctx.stroke()
+}
+
+function tumbleweed(ctx: Ctx): void {
+  ctx.strokeStyle = '#9c7444'
+  ctx.lineWidth = 0.05
+  for (let k = 0; k < 7; k++) {
+    ctx.beginPath()
+    ctx.ellipse(0, 0.45, 0.45, 0.4, (k * Math.PI) / 7, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+}
+
+function bones(ctx: Ctx): void {
+  ctx.fillStyle = '#f3ead6'
+  ctx.strokeStyle = OUTLINE
+  ctx.lineWidth = 0.04
+  ctx.beginPath()
+  ctx.ellipse(0, 0.22, 0.32, 0.22, 0, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.stroke()
+  ctx.fillStyle = OUTLINE
+  for (const dx of [-0.12, 0.12]) {
+    ctx.beginPath()
+    ctx.arc(dx, 0.26, 0.06, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.fillStyle = '#f3ead6'
+  ctx.beginPath()
+  ctx.roundRect(0.35, 0.05, 0.6, 0.1, 0.05)
+  ctx.fill()
+  ctx.stroke()
+}
+
+function signpost(ctx: Ctx): void {
+  ctx.beginPath()
+  ctx.rect(-0.06, 0, 0.12, 1.4)
+  outlineFill(ctx, '#7a5232')
+  ctx.beginPath()
+  ctx.moveTo(-0.5, 1.1)
+  ctx.lineTo(0.5, 1.1)
+  ctx.lineTo(0.7, 1.25)
+  ctx.lineTo(0.5, 1.4)
+  ctx.lineTo(-0.5, 1.4)
+  ctx.closePath()
+  outlineFill(ctx, '#c79a62')
+}
+
+/** Little glowing mushrooms (the woods at night). */
+function mushrooms(ctx: Ctx, seed: number): void {
+  for (let k = 0; k < 3; k++) {
+    const x = (k - 1) * 0.35 + (hash01(seed, k) - 0.5) * 0.1
+    const h = 0.25 + 0.25 * hash01(seed, k + 5)
+    ctx.beginPath()
+    ctx.rect(x - 0.04, 0, 0.08, h)
+    outlineFill(ctx, '#e8e0cc')
+    const glow = ctx.createRadialGradient(x, h, 0, x, h, 0.5)
+    glow.addColorStop(0, 'rgba(120, 230, 255, 0.45)')
+    glow.addColorStop(1, 'rgba(120, 230, 255, 0)')
+    ctx.fillStyle = glow
+    ctx.fillRect(x - 0.5, h - 0.5, 1, 1)
+    ctx.beginPath()
+    ctx.ellipse(x, h, 0.16, 0.1, 0, Math.PI, 0, true)
+    outlineFill(ctx, '#5fd0e8')
+  }
+}
+
+function log(ctx: Ctx): void {
+  ctx.beginPath()
+  ctx.roundRect(-0.9, 0, 1.8, 0.38, 0.19)
+  outlineFill(ctx, '#5a3c26')
+  ctx.beginPath()
+  ctx.ellipse(0.9, 0.19, 0.1, 0.19, 0, 0, Math.PI * 2)
+  outlineFill(ctx, '#a07a52')
+  ctx.beginPath()
+  ctx.ellipse(-0.3, 0.38, 0.12, 0.05, 0, Math.PI, 0)
+  outlineFill(ctx, '#3f8f3c')
 }
 
 function roundTree(ctx: Ctx): void {
@@ -921,6 +1101,8 @@ function iceSpikes(ctx: Ctx): void {
 
 /** Falling snow in Frost Pass, in screen space. */
 export function drawWeather(ctx: Ctx, env: Environment, w: number, h: number, camX: number, time: number): void {
+  if (env.id === 'woods') return drawFireflies(ctx, w, h, camX, time)
+  if (env.id === 'dunes') return drawBlowingSand(ctx, w, h, camX, time)
   if (env.id !== 'frost') return
   for (let i = 0; i < 80; i++) {
     const near = hash01(i, 15) > 0.7
@@ -930,5 +1112,33 @@ export function drawWeather(ctx: Ctx, env: Environment, w: number, h: number, ca
     ctx.beginPath()
     ctx.arc(x, y, near ? 2.6 : 1.4 + hash01(i, 14), 0, Math.PI * 2)
     ctx.fill()
+  }
+}
+
+/** Fireflies drifting over the woods, pulsing softly. */
+function drawFireflies(ctx: Ctx, w: number, h: number, camX: number, time: number): void {
+  for (let i = 0; i < 26; i++) {
+    const x = (((hash01(i, 31) * w * 1.4 - camX * 22 + Math.sin(time * 0.7 + i) * 30) % w) + w) % w
+    const y = h * (0.35 + 0.5 * hash01(i, 32)) + Math.sin(time * 1.1 + i * 2) * 18
+    const pulse = 0.35 + 0.65 * Math.max(0, Math.sin(time * (1.5 + hash01(i, 33)) + i * 1.7))
+    const g = ctx.createRadialGradient(x, y, 0, x, y, 10)
+    g.addColorStop(0, `rgba(230, 255, 140, ${0.9 * pulse})`)
+    g.addColorStop(1, 'rgba(230, 255, 140, 0)')
+    ctx.fillStyle = g
+    ctx.fillRect(x - 10, y - 10, 20, 20)
+  }
+}
+
+/** Fine sand blowing low across the dunes. */
+function drawBlowingSand(ctx: Ctx, w: number, h: number, camX: number, time: number): void {
+  ctx.strokeStyle = 'rgba(255, 236, 200, 0.35)'
+  ctx.lineWidth = 1.5
+  for (let i = 0; i < 24; i++) {
+    const x = (((hash01(i, 41) * w * 1.3 - camX * 40 - time * (120 + 80 * hash01(i, 42))) % (w + 80)) + w + 80) % (w + 80) - 40
+    const y = h * (0.6 + 0.35 * hash01(i, 43)) + Math.sin(time * 2 + i) * 4
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.lineTo(x + 18 + 22 * hash01(i, 44), y - 2)
+    ctx.stroke()
   }
 }
