@@ -109,8 +109,9 @@
       .seg { display: inline-flex; border-radius: 10px; overflow: hidden; }
       .seg button { border: 0; padding: 8px 12px; font: 700 13px -apple-system, system-ui, sans-serif; background: rgba(255, 255, 255, 0.12); color: #fff; }
       .seg button.on { background: #2f80ed; }
-      /* Landscape phones: keep vehicles and upgrade buttons on screen without scrolling. */
-      @media (max-height: 430px) {
+      /* Landscape phones (every iPhone is under 500 points tall in landscape; the smallest iPad
+         is 744): keep vehicles and upgrade buttons on screen without scrolling. */
+      @media (max-height: 500px) {
         .screen { gap: 6px; padding-top: max(10px, var(--safe-top)); padding-bottom: max(10px, var(--safe-bottom)); }
         .screen h1 { font-size: 21px; }
         .coins { font-size: 18px; }
