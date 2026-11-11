@@ -6,11 +6,13 @@ import { Sound } from './audio/sound'
 import { createInput } from './input/input'
 import { GameRenderer, type Popup } from './render/game'
 import { drawEnvironmentPreview, drawVehiclePreview } from './render/preview'
-import { emptySave, levelsFor, loadSave, writeSave } from './save/save'
+import { addScore, emptySave, levelsFor, loadSave, playerBest, writeSave } from './save/save'
+import { clearGhosts, GhostRecorder, GhostTrack, loadGhost, storeGhost } from './save/ghosts'
+import { PLAYERS, playerColour } from './data/players'
 import { Run } from './sim/run'
 import type { SimState } from './sim/types'
 import { STEP } from './sim/world'
-import { showGarage, showResults } from './ui/screens'
+import { showGarage, showResults, showScores, showStandings } from './ui/screens'
 import { loadSettings, saveSettings, showSettings } from './ui/settings'
 import { trackViewport, updateViewport } from './ui/viewport'
 import { loadTuning, showTuning, tuningEnabled, type DriveAs } from './ui/tuning'
@@ -20,6 +22,7 @@ const $ = (id: string) => document.getElementById(id) as HTMLElement
 const canvas = $('game') as HTMLCanvasElement
 const garageEl = $('garage')
 const resultsEl = $('results')
+const scoresEl = $('scores')
 const tuneEl = $('tune')
 const settingsEl = $('settings')
 const endRunBtn = $('endRun')
@@ -35,13 +38,28 @@ const save = loadSave()
 const tuning = loadTuning()
 let driveAs: DriveAs = 'mine'
 
-type Mode = 'garage' | 'driving' | 'ending' | 'results' | 'tuning' | 'settings'
+type Mode = 'garage' | 'driving' | 'ending' | 'results' | 'tuning' | 'settings' | 'scores'
 let mode: Mode = 'garage'
+/**
+ * A round: each ticked player drives once, in turn, on the same vehicle and track; then the
+ * standings. One player alone is a round of one.
+ */
+interface Round {
+  players: string[]
+  turn: number
+  results: { name: string; distance: number; newBest: boolean }[]
+}
+// Declared before the first run is created below, which reads them.
+let round: Round = { players: [...save.players], turn: 0, results: [] }
+/** Ghosts raced this run, and the recorder for this run's own ghost. */
+let ghosts: { label: string; colour: string; track: GhostTrack }[] = []
+let recorder = new GhostRecorder(2)
 let run = newRun()
 let prev: SimState = run.sim.state()
 let next: SimState = prev
 let popups: Popup[] = []
 let endTimer = 0
+
 
 // Function declarations, not arrow consts: the first run is created above, before this point.
 function owned(id: string, price: number): boolean {
@@ -53,6 +71,9 @@ function currentEnv() {
 }
 function currentVehicle() {
   return vehicleEntry(save.vehicleId)
+}
+function currentPlayer(): string {
+  return round.players[round.turn] ?? save.players[0] ?? PLAYERS[0].name
 }
 
 function vehicleSpec() {
@@ -72,7 +93,8 @@ function newRun(): Run {
     gravity: env.gravity,
     groundFriction: env.groundFriction,
     pickups: new PickupField(height, env.seed),
-    bestDistance: save.best[env.id] ?? 0,
+    // Distance bonuses count from this player's own best.
+    bestDistance: playerBest(save, currentPlayer(), env.id),
   })
 }
 
@@ -80,6 +102,7 @@ function show(m: Mode): void {
   mode = m
   garageEl.classList.toggle('hidden', m !== 'garage')
   resultsEl.classList.toggle('hidden', m !== 'results')
+  scoresEl.classList.toggle('hidden', m !== 'scores')
   tuneEl.classList.toggle('hidden', m !== 'tuning')
   settingsEl.classList.toggle('hidden', m !== 'settings')
   endRunBtn.classList.toggle('hidden', m !== 'driving')
@@ -108,12 +131,38 @@ function openGarage(justBought?: UpgradeId): void {
     tuning: tuningEnabled(),
     testMode: tuningEnabled(),
     onBuy: buy,
-    onDrive: startRun,
+    players: PLAYERS.map((p) => ({ name: p.name, colour: p.colour, on: save.players.includes(p.name) })),
+    onTogglePlayer: togglePlayer,
+    onScores: () => openScores(currentEnv().id),
+    onDrive: startRound,
     onTune: openTuning,
     onSettings: openSettings,
     justBought,
   })
   show('garage')
+}
+
+/** Tick or untick a player for the next round; turns go in the PLAYERS order. */
+function togglePlayer(name: string): void {
+  const on = new Set(save.players)
+  if (on.has(name)) on.delete(name)
+  else on.add(name)
+  save.players = PLAYERS.map((p) => p.name).filter((n) => on.has(n))
+  writeSave(save)
+  openGarage()
+}
+
+function openScores(envId: string): void {
+  const env = environment(envId)
+  showScores(scoresEl, {
+    tracks: ENVIRONMENTS.map((e) => ({ id: e.id, name: e.name })),
+    track: env.id,
+    rows: save.scores.filter((s) => s.env === env.id).map((s) => ({ name: s.name, colour: playerColour(s.name), vehicle: vehicleEntry(s.vehicle).name, distance: s.distance })),
+    bests: PLAYERS.map((p) => ({ name: p.name, colour: p.colour, distance: playerBest(save, p.name, env.id) })),
+    onTrack: openScores,
+    onBack: () => openGarage(),
+  })
+  show('scores')
 }
 
 /** Select a vehicle or environment, buying it first if it is locked and affordable. */
@@ -157,6 +206,7 @@ function openSettings(): void {
     () => {
       Object.assign(save, emptySave())
       writeSave(save)
+      clearGhosts()
       run = newRun()
       prev = next = run.sim.state()
       renderer.resetCamera(next)
@@ -174,9 +224,40 @@ function openTuning(): void {
   show('tuning')
 }
 
+/** Start a round with the ticked players, first player first. */
+function startRound(): void {
+  if (!save.players.length) return
+  round = { players: [...save.players], turn: 0, results: [] }
+  startRun()
+}
+
+/**
+ * Ghosts for this turn: the player's own best and last runs on this track, and the best run of
+ * the others in the round.
+ */
+function pickGhosts(): void {
+  const env = currentEnv().id
+  const me = currentPlayer()
+  ghosts = []
+  const add = (g: ReturnType<typeof loadGhost>, label: string) => {
+    if (g && g.data.length) ghosts.push({ label, colour: playerColour(g.player), track: new GhostTrack(g) })
+  }
+  const best = loadGhost(me, env, 'best')
+  const last = loadGhost(me, env, 'last')
+  add(best, `${me} best`)
+  // The last run is often the best one too; show it once.
+  if (last && !(best && last.distance === best.distance && last.data.length === best.data.length)) add(last, `${me} last`)
+  const others = round.players.filter((p) => p !== me).map((p) => loadGhost(p, env, 'best')).filter((g) => g !== null)
+  const top = others.sort((a, b) => b.distance - a.distance)[0]
+  if (top) add(top, `${top.player} best`)
+}
+
 function startRun(): void {
   sound.setVehicle(currentVehicle().id)
   run = newRun()
+  pickGhosts()
+  recorder = new GhostRecorder(run.options.vehicle.wheels.length)
+  recorder.sample(run.sim.state())
   prev = next = run.sim.state()
   popups = []
   renderer.resetCamera(next)
@@ -188,10 +269,17 @@ function finishRun(): void {
   const total = run.totalCoins
   const distance = run.endDistance ?? next.distance
   const envId = currentEnv().id
-  const best = save.best[envId] ?? 0
+  const me = currentPlayer()
+  const best = playerBest(save, me, envId)
   save.coins += total
-  save.best[envId] = Math.max(best, distance)
+  save.best[envId] = Math.max(save.best[envId] ?? 0, distance)
+  save.playerBest[me] = { ...save.playerBest[me], [envId]: Math.max(best, distance) }
+  addScore(save, { name: me, vehicle: currentVehicle().id, env: envId, distance })
   writeSave(save)
+  // Keep this run as the player's last ghost (and best, if it went further). Not in test drives.
+  if (driveAs === 'mine' && distance > 1) storeGhost(recorder.finish({ player: me, vehicle: currentVehicle().id, env: envId, distance }))
+  round.results.push({ name: me, distance, newBest: distance > best })
+  const nextPlayer = round.players[round.turn + 1]
   showResults(resultsEl, {
     status: run.status === 'running' ? 'ended' : run.status,
     distance,
@@ -199,8 +287,28 @@ function finishRun(): void {
     coins: run.coins,
     total,
     bank: save.coins,
+    player: { name: me, colour: playerColour(me) },
+    next: nextPlayer,
+    roundOver: !nextPlayer && round.players.length > 1,
     onGarage: openGarage,
-    onAgain: startRun,
+    onAgain: startRound,
+    onNext: () => {
+      round.turn++
+      startRun()
+    },
+    onStandings: openStandings,
+  })
+  show('results')
+}
+
+/** The round's results, furthest first; then back to the garage or another round. */
+function openStandings(): void {
+  showStandings(resultsEl, {
+    track: currentEnv().name,
+    vehicle: currentVehicle().name,
+    rows: [...round.results].sort((a, b) => b.distance - a.distance).map((r) => ({ ...r, colour: playerColour(r.name) })),
+    onHome: () => openGarage(),
+    onAgain: startRound,
   })
   show('results')
 }
@@ -208,7 +316,7 @@ function finishRun(): void {
 endRunBtn.addEventListener('click', finishRun)
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyR' && mode === 'driving') startRun()
-  if ((e.code === 'Enter' || e.code === 'Space') && (mode === 'garage' || mode === 'results')) startRun()
+  if ((e.code === 'Enter' || e.code === 'Space') && mode === 'garage') startRound()
 })
 // Bank the run's coins if the page is closed or hidden mid-run.
 document.addEventListener('visibilitychange', () => {
@@ -268,6 +376,7 @@ function frame(now: number): void {
       prev = next
       run.step(controls.input)
       next = run.sim.state()
+      if (run.status === 'running') recorder.sample(next)
       handleEvents()
       accumulator -= STEP
     }
@@ -302,9 +411,21 @@ function frame(now: number): void {
     showPedals: mode === 'driving',
     swapPedals: settings.swapPedals,
     driver: { lean: run.sway.lean, ragdoll: run.ragdoll?.poses() ?? null },
+    player: mode === 'driving' || mode === 'ending' ? { name: currentPlayer(), colour: playerColour(currentPlayer()) } : undefined,
+    ghosts: mode === 'driving' || mode === 'ending' ? ghostPoses() : [],
     showHud: mode === 'driving' || mode === 'ending' || mode === 'results',
   })
   requestAnimationFrame(frame)
+}
+
+/** Where each raced ghost is at this moment of the run. */
+function ghostPoses() {
+  const alpha = accumulator / STEP
+  const t = Math.max(0, (run.sim.steps - 1 + alpha) * STEP)
+  return ghosts.flatMap((g) => {
+    const pose = g.track.at(t)
+    return pose && pose.fade > 0 ? [{ label: g.label, colour: g.colour, spec: vehicleEntry(g.track.ghost.vehicle).base, pose }] : []
+  })
 }
 
 // Offline play and home-screen install (published builds only).

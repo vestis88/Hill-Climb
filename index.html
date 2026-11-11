@@ -113,6 +113,34 @@
       .coin { color: #ffd23f; }
       .badge { font-size: 11px; vertical-align: middle; padding: 3px 7px; border-radius: 6px; background: #e5383b; letter-spacing: 0.5px; }
       .newbest { color: #3fbf5f; font-weight: 800; }
+      /* Players: tick who plays the round. Each has a colour for their name and ghost. */
+      .players { display: flex; gap: 6px; flex-wrap: wrap; }
+      button.player {
+        border: 2px solid rgba(255, 255, 255, 0.25); border-radius: 999px; padding: 6px 12px 6px 6px; color: #fff;
+        background: rgba(255, 255, 255, 0.08); display: inline-flex; align-items: center; gap: 6px;
+        font: 800 15px ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif;
+      }
+      button.player .tick {
+        width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--c); display: inline-grid; place-items: center;
+        font-size: 13px; line-height: 1;
+      }
+      button.player.on { border-color: var(--c); background: color-mix(in srgb, var(--c) 28%, transparent); }
+      button.player.on .tick { background: var(--c); }
+      button.big:disabled { opacity: 0.45; }
+      .who { font-size: 18px; font-weight: 900; color: var(--c); }
+      .pname { color: var(--c); }
+      .rows.scores, .rows.standings { max-width: 460px; font-size: 17px; }
+      .rows.scores div { display: grid; grid-template-columns: 28px 1fr 1fr auto; gap: 8px; padding: 6px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+      .rows.scores .rank { opacity: 0.7; font-weight: 800; }
+      .rows.scores .veh { opacity: 0.8; }
+      .rows.scores .dist, .rows.standings span:last-child { font-weight: 800; }
+      .rows.scores .empty { display: block; opacity: 0.7; text-align: center; border: 0; }
+      .rows.standings div { padding: 6px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+      .players { flex-wrap: nowrap; }
+      .coins { white-space: nowrap; }
+      /* Narrow phones: the players and Drive matter more than the title. */
+      @media (max-width: 700px) { .bar h1 { display: none; } }
+      .bests { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; font-size: 14px; opacity: 0.9; }
       #tune { gap: 8px; align-items: stretch; }
       #tune .sliders { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px 16px; width: 100%; }
       #tune label { display: grid; grid-template-columns: 1fr 60px; gap: 2px 8px; font-size: 13px; }
@@ -130,6 +158,8 @@
         button.big { font-size: 17px; padding: 8px 26px; }
         .bar button.big { padding: 7px 24px; }
         .label { font-size: 11px; margin-bottom: -3px; }
+        button.player { font-size: 13px; padding: 3px 9px 3px 3px; gap: 4px; }
+        button.player .tick { width: 16px; height: 16px; font-size: 11px; }
         .cards, .choices { gap: 6px; }
         .card { padding: 6px 8px; gap: 3px; }
         .card .name { font-size: 14px; }
@@ -154,6 +184,7 @@
     <button id="endRun" class="hidden">End run</button>
     <div id="garage" class="screen hidden"></div>
     <div id="results" class="screen hidden"></div>
+    <div id="scores" class="screen hidden"></div>
     <div id="tune" class="screen hidden"></div>
     <div id="settings" class="screen hidden"></div>
     <div id="rotate">Rotate your device to landscape</div>

@@ -194,6 +194,7 @@ frame-time budget (60 fps on an iPhone 11, automatic resolution drop as the safe
 Not part of the first version; pick up once phases 1 to 4 are done.
 
 - Timed race mode on fixed-seed tracks with a finish line, racing your own best ghost (recorded inputs replayed deterministically).
+- (done) Players (Wille, Frans, Johan), rounds that take turns, ghost riders (own best and last, best of the round) and a highscore board per track. Ghosts record poses rather than inputs, so they survive physics changes.
 - More vehicles and environments beyond the first three of each.
 - Daily challenge: a date-seeded track with a personal best.
 - Vehicle tuning parts or perks as a second upgrade layer.

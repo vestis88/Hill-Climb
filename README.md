@@ -67,6 +67,24 @@ to ease off and balance the car in the air. Green Meadows has the most.
 - Crashing costs nothing except the run itself. There are no checkpoints:
   every run starts from the beginning of the track.
 
+### Players, rounds and ghosts
+
+- **Who plays:** tick Wille, Frans and/or Johan in the garage. Pressing Drive starts a round:
+  each ticked player drives once, in turn, on the vehicle and track picked in the garage. After
+  each run their results show with a big "Frans's turn" button to hand the iPad over; after the
+  last turn come the round's standings, then back to the garage.
+- **Shared garage:** coins, upgrades and unlocks are shared by everyone. Bests, ghosts and the
+  highscore board are per name, and distance bonuses count from each player's own best.
+- **Ghost riders:** every run is recorded (the vehicle's pose 15 times a second, about 50 KB
+  for two minutes) and stored on the device as that player's *last* run on that track, and as
+  their *best* when it went further. Each turn you race see-through ghosts with name tags: your
+  own best, your own last, and the best run of the others in the round. Ghosts replay poses,
+  not inputs, so they never affect the physics and still play back after a game update. If
+  the device's storage is full, last-run ghosts are dropped first. Resetting progress clears
+  ghosts too.
+- **Highscores** (garage): the top 10 runs per track, with name, vehicle and distance, plus
+  each player's best on that track.
+
 ### Progression principle
 
 **Every vehicle starts as the worst version of itself.** The base car is

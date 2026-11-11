@@ -1,6 +1,7 @@
 import type { Environment } from '../data/environments'
 import type { Pickup } from '../data/track'
 import type { HeightFn, Input, Pose, SimState, VehicleSpec } from '../sim/types'
+import type { GhostPose } from '../save/ghosts'
 import { drawHead, drawnHubs, drawPickup, drawVehicle, drawWheel, EXHAUST, OUTLINE, type Mood } from './art'
 import { Particles } from './particles'
 import { drawBackdrop, drawForeground, drawGround, drawProps, drawWeather, themeFor } from './scenery'
@@ -43,6 +44,10 @@ export interface View {
   showHud: boolean
   /** Driver lean while driving, or the ragdoll's body parts after a crash. */
   driver: { lean: number; ragdoll: { torso: Pose; head: Pose } | null }
+  /** Whose turn it is, shown by the distance. */
+  player?: { name: string; colour: string }
+  /** Ghost riders to race: a recorded pose, its vehicle and a name tag. */
+  ghosts: { label: string; colour: string; spec: VehicleSpec; pose: GhostPose }[]
 }
 
 const FONT = "ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif"
@@ -241,6 +246,7 @@ export class GameRenderer {
     for (const p of view.pickups) if (!p.taken && p.x > left - 1 && p.x < right + 1) drawPickup(ctx, p, this.time)
 
     this.effects(view, chassis)
+    this.drawGhosts(view)
     this.drawVehicle(view, chassis)
     this.particles.update(view.dt)
     this.particles.draw(ctx)
@@ -358,6 +364,56 @@ export class GameRenderer {
     }
     this.wasAirborne = next.airborne
     void chassis
+  }
+
+  /**
+   * Ghost riders: see-through vehicles from recorded runs, behind the player's, each with a
+   * name tag in its player's colour. Visual only; they never touch the physics.
+   */
+  private drawGhosts(view: View): void {
+    const { ctx } = this
+    for (const g of view.ghosts) {
+      const { chassis: c, hubs, wheelAngles, fade } = g.pose
+      const cos = Math.cos(c.angle)
+      const sin = Math.sin(c.angle)
+      ctx.save()
+      ctx.globalAlpha = 0.38 * fade
+      const drawn = drawnHubs(g.spec, hubs)
+      drawn.forEach(([hx, hy], i) => {
+        const r = g.spec.wheels[i]?.radius ?? 0.4
+        ctx.save()
+        ctx.translate(c.x + hx * cos - hy * sin, c.y + hx * sin + hy * cos)
+        ctx.rotate(wheelAngles[i])
+        drawWheel(ctx, r, { mx: g.spec.id === 'scrambler' })
+        ctx.restore()
+      })
+      ctx.translate(c.x, c.y)
+      ctx.rotate(c.angle)
+      drawVehicle(ctx, g.spec, 0, true, 'normal', drawn)
+      ctx.restore()
+      // Name tag above the ghost, upright whatever its angle.
+      const head = g.spec.driver.head
+      const tx = c.x + head.x * cos - (head.y + 0.55) * sin
+      const ty = c.y + head.x * sin + (head.y + 0.55) * cos
+      ctx.save()
+      ctx.translate(tx, ty)
+      ctx.scale(1 / (this.width / this.viewWidth), -1 / (this.width / this.viewWidth))
+      ctx.globalAlpha = 0.9 * fade
+      ctx.font = `800 13px ${FONT}`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      const w = ctx.measureText(g.label).width + 14
+      ctx.beginPath()
+      ctx.roundRect(-w / 2, -10, w, 20, 10)
+      ctx.fillStyle = 'rgba(16, 21, 28, 0.55)'
+      ctx.fill()
+      ctx.lineWidth = 2
+      ctx.strokeStyle = g.colour
+      ctx.stroke()
+      ctx.fillStyle = '#ffffff'
+      ctx.fillText(g.label, 0, 1)
+      ctx.restore()
+    }
   }
 
   private drawVehicle(view: View, chassis: Pose): void {
@@ -557,6 +613,11 @@ export class GameRenderer {
     ctx.textBaseline = 'top'
     ctx.textAlign = 'left'
     this.outlinedText(`${Math.floor(view.next.distance)} m`, x0, y0, 20)
+    if (view.player) {
+      ctx.font = `800 20px ${FONT}`
+      const dx = ctx.measureText(`${Math.floor(view.next.distance)} m`).width + 10
+      this.outlinedText(view.player.name, x0 + dx, y0 + 2, 17, view.player.colour)
+    }
 
     // Fuel gauge with a small can icon
     const gx = x0 + 22
