@@ -179,27 +179,18 @@ function drawTreeShape(ctx: Ctx, kind: NonNullable<Layer['trees']>['kind'], x: n
 }
 
 /** Sky, sun or stars and planet, clouds, and three parallax layers with haze between them. */
-export function drawBackdrop(ctx: Ctx, env: Environment, w: number, h: number, camX: number, camY: number, time: number): void {
-  const t = themeFor(env)
+/** Cached skies by environment and size (the game, plus the garage's small previews). */
+const skyCache = new Map<string, HTMLCanvasElement>()
+
+/** The parts of the sky that stay put on screen: gradient, planet (Crater Fields) and sun. */
+function drawStaticSky(ctx: Ctx, t: ReturnType<typeof themeFor>, w: number, h: number, unit: number): void {
   const sky = ctx.createLinearGradient(0, 0, 0, h)
   sky.addColorStop(0, t.sky[0])
   sky.addColorStop(0.55, t.sky[1])
   sky.addColorStop(1, t.sky[2])
   ctx.fillStyle = sky
   ctx.fillRect(0, 0, w, h)
-  const unit = Math.min(w, h)
-
   if (t.stars) {
-    for (let i = 0; i < 140; i++) {
-      const sx = (((hash01(i, 1) * w * 1.6 - camX * 1.5) % w) + w) % w
-      const sy = hash01(i, 3) * h * 0.65
-      const twinkle = 0.55 + 0.45 * Math.sin(time * (1 + hash01(i, 4) * 2) + i)
-      const r = hash01(i, 2) > 0.9 ? 1.6 : 0.9
-      ctx.fillStyle = `rgba(255,255,255,${(0.3 + 0.6 * hash01(i, 5)) * twinkle})`
-      ctx.beginPath()
-      ctx.arc(sx, sy, r, 0, Math.PI * 2)
-      ctx.fill()
-    }
     // A blue-green planet with a soft atmosphere and a thin ring.
     const px = w * 0.76
     const py = h * 0.22
@@ -249,6 +240,44 @@ export function drawBackdrop(ctx: Ctx, env: Environment, w: number, h: number, c
     ctx.beginPath()
     ctx.arc(sx, sy, sr, 0, Math.PI * 2)
     ctx.fill()
+  }
+}
+
+export function drawBackdrop(ctx: Ctx, env: Environment, w: number, h: number, camX: number, camY: number, time: number): void {
+  const t = themeFor(env)
+  const unit = Math.min(w, h)
+  // The sky gradient, sun and planet never move on screen: draw them once into an offscreen
+  // canvas per environment and screen size, then copy it each frame (much cheaper than
+  // filling full-screen gradients every frame, which dominated drawing on large screens).
+  const scale = ctx.getTransform().a || 1
+  const key = `${env.id}:${w}x${h}@${scale}`
+  let sky = skyCache.get(key)
+  if (!sky) {
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(w * scale))
+    canvas.height = Math.max(1, Math.round(h * scale))
+    const c = canvas.getContext('2d')!
+    c.scale(scale, scale)
+    drawStaticSky(c, t, w, h, unit)
+    if (skyCache.size > 6) skyCache.delete(skyCache.keys().next().value!)
+    skyCache.set(key, canvas)
+    sky = canvas
+  }
+  ctx.drawImage(sky, 0, 0, w, h)
+
+  if (t.stars) {
+    for (let i = 0; i < 140; i++) {
+      const sx = (((hash01(i, 1) * w * 1.6 - camX * 1.5) % w) + w) % w
+      const sy = hash01(i, 3) * h * 0.65
+      // Not in front of the planet (in the cached sky).
+      if (Math.hypot(sx - w * 0.76, sy - h * 0.22) < unit * 0.12) continue
+      const twinkle = 0.55 + 0.45 * Math.sin(time * (1 + hash01(i, 4) * 2) + i)
+      const r = hash01(i, 2) > 0.9 ? 1.6 : 0.9
+      ctx.fillStyle = `rgba(255,255,255,${(0.3 + 0.6 * hash01(i, 5)) * twinkle})`
+      ctx.beginPath()
+      ctx.arc(sx, sy, r, 0, Math.PI * 2)
+      ctx.fill()
+    }
   }
 
   if (t.clouds) {
