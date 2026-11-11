@@ -95,6 +95,19 @@ export interface TerrainParams {
   growPerKm: number
   /** ...up to this many times the starting size, so the track stays drivable for ever. */
   maxGrow: number
+  /** Kicker ramps that launch the car: a ramp steepening to a lip, then a drop. */
+  jumps?: {
+    /** One possible jump per this many metres... */
+    spacing: number
+    /** ...each present with this chance. */
+    chance: number
+    /** Lip height at the start, metres (grows with distance like the hills). */
+    height: number
+    /** Length of the ramp up to the lip, metres. */
+    ramp: number
+    /** No jumps before this distance. */
+    from: number
+  }
 }
 
 /** Seeded smooth noise in -1..1, a pure function of x: the same x always gives the same value. */
@@ -124,6 +137,25 @@ export function makeTerrain(p: TerrainParams, seed: number): HeightFn {
     const rolling = p.amplitude * (noise(d / w, seed) + 0.45 * noise(d / (w * 0.42), seed + 1))
     const crest = p.crests * Math.pow(Math.max(0, noise(d / (w * 0.8), seed + 2)), 3) * smoothstep(40, 140, d)
     const bumps = p.bumps * noise(d / 2.2, seed + 3) * smoothstep(60, 220, d)
-    return ease * (grow * (rolling + crest) + bumps)
+    return ease * (grow * (rolling + crest) + bumps) + kicker(p, seed, d, grow)
   }
+}
+
+/** Height added by a kicker ramp at distance d (0 away from jumps). */
+function kicker(p: TerrainParams, seed: number, d: number, grow: number): number {
+  const j = p.jumps
+  if (!j || d < j.from) return 0
+  const i = Math.floor(d / j.spacing)
+  if ((lattice(i, seed + 11) + 1) / 2 > j.chance) return 0
+  const drop = j.ramp * 0.55
+  // Place the jump inside its slot, clear of the slot edges.
+  const start = i * j.spacing + 4 + ((lattice(i, seed + 12) + 1) / 2) * (j.spacing - j.ramp - drop - 8)
+  const u = d - start
+  if (u <= 0 || u >= j.ramp + drop) return 0
+  const h = j.height * (0.75 + 0.5 * ((lattice(i, seed + 13) + 1) / 2)) * Math.sqrt(grow)
+  // Up: a curve that is flat at the foot and steepest at the lip, so it throws the car up.
+  if (u < j.ramp) return h * (u / j.ramp) ** 2
+  // Down: a quick smooth drop back to the ground.
+  const t = (u - j.ramp) / drop
+  return h * (1 - t * t * (3 - 2 * t))
 }

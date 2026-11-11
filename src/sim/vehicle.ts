@@ -67,7 +67,12 @@ export class Vehicle {
     const both = input.gas && input.brake
     // Drive torque fades towards top speed, so launches are punchy and the nose settles as speed builds.
     const rpm = this.rpm()
-    const driveTorque = engine.maxTorque * (1 - engine.torqueFalloff * rpm * rpm)
+    // Power also fades smoothly over the top of the speed range, so the car eases up to its
+    // top speed instead of hitting a hard limit; the motor aims a little above top speed so it
+    // never locks the wheels at an exact speed.
+    const t = Math.min(1, Math.max(0, (1 - rpm) / TAPER))
+    const taper = t * t * (3 - 2 * t)
+    const driveTorque = engine.maxTorque * (1 - engine.torqueFalloff * rpm * rpm) * taper
 
     const contacts = this.wheelContacts()
     const axleCount = { rear: 0, front: 0 }
@@ -82,7 +87,7 @@ export class Vehicle {
         joint.setMotorSpeed(0)
         joint.setMaxMotorTorque(engine.brakeTorque)
       } else if (gas && share > 0) {
-        joint.setMotorSpeed(-engine.maxWheelSpeed)
+        joint.setMotorSpeed(-engine.maxWheelSpeed * 1.15)
         joint.setMaxMotorTorque((driveTorque * share) / axleCount[w.axle])
       } else if (brake) {
         // Brakes act on every wheel, then pull the car into reverse.
@@ -146,6 +151,9 @@ export class Vehicle {
     this.world.destroyBody(this.chassis)
   }
 }
+
+/** Share of the speed range, below top speed, over which engine power fades out. */
+const TAPER = 0.4
 
 /** Override a body's mass and centre of mass, scaling its rotational inertia to match. */
 function setMass(body: Body, mass: number, center: { x: number; y: number }): void {

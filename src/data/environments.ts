@@ -24,7 +24,7 @@ export const ENVIRONMENTS: Environment[] = [
     gravity: 10,
     groundFriction: 0.9,
     seed: 11,
-    terrain: { flatStart: 15, amplitude: 3.0, wavelength: 38, crests: 2.8, bumps: 0.2, growPerKm: 1.0, maxGrow: 2.6 },
+    terrain: { flatStart: 15, amplitude: 3.0, wavelength: 38, crests: 2.8, bumps: 0.2, growPerKm: 1.0, maxGrow: 2.6, jumps: { spacing: 55, chance: 0.75, height: 1.3, ramp: 7, from: 45 } },
     palette: { skyTop: '#5fa8e8', skyBottom: '#bfe3f7', ground: '#6b4a2f', surface: '#4c9a3d', far: '#8fbfa0', near: '#5f9e63' },
   },
   {
@@ -35,7 +35,7 @@ export const ENVIRONMENTS: Environment[] = [
     gravity: 4.2,
     groundFriction: 0.8,
     seed: 23,
-    terrain: { flatStart: 15, amplitude: 3.6, wavelength: 46, crests: 4.5, bumps: 0.3, growPerKm: 1.4, maxGrow: 3 },
+    terrain: { flatStart: 15, amplitude: 3.6, wavelength: 46, crests: 4.5, bumps: 0.3, growPerKm: 1.4, maxGrow: 3, jumps: { spacing: 70, chance: 0.6, height: 1.6, ramp: 9, from: 50 } },
     palette: { skyTop: '#0c1026', skyBottom: '#2b2f5a', ground: '#55565f', surface: '#9a9ba6', far: '#3a3d5c', near: '#4c4e66' },
   },
   {
@@ -46,7 +46,7 @@ export const ENVIRONMENTS: Environment[] = [
     gravity: 10,
     groundFriction: 0.38,
     seed: 37,
-    terrain: { flatStart: 15, amplitude: 2.9, wavelength: 28, crests: 2, bumps: 0.35, growPerKm: 1.8, maxGrow: 3.2 },
+    terrain: { flatStart: 15, amplitude: 2.9, wavelength: 28, crests: 2, bumps: 0.35, growPerKm: 1.8, maxGrow: 3.2, jumps: { spacing: 90, chance: 0.45, height: 1.1, ramp: 6, from: 80 } },
     palette: { skyTop: '#9cc6e6', skyBottom: '#e8f3fb', ground: '#7e8fa3', surface: '#f4f8fc', far: '#b9cde0', near: '#9fb6cc' },
   },
 ]

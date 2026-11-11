@@ -28,7 +28,7 @@ export const runabout: VehicleSpec = {
     maxTorque: 21,
     frontShare: 0,
     torqueFalloff: 0.5,
-    maxWheelSpeed: 22,
+    maxWheelSpeed: 29,
     brakeTorque: 30,
     reverseWheelSpeed: 14,
     idleDragTorque: 1.2,
@@ -50,7 +50,7 @@ export const runaboutFull: VehicleSpec = {
   ...runabout,
   chassis: { ...runabout.chassis, centerOfMass: { x: -0.1, y: -0.15 } },
   wheels: runabout.wheels.map((w) => ({ ...w, friction: 0.9, damping: 0.9 })),
-  engine: { ...runabout.engine, maxTorque: 24, torqueFalloff: 0.15, maxWheelSpeed: 46, frontShare: 0.3 },
+  engine: { ...runabout.engine, maxTorque: 22.5, torqueFalloff: 0.15, maxWheelSpeed: 52, frontShare: 0.3 },
 }
 
 /** A vehicle the player can own: its base (worst) and fully upgraded specs. */
@@ -89,7 +89,7 @@ export const scrambler: VehicleSpec = {
     maxTorque: 7,
     frontShare: 0,
     torqueFalloff: 0.5,
-    maxWheelSpeed: 30,
+    maxWheelSpeed: 35,
     brakeTorque: 12,
     reverseWheelSpeed: 12,
     idleDragTorque: 0.4,
@@ -102,7 +102,7 @@ export const scramblerFull: VehicleSpec = {
   ...scrambler,
   chassis: { ...scrambler.chassis, centerOfMass: { x: -0.05, y: 0.05 } },
   wheels: scrambler.wheels.map((w) => ({ ...w, friction: 1, damping: 0.85 })),
-  engine: { ...scrambler.engine, maxTorque: 6.8, torqueFalloff: 0.35, maxWheelSpeed: 58, frontShare: 0.2 },
+  engine: { ...scrambler.engine, maxTorque: 6.8, torqueFalloff: 0.35, maxWheelSpeed: 64, frontShare: 0.2 },
 }
 
 /**
@@ -133,7 +133,7 @@ export const hauler: VehicleSpec = {
     maxTorque: 70,
     frontShare: 0.25,
     torqueFalloff: 0.5,
-    maxWheelSpeed: 14,
+    maxWheelSpeed: 17,
     brakeTorque: 90,
     reverseWheelSpeed: 7,
     idleDragTorque: 4,
@@ -146,7 +146,7 @@ export const haulerFull: VehicleSpec = {
   ...hauler,
   chassis: { ...hauler.chassis, centerOfMass: { x: 0, y: -0.15 } },
   wheels: hauler.wheels.map((w) => ({ ...w, friction: 1.05, damping: 0.9 })),
-  engine: { ...hauler.engine, maxTorque: 90, torqueFalloff: 0.15, maxWheelSpeed: 27, frontShare: 0.6 },
+  engine: { ...hauler.engine, maxTorque: 90, torqueFalloff: 0.15, maxWheelSpeed: 32, frontShare: 0.6 },
 }
 
 export const VEHICLES: VehicleEntry[] = [

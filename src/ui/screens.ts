@@ -23,6 +23,8 @@ export interface GarageView {
   onPick(kind: 'vehicle' | 'env', id: string): void
   levels: Levels
   tuning: boolean
+  /** Everything unlocked for testing; shown as a badge so it is never mistaken for real progress. */
+  testMode?: boolean
   onBuy(id: UpgradeId): void
   onDrive(): void
   onTune(): void
@@ -51,7 +53,7 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
       ${c.owned ? '' : `<span class="price">Unlock ● ${c.price}</span>`}
     </button>`
   el.innerHTML = `
-    <div class="bar"><h1>Ridgeline</h1><span class="coins">● ${v.coins}</span><button class="big" data-act="drive">Drive</button></div>
+    <div class="bar"><h1>Ridgeline${v.testMode ? ' <span class="badge">TEST MODE</span>' : ''}</h1><span class="coins">● ${v.coins}</span><button class="big" data-act="drive">Drive</button></div>
     <div class="choices">${v.vehicles.map((c) => choice('vehicle', c)).join('')}</div>
     <div class="label">${v.vehicleName} upgrades</div>
     <div class="cards">${UPGRADES.map(card).join('')}</div>
