@@ -33,14 +33,15 @@ describe('race modes', () => {
     expect(Math.abs(run.finishTime! / STEP - Math.round(run.finishTime! / STEP))).toBeLessThan(1e-6)
   })
 
-  it('ranks races by time, ignores unfinished ones, and keeps them apart from endless', () => {
+  it('ranks races by time, unfinished ones below by distance, and keeps them apart from endless', () => {
     const save = emptySave()
     addScore(save, { name: 'Wille', vehicle: 'runabout', env: 'meadow', distance: 500, mode: 'race500', time: 72.4 })
     addScore(save, { name: 'Frans', vehicle: 'runabout', env: 'meadow', distance: 500, mode: 'race500', time: 65.1 })
-    expect(addScore(save, { name: 'Johan', vehicle: 'runabout', env: 'meadow', distance: 310, mode: 'race500' })).toBe(false)
+    expect(addScore(save, { name: 'Johan', vehicle: 'runabout', env: 'meadow', distance: 310, mode: 'race500' })).toBe(true)
+    addScore(save, { name: 'Johan', vehicle: 'runabout', env: 'meadow', distance: 420, mode: 'race500' })
     addScore(save, { name: 'Johan', vehicle: 'runabout', env: 'meadow', distance: 900 })
     const race = save.scores.filter((s) => s.mode === 'race500')
-    expect(race.map((s) => s.name)).toEqual(['Frans', 'Wille'])
+    expect(race.map((s) => [s.name, s.time ?? s.distance])).toEqual([['Frans', 65.1], ['Wille', 72.4], ['Johan', 420], ['Johan', 310]])
     expect(save.scores.filter((s) => s.mode === 'endless').map((s) => s.name)).toEqual(['Johan'])
   })
 

@@ -45,8 +45,16 @@ export interface Score {
 }
 
 const modeOf = (s: Score) => s.mode ?? 'endless'
-/** Better first: the fastest finished race, or the furthest endless run. */
-const better = (a: Score, b: Score) => (a.time !== undefined || b.time !== undefined ? (a.time ?? Infinity) - (b.time ?? Infinity) : b.distance - a.distance)
+/**
+ * Better first: finished races by time, then unfinished ones (DNF) by how far they got; endless
+ * runs by distance.
+ */
+const better = (a: Score, b: Score) => {
+  if (a.time !== undefined && b.time !== undefined) return a.time - b.time
+  if (a.time !== undefined) return -1
+  if (b.time !== undefined) return 1
+  return b.distance - a.distance
+}
 
 /** Runs kept per track on the highscore board. */
 export const HIGHSCORES = 10
@@ -54,8 +62,8 @@ export const HIGHSCORES = 10
 /** Add a run to the board, keeping the best HIGHSCORES per track. True if it made the board. */
 export function addScore(save: SaveData, score: Score): boolean {
   const rounded = { ...score, mode: modeOf(score), distance: Math.floor(score.distance) }
-  // Races only rank finished runs; endless runs need some distance.
-  if (rounded.mode === 'endless' ? rounded.distance <= 0 : rounded.time === undefined) return false
+  // Every run with some distance goes on the board; unfinished races rank below finished ones.
+  if (rounded.distance <= 0 && rounded.time === undefined) return false
   const same = (s: Score) => s.env === score.env && modeOf(s) === rounded.mode
   const others = save.scores.filter((s) => !same(s))
   const board = [...save.scores.filter(same), rounded].sort(better).slice(0, HIGHSCORES)
