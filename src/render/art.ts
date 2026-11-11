@@ -293,11 +293,36 @@ export function drawDriver(ctx: Ctx, headRadius: number, torso: number, hands?: 
   ctx.restore()
 }
 
+/** A coil spring between two points, drawn as a zigzag with an outline. */
+function coil(ctx: Ctx, from: Pt, to: Pt, turns: number, width: number, colour: string): void {
+  const dx = to[0] - from[0]
+  const dy = to[1] - from[1]
+  const len = Math.hypot(dx, dy) || 1
+  const nx = -dy / len
+  const ny = dx / len
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  for (const [lw, col] of [[0.075, OUTLINE], [0.04, colour]] as const) {
+    ctx.beginPath()
+    ctx.moveTo(from[0], from[1])
+    for (let k = 1; k < turns * 2; k++) {
+      const t = k / (turns * 2)
+      const side = k % 2 ? width : -width
+      ctx.lineTo(from[0] + dx * t + nx * side, from[1] + dy * t + ny * side)
+    }
+    ctx.lineTo(to[0], to[1])
+    ctx.lineWidth = lw
+    ctx.strokeStyle = col
+    ctx.stroke()
+  }
+}
+
 /**
  * The vehicle body in chassis coordinates, with the seated driver drawn at `lean`
- * unless the driver has been thrown out (ragdoll).
+ * unless the driver has been thrown out (ragdoll). `hubs` are the wheel centres in chassis
+ * coordinates, for parts that follow the suspension; they default to the wheel anchors.
  */
-export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDriver: boolean, mood: Mood = 'normal'): void {
+export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDriver: boolean, mood: Mood = 'normal', hubs?: Pt[]): void {
   const c = VEHICLE_COLOURS[spec.id] ?? VEHICLE_COLOURS.runabout
   const { head, headRadius } = spec.driver
   const seat: Pt = [head.x, head.y - 0.75]
@@ -313,18 +338,33 @@ export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDrive
   }
 
   if (spec.id === 'scrambler') {
-    // Dirt bike: swingarm, frame, engine, chain, tank, seat, fork, number plate, fenders.
-    tube(ctx, [[-0.72, -0.4], [-0.15, -0.05]], 0.1, '#5b6372')
-    tube(ctx, [[-0.72, -0.4], [-0.12, -0.16]], 0.03, '#2a2f38')
-    tube(ctx, [[0.78, -0.4], [0.48, 0.5]], 0.09, '#d7dce4')
-    tube(ctx, [[0.73, -0.25], [0.55, 0.28]], 0.12, '#f2b632')
+    // Dirt bike: swingarm, shock, frame, engine, chain, tank, seat, fork, number plate, fenders.
+    // The swingarm, shock and fork follow the wheels, so the suspension visibly compresses.
+    const [rear, front] = hubs ?? spec.wheels.map((w): Pt => [w.anchor.x, w.anchor.y])
+    const pivot: Pt = [-0.15, -0.05]
+    // Rear shock: from the frame down to a point on the swingarm; it squashes as the arm rises.
+    const mount: Pt = [pivot[0] + (rear[0] - pivot[0]) * 0.42, pivot[1] + (rear[1] - pivot[1]) * 0.42]
+    coil(ctx, [-0.32, 0.3], mount, 5, 0.06, '#f2b632')
+    tube(ctx, [pivot, rear], 0.1, '#5b6372')
+    tube(ctx, [[-0.12, -0.16], rear], 0.03, '#2a2f38')
+    // Fork: the silver legs slide up into the gold tubes held by the steering head.
+    const head: Pt = [0.48, 0.5]
+    const fx = front[0] - head[0]
+    const fy = front[1] - head[1]
+    const len = Math.hypot(fx, fy) || 1
+    const tubeLen = Math.min(0.55, len - 0.12)
+    tube(ctx, [front, head], 0.09, '#d7dce4')
+    tube(ctx, [head, [head[0] + (fx / len) * tubeLen, head[1] + (fy / len) * tubeLen]], 0.12, '#f2b632')
+    rrect(ctx, front[0] - 0.06, front[1] - 0.04, 0.12, 0.12, 0.03, '#8b93a1')
     rrect(ctx, -0.22, -0.24, 0.46, 0.34, 0.08, '#5b6372')
     for (let i = 0; i < 3; i++) tube(ctx, [[-0.15 + i * 0.14, -0.22], [-0.15 + i * 0.14, 0.08]], 0.02, '#3d4450')
     tube(ctx, [[-0.42, -0.18], [-0.82, 0.04], [-0.98, 0.06]], 0.08, '#b8bfca')
     shaded(ctx, [[-0.55, 0.22], [0.05, 0.12], [0.45, 0.35], [0.5, 0.52], [0.05, 0.44], [-0.6, 0.38]], c.light, c.body, c.dark)
     poly(ctx, [[-0.05, 0.37], [0.36, 0.45], [0.1, 0.48]], 'rgba(255,255,255,0.5)', false)
     rrect(ctx, -0.78, 0.33, 0.6, 0.12, 0.06, '#2a2f38')
-    shaded(ctx, [[0.52, -0.02], [1.08, -0.02], [0.98, 0.12], [0.6, 0.12]], c.light, c.body, c.dark)
+    // Front fender rides on the fork legs, just above the tyre, up to the steering head.
+    const dy = Math.min(0.12, front[1] - spec.wheels[1].anchor.y)
+    shaded(ctx, [[0.52, -0.02 + dy], [1.08, -0.02 + dy], [0.98, 0.12 + dy], [0.6, 0.12 + dy]], c.light, c.body, c.dark)
     shaded(ctx, [[-1.08, 0.05], [-0.55, 0.12], [-0.6, 0.22], [-1.12, 0.16]], c.light, c.body, c.dark)
     rrect(ctx, 0.42, 0.28, 0.2, 0.22, 0.04, '#ffffff')
     tube(ctx, [[0.42, 0.62], [0.62, 0.68]], 0.06, '#2a2f38')

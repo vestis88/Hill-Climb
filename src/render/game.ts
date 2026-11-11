@@ -343,7 +343,8 @@ export class GameRenderer {
     }
     // Suspension: a lower arm from the chassis to the hub, and a coil spring that visibly
     // squashes as the suspension compresses. Behind the wheels and body.
-    next.wheels.forEach((_, i) => {
+    // The bike draws its own swingarm, shock and fork (art.ts), following the hubs.
+    if (spec.id !== 'scrambler') next.wheels.forEach((_, i) => {
       const w = lerpPose(prev.wheels[i], next.wheels[i], alpha)
       const a = spec.wheels[i].anchor
       const inward = a.x < 0 ? 0.45 : -0.45
@@ -392,7 +393,16 @@ export class GameRenderer {
     ctx.save()
     ctx.translate(chassis.x, chassis.y)
     ctx.rotate(chassis.angle)
-    drawVehicle(ctx, spec, view.driver.lean, !rag, this.mood(view, chassis))
+    // Wheel centres in chassis coordinates, so suspension parts can follow them.
+    const c = Math.cos(chassis.angle)
+    const s = Math.sin(chassis.angle)
+    const hubs = next.wheels.map((_, i): [number, number] => {
+      const w = lerpPose(prev.wheels[i], next.wheels[i], alpha)
+      const dx = w.x - chassis.x
+      const dy = w.y - chassis.y
+      return [dx * c + dy * s, -dx * s + dy * c]
+    })
+    drawVehicle(ctx, spec, view.driver.lean, !rag, this.mood(view, chassis), hubs)
     ctx.restore()
     if (rag) {
       ctx.save()
