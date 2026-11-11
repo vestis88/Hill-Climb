@@ -6,8 +6,9 @@ import { Sound } from './audio/sound'
 import { createInput } from './input/input'
 import { GameRenderer, type Popup } from './render/game'
 import { drawEnvironmentPreview, drawVehiclePreview } from './render/preview'
-import { addScore, emptySave, levelsFor, loadSave, playerBest, playerTime, writeSave } from './save/save'
+import { addScore, earn, emptySave, levelsFor, loadSave, playerBest, playerTime, spend, writeSave } from './save/save'
 import { clearGhosts, GhostRecorder, GhostTrack, loadGhost, storeGhost } from './save/ghosts'
+import { CloudSync } from './save/cloud'
 import { PLAYERS, playerColour } from './data/players'
 import { formatTime, gameMode, MODES, recordKey } from './data/modes'
 import { Run } from './sim/run'
@@ -36,6 +37,13 @@ const controls = createInput(canvas, () => settings.swapPedals)
 for (const type of ['pointerdown', 'keydown']) window.addEventListener(type, () => sound.unlock(), { capture: true })
 const renderer = new GameRenderer(canvas)
 const save = loadSave()
+// Shares progress between the family's devices (see save/cloud.ts); off until set up.
+const cloud = new CloudSync(save)
+/** Save locally, and sync to the family's other devices shortly after. */
+function persist(): void {
+  writeSave(save)
+  cloud.soon()
+}
 const tuning = loadTuning()
 let driveAs: DriveAs = 'mine'
 
@@ -145,7 +153,7 @@ function openGarage(justBought?: UpgradeId): void {
     modes: MODES.map((m) => ({ id: m.id, name: m.name, on: m.id === currentMode().id })),
     onMode: (id: string) => {
       save.modeId = id
-      writeSave(save)
+      persist()
       openGarage()
     },
     onScores: () => openScores(currentEnv().id, currentMode().id),
@@ -163,7 +171,7 @@ function togglePlayer(name: string): void {
   if (on.has(name)) on.delete(name)
   else on.add(name)
   save.players = PLAYERS.map((p) => p.name).filter((n) => on.has(n))
-  writeSave(save)
+  persist()
   openGarage()
 }
 
@@ -194,13 +202,12 @@ function openScores(envId: string, modeId: string): void {
 function pick(kind: 'vehicle' | 'env', id: string): void {
   const item = kind === 'vehicle' ? vehicleEntry(id) : environment(id)
   if (!owned(item.id, item.price)) {
-    if (save.coins < item.price) return
-    save.coins -= item.price
+    if (!spend(save, item.price)) return
     save.unlocked.push(item.id)
   }
   if (kind === 'vehicle') save.vehicleId = item.id
   else save.envId = item.id
-  writeSave(save)
+  persist()
   run = newRun()
   prev = next = run.sim.state()
   renderer.resetCamera(next)
@@ -212,10 +219,9 @@ function buy(id: UpgradeId): void {
   const levels = levelsFor(save, VEHICLE_ID)
   if (levels[id] >= MAX_LEVEL) return
   const cost = price(levels[id] + 1)
-  if (save.coins < cost) return
-  save.coins -= cost
+  if (!spend(save, cost)) return
   save.levels[VEHICLE_ID] = { ...levels, [id]: levels[id] + 1 }
-  writeSave(save)
+  persist()
   sound.fanfare()
   openGarage(id)
 }
@@ -229,6 +235,7 @@ function openSettings(): void {
       sound.setVolume(settings.volume, settings.sound)
     },
     () => {
+      cloud.leave()
       Object.assign(save, emptySave())
       writeSave(save)
       clearGhosts()
@@ -237,6 +244,7 @@ function openSettings(): void {
       renderer.resetCamera(next)
     },
     openGarage,
+    cloud,
   )
   show('settings')
 }
@@ -301,12 +309,12 @@ function finishRun(): void {
   const best = playerBest(save, me, envId)
   const time = run.finishTime ?? undefined
   const bestTime = playerTime(save, me, key)
-  save.coins += total
+  earn(save, total)
   save.best[envId] = Math.max(save.best[envId] ?? 0, distance)
   save.playerBest[me] = { ...save.playerBest[me], [envId]: Math.max(best, distance) }
   if (time !== undefined) save.playerTimes[me] = { ...save.playerTimes[me], [key]: Math.min(bestTime, time) }
   addScore(save, { name: me, vehicle: currentVehicle().id, env: envId, distance, mode: race.id, time })
-  writeSave(save)
+  persist()
   // Keep this run as the player's last ghost (and best, if it went further or faster). Not in test drives.
   if (driveAs === 'mine' && distance > 1) storeGhost(recorder.finish({ player: me, vehicle: currentVehicle().id, env: key, distance, time }))
   const newBest = race.length ? time !== undefined && time < bestTime : distance > best
@@ -474,6 +482,16 @@ function ghostPoses() {
     return pose && pose.fade > 0 ? [{ label: g.label, colour: g.colour, spec: vehicleEntry(g.track.ghost.vehicle).base, pose }] : []
   })
 }
+
+// Sync on start and whenever the game comes back to the front; refresh the garage when another
+// device's progress arrives.
+cloud.onMerged = () => {
+  if (mode === 'garage') openGarage()
+}
+void cloud.syncNow()
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) void cloud.syncNow()
+})
 
 // Development only: lets screenshot scripts trigger effects without playing to them.
 if (import.meta.env.DEV) (window as unknown as { __game: unknown }).__game = { renderer }
