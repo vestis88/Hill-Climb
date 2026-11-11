@@ -78,6 +78,27 @@ describe('run rules', () => {
     expect(run.coins.air).toBeGreaterThanOrEqual(RULES.airCoinsPerSecond)
   })
 
+  it('counts a flip that lands on a steep downslope (rotation measured against the ground)', () => {
+    // A 35 degree downslope. Owner report: flips were not always counted. Measured against the
+    // horizon, this backflip turned only about 311 degrees and was missed.
+    const slope = (x: number) => -0.7 * x
+    const run = new Run({ vehicle: runabout, height: slope, pickups: fixedPickups([]), bestDistance: 1e9 })
+    const chassis = run.sim.vehicle.chassis
+    const lift = { x: 10, y: slope(10) + 14 }
+    const dx = lift.x - chassis.getPosition().x
+    const dy = lift.y - chassis.getPosition().y
+    for (const b of [chassis, ...run.sim.vehicle.wheels]) b.setPosition({ x: b.getPosition().x + dx, y: b.getPosition().y + dy })
+    const groundAngle = Math.atan(-0.7)
+    // One backflip, then line the car up with the slope and hold it there until it lands.
+    drive(run, () => {
+      const rel = chassis.getAngle() - groundAngle
+      if (rel < Math.PI * 2 - 0.15) return GAS
+      return chassis.getAngularVelocity() > 0.2 ? { gas: false, brake: true } : NONE
+    }, 5)
+    expect(run.status).toBe('running')
+    expect(run.coins.flips).toBe(RULES.coinsPerFlip)
+  })
+
   it('pays for a wheelie held for over a second', () => {
     // A car tuned to wheelie easily, driven to hold the nose up: gas while it is low, ease off when high.
     const vehicle = structuredClone(runabout)
