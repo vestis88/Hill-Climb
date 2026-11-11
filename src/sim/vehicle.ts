@@ -90,8 +90,8 @@ export class Vehicle {
         joint.setMotorSpeed(-engine.maxWheelSpeed * 1.15)
         joint.setMaxMotorTorque((driveTorque * share) / axleCount[w.axle])
       } else if (brake) {
-        // Brakes act on every wheel, then pull the car into reverse.
-        joint.setMotorSpeed(engine.reverseWheelSpeed)
+        // Brakes act on every wheel, then pull the car into reverse (not with an empty tank).
+        joint.setMotorSpeed(input.empty ? 0 : engine.reverseWheelSpeed)
         joint.setMaxMotorTorque(w.axle === 'rear' ? engine.brakeTorque : engine.brakeTorque * 0.5)
       } else {
         joint.setMotorSpeed(0)

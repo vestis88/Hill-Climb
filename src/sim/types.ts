@@ -4,7 +4,12 @@ export interface Vec2 { x: number; y: number }
 
 export interface Pose { x: number; y: number; angle: number }
 
-export interface Input { gas: boolean; brake: boolean }
+export interface Input {
+  gas: boolean
+  brake: boolean
+  /** Out of fuel: the brake still brakes (and tips the nose down in the air) but cannot reverse. */
+  empty?: boolean
+}
 
 export interface WheelSpec {
   /** Hub position relative to the chassis origin, metres. */

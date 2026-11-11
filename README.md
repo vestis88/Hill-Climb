@@ -44,10 +44,14 @@ to ease off and balance the car in the air. Green Meadows has the most.
 ### The run
 
 - **Fuel** drains while you drive, a little faster with the gas held. Fuel cans
-  lie along the track, further apart the further you get. The run ends when
-  the tank is empty and the car rolls to a stop.
+  lie along the track, further apart the further you get. When the tank runs
+  dry the engine dies but the run goes on: the car rolls on, and only the
+  brake works (it slows the car and tips the nose down in the air; it cannot
+  reverse). Roll into a fuel can on an empty tank and you refuel and get a
+  **100-coin bonus**. The run ends once the car has stood still for a second,
+  or has made no new ground for 8 seconds (rocking in a dip).
 - **Crashing**: the run ends at once if the driver's head hits the ground.
-- **Coins** come from five places (values in `src/sim/run.ts` and `src/data/track.ts`):
+- **Coins** come from six places (values in `src/sim/run.ts` and `src/data/track.ts`):
   - coins lying on the track, in small groups, worth more the further out they are;
   - air time: 20 coins per second in the air, for jumps of at least 0.8 s;
   - flips: 100 for a single, 300 for a double, 900 for a triple, 2,000 for a
@@ -56,7 +60,8 @@ to ease off and balance the car in the air. Green Meadows has the most.
     against the ground, so ramps and downhill landings count fully);
   - wheelies: 15 coins per second with the front wheels up and the back wheels
     down while moving, for at least 1 s;
-  - distance milestones, a one-off bonus the first time you pass each marker on a track.
+  - distance milestones, a one-off bonus the first time you pass each marker on a track;
+  - 100 coins for reaching a fuel can on an empty tank.
 - At the end of a run all coins collected are banked, whether it ended in a crash or an empty tank.
 - Crashing costs nothing except the run itself. There are no checkpoints:
   every run starts from the beginning of the track.
@@ -111,7 +116,7 @@ on its own. Current results, seconds (DNF: the driver crashed on every try):
 | | Level 1 | 5 | 10 |
 |---|---|---|---|
 | Runabout, Green Meadows | 55.6 | 42.7 | 36.4 |
-| Scrambler, Green Meadows | 52.9 | 43.3 | 38.9 |
+| Scrambler, Green Meadows | 52.4 | 42.8 | 38.4 |
 | Hauler, Green Meadows | 55.3 | 42.6 | 35.1 |
 | Runabout, Crater Fields | DNF | 53.4 | 42.9 |
 | Hauler, Frost Pass | 61.4 | 46.9 | 37.7 |
@@ -132,7 +137,7 @@ vehicle.
   driver plays Green Meadows with the Runabout and buys the cheapest upgrade
   after each run. It almost never crashes, so it is much faster than a child.
   Current result: first upgrades after one run, fully upgraded after about
-  60 runs or **2.3 hours** of play (it crashes on some jumps). Children should take
+  60 runs or **2.4 hours** of play (it crashes on some jumps). Children should take
   several times longer.
 - What sets the pace: coins are worth 5 each up to 500 m, 10 up to 1,500 m
   and 15 beyond; the distance bonus is 15 coins per new 100 m; fuel cans get
