@@ -47,6 +47,18 @@ describe('start countdown and launch', () => {
     }
   })
 
+  it('too many revs spins the driven wheels far faster than the vehicle moves', () => {
+    for (const spec of [runabout, hauler]) {
+      const run = new Run({ vehicle: spec, height: flat, pickups: fixedPickups([]), bestDistance: 1e9 })
+      run.launch(1)
+      for (let i = 0; i < 30; i++) run.step({ gas: true, brake: false })
+      const rear = spec.wheels.findIndex((w) => w.axle === 'rear')
+      const surface = Math.abs(run.sim.vehicle.wheels[rear].getAngularVelocity()) * spec.wheels[rear].radius
+      const ground = Math.abs(run.sim.vehicle.chassis.getLinearVelocity().x)
+      expect(surface, spec.id).toBeGreaterThan(2 * ground + 2)
+    }
+  })
+
   it('each engine revs at its own pace: the two-stroke snaps up, the V8 swells slowly', () => {
     const two = revUp(scrambler.engine.revTime, 0.95)
     const four = revUp(runabout.engine.revTime, 0.95)

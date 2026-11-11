@@ -130,12 +130,13 @@ export class Run {
 
     const v = this.sim.vehicle
     v.torqueScale = 1
+    v.gripScale = 1
     if (this.launchLeft > 0 && input.gas) {
       this.launchLeft -= STEP
       const effect = this.launchKind === 'perfect' ? LAUNCH.perfect : LAUNCH.over
       // The effect fades out over its last third rather than stopping dead.
       const fade = Math.max(0, Math.min(1, this.launchLeft / (effect.seconds / 3)))
-      if (this.launchKind === 'over') v.torqueScale = 1 + (LAUNCH.over.torque - 1) * fade
+      if (this.launchKind === 'over') v.gripScale = 1 + (LAUNCH.over.grip - 1) * fade
       else {
         const mass = [v.chassis, ...v.wheels].reduce((m, b) => m + b.getMass(), 0)
         const a = v.chassis.getAngle()

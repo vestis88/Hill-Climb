@@ -53,10 +53,11 @@ export class Sim {
     this.startX = x
     this.maxX = x
 
-    // Grip per wheel contact: puddles cost grip; the Marsh Rover's studs keep a minimum.
+    // Grip per wheel contact: puddles cost grip; the Marsh Rover's studs keep a minimum; a
+    // start with too many revs spins the wheels (vehicle.gripScale).
     const { puddles } = options
     const amphibious = options.vehicle.amphibious
-    if (puddles || amphibious) {
+    {
       const wheels = new Set(this.vehicle.wheels)
       this.world.on('pre-solve', (contact) => {
         const a = contact.getFixtureA().getBody()
@@ -71,7 +72,7 @@ export class Sim {
           const p = puddles?.(wheel.getPosition().x)
           if (p) f *= p.grip
         }
-        contact.setFriction(f)
+        contact.setFriction(f * this.vehicle.gripScale)
       })
     }
   }

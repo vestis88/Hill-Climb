@@ -53,6 +53,8 @@ export class Vehicle {
   gear = 1
   /** Drive torque multiplier: a launch boost (above 1) or a bogged start (below), sim/launch.ts. */
   torqueScale = 1
+  /** Tyre grip multiplier: below 1 the driven wheels spin (too many revs at the start). */
+  gripScale = 1
   private shiftSteps = 0
   /** Steps since the last shift, and wheel speed smoothed over about a quarter second. */
   private sinceShift = 0

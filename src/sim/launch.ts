@@ -1,7 +1,7 @@
 /**
  * The start: a 3-2-1 countdown with the vehicle held, while the driver revs the engine.
- * Revs in the green window at GO give a boosted launch; revs over it bog the start with
- * wheelspin. Each engine revs at its own pace (`engine.revTime`): a two-stroke snaps up,
+ * Revs in the green window at GO give a boosted launch; revs in the red spin the wheels;
+ * revs below the green start normally, with the engine bogging (sound only). Each engine revs at its own pace (`engine.revTime`): a two-stroke snaps up,
  * a V8 swells slowly.
  */
 export const LAUNCH = {
@@ -13,8 +13,10 @@ export const LAUNCH = {
   idle: 0.12,
   /** A perfect start: an extra push, as a forward acceleration in m/s², through the centre of mass so it cannot flip the vehicle. */
   perfect: { seconds: 1.2, push: 4 },
-  /** Too many revs: the wheels spin up and the drive bogs to this share. */
-  over: { seconds: 0.6, torque: 0.45 },
+  /** Too many revs: the tyres break loose and the wheels spin, keeping this share of grip. */
+  over: { seconds: 0.9, grip: 0.2 },
+  /** Below the green: a normal start, but the engine bogs (sound and rev counter only). */
+  bogSeconds: 0.8,
 }
 
 export type LaunchKind = 'perfect' | 'over' | 'normal'
