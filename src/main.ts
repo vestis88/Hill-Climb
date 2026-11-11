@@ -70,7 +70,6 @@ function newRun(): Run {
     vehicle: vehicleSpec(),
     height,
     gravity: env.gravity,
-    airGravity: env.airGravity,
     groundFriction: env.groundFriction,
     pickups: new PickupField(height, env.seed),
     bestDistance: save.best[env.id] ?? 0,

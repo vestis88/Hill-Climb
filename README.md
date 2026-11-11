@@ -19,21 +19,21 @@ buy: every coin is earned by driving.
 | Hauler | 15,000 coins | Heavy 4x4; slow, very stable, climbs almost anything once upgraded |
 
 Each vehicle has its own four upgrades and its own base and fully upgraded
-values. No combination of upgrades flips any vehicle over backwards from a
-standstill on flat ground; the hills still need a light touch.
+values. Backflipping on launch is part of the game: feathering the gas is the
+skill. The Runabout and the Hauler are **launch-safe**: at base, fully upgraded
+or with any single upgrade maxed, full gas from a standstill on flat ground
+does not flip them (on Green Meadows and Frost Pass). Mixed in-between setups
+can, and the Scrambler can at any time.
 
 ### Environments
 
 | Environment | Unlock | What is different |
 |---|---|---|
-| Green Meadows | free | Rolling grassy hills, many jumps; lighter gravity in the air (8 instead of 10) for floatier jumps |
-| Crater Fields | 4,000 coins | Big crests and very floaty jumps: gravity 8 on the ground, 4 in the air |
+| Green Meadows | free | Rolling grassy hills, many jumps; slightly light gravity (9) |
+| Crater Fields | 4,000 coins | Low gravity (4.2), big crests and long floaty jumps; flips come easily |
 | Frost Pass | 10,000 coins | Icy ground with far less grip, steeper and bumpier |
 
-Gravity can be lighter in the air than on the ground: jumps float further, while grip,
-wheelies and engine power on the ground stay the same. Where ground gravity is below 10,
-engine power is scaled down with it so cars never flip over backwards from a standstill
-(tested at every environment's gravity).
+Gravity is the same in the air as on the ground.
 
 Every environment is endless and the same every run: the hills grow taller
 and steeper with distance, up to a limit, so there is always further to go.
@@ -106,11 +106,11 @@ on its own. Current results, seconds (DNF: the driver crashed on every try):
 
 | | Level 1 | 5 | 10 |
 |---|---|---|---|
-| Runabout, Green Meadows | 55.1 | 42.7 | 37.1 |
-| Scrambler, Green Meadows | 52.8 | 44.1 | 40.9 |
-| Hauler, Green Meadows | 54.9 | 42.7 | 35.5 |
-| Runabout, Crater Fields | DNF | 52.0 | 43.6 |
-| Hauler, Frost Pass | 61.3 | 46.7 | 37.5 |
+| Runabout, Green Meadows | 55.6 | 42.7 | 36.4 |
+| Scrambler, Green Meadows | 52.8 | 43.1 | 38.8 |
+| Hauler, Green Meadows | 55.3 | 42.6 | 35.1 |
+| Runabout, Crater Fields | DNF | 53.4 | 42.9 |
+| Hauler, Frost Pass | 61.4 | 46.9 | 37.7 |
 
 Times fall at nearly every level; the engine does the most on its own, and
 tyres, suspension and the fourth upgrade add smaller gains that matter more on

@@ -32,7 +32,6 @@ it('economy', () => {
       vehicle: applyUpgrades(runabout, runaboutFull, levels),
       height,
       gravity: env.gravity,
-      airGravity: env.airGravity,
       groundFriction: env.groundFriction,
       pickups: new PickupField(height, env.seed),
       bestDistance: best,
