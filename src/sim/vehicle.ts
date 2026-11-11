@@ -49,6 +49,22 @@ export class Vehicle {
     }
   }
 
+  /** Steps left in which a fresh back-wheel landing limits the rider's wheelie control. */
+  private landingSteps = 0
+  private wasAirborne = false
+
+  /** Slope of the ground under a wheel, radians, from its contact normal (0 when not touching). */
+  private groundSlope(wheel: Body): number {
+    for (let edge = wheel.getContactList(); edge; edge = edge.next ?? null) {
+      if (edge.other !== this.ground || !edge.contact.isTouching()) continue
+      const n = edge.contact.getWorldManifold(null)?.normal
+      if (!n) continue
+      const up = n.y < 0 ? Vec2.neg(n) : n
+      return Math.atan2(-up.x, up.y)
+    }
+    return 0
+  }
+
   /** True for each wheel currently touching the ground. */
   wheelContacts(): boolean[] {
     return this.wheels.map((wheel) => {
@@ -101,6 +117,9 @@ export class Vehicle {
 
     // Pedals also pitch the chassis.
     const wheelie = airControl.wheelie
+    const landing = this.wasAirborne && contacts.some(Boolean)
+    this.wasAirborne = !contacts.some(Boolean)
+    if (landing) this.landingSteps = wheelie?.landing ? Math.round(wheelie.landing.seconds * 60) : 0
     if (wheelie && contacts.some(Boolean)) {
       const spin = this.chassis.getAngularVelocity()
       const rearDown = this.spec.wheels.some((w, i) => w.axle === 'rear' && contacts[i])
@@ -113,7 +132,15 @@ export class Vehicle {
         // On the back wheel: the rider holds the pitch to a steady rate up or down.
         const target = gas ? wheelie.rate : brake ? -2 * wheelie.drop : -wheelie.drop
         const inertia = this.rigInertia() + mass * Vec2.dot(arm, arm)
-        this.chassis.applyTorque(inertia * wheelie.response * (target - spin), true)
+        // Just after landing on the back wheel the rider only has control if the bike came down
+        // balanced, nose well up; with the front near the ground the impact slaps it down.
+        let authority = 1
+        if (this.landingSteps > 0 && wheelie.landing) {
+          const nose = this.chassis.getAngle() - this.groundSlope(rear)
+          const [low, high] = wheelie.landing.balance
+          authority = Math.min(1, Math.max(0, (nose - low) / (high - low)))
+        }
+        this.chassis.applyTorque(authority * inertia * wheelie.response * (target - spin), true)
       } else if (gas && spin < wheelie.rate) {
         // Both wheels down: the gas lifts the front. `lift` is a share of the bike's weight
         // moment about the back wheel, scaled by how hard the engine pulls (so mostly at launch).
@@ -122,6 +149,7 @@ export class Vehicle {
       } else if (brake && spin > -airControl.spinRate) {
         this.chassis.applyTorque(-airControl.groundTorque, true)
       }
+      if (this.landingSteps > 0) this.landingSteps--
     } else if (gas || brake) {
       const dir = gas ? 1 : -1
       const spin = this.chassis.getAngularVelocity()

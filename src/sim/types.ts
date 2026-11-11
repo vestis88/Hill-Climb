@@ -76,7 +76,18 @@ export interface VehicleSpec {
      * pitch is steered like air control: the gas raises the nose at `rate` rad/s, letting go
      * lowers it at `drop` rad/s (twice that on the brake). No sudden snaps: feather to hold it.
      */
-    wheelie?: { lift: number; rate: number; drop: number; response: number }
+    wheelie?: {
+      lift: number
+      rate: number
+      drop: number
+      response: number
+      /**
+       * Landing on the back wheel: for `seconds` after touching down, control fades in only as
+       * the nose is between balance[0] and balance[1] radians above the ground. Land low and
+       * the front slaps down; land balanced and the wheelie can be carried on.
+       */
+      landing?: { seconds: number; balance: [number, number] }
+    }
   }
 }
 
