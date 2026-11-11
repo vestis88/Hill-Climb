@@ -246,6 +246,15 @@ function openSettings(): void {
     },
     openGarage,
     cloud,
+    () => {
+      // A fresh highscore board: bests, times, scores and ghosts go; coins and upgrades stay.
+      save.scores = []
+      save.playerBest = {}
+      save.playerTimes = {}
+      save.best = {}
+      writeSave(save)
+      clearGhosts()
+    },
   )
   show('settings')
 }
@@ -314,21 +323,24 @@ function finishRun(): void {
   const time = run.finishTime ?? undefined
   const bestTime = playerTime(save, me, key)
   earn(save, total)
-  save.best[envId] = Math.max(save.best[envId] ?? 0, distance)
-  save.playerBest[me] = { ...save.playerBest[me], [envId]: Math.max(best, distance) }
-  if (time !== undefined) save.playerTimes[me] = { ...save.playerTimes[me], [key]: Math.min(bestTime, time) }
-  addScore(save, { name: me, vehicle: currentVehicle().id, env: envId, distance, mode: race.id, time })
+  // Runs in test mode (everything unlocked) do not count: no bests, highscores or ghosts.
+  const counts = !tuningEnabled()
+  if (counts) {
+    save.best[envId] = Math.max(save.best[envId] ?? 0, distance)
+    save.playerBest[me] = { ...save.playerBest[me], [envId]: Math.max(best, distance) }
+    if (time !== undefined) save.playerTimes[me] = { ...save.playerTimes[me], [key]: Math.min(bestTime, time) }
+    addScore(save, { name: me, vehicle: currentVehicle().id, env: envId, distance, mode: race.id, time })
+  }
   persist()
-  // Every run is kept as the player's last ghost (and best, if it went further or faster),
-  // test drives from the Tuning screen included.
-  if (distance > 0) storeGhost(recorder.finish({ player: me, vehicle: currentVehicle().id, env: key, distance, time }))
-  const newBest = race.length ? time !== undefined && time < bestTime : distance > best
+  // Every counting run is kept as the player's last ghost (and best, if it went further or faster).
+  if (counts && distance > 0) storeGhost(recorder.finish({ player: me, vehicle: currentVehicle().id, env: key, distance, time }))
+  const newBest = counts && (race.length ? time !== undefined && time < bestTime : distance > best)
   round.results.push({ name: me, distance, time, newBest })
   const nextPlayer = round.players[round.turn + 1]
   showResults(resultsEl, {
     status: run.status === 'running' ? 'ended' : run.status,
     distance,
-    newBest: distance > best,
+    newBest: counts && distance > best,
     race: race.length ? { length: race.length, time, newBestTime: newBest } : undefined,
     coins: run.coins,
     total,

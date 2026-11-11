@@ -205,3 +205,50 @@ describe('run rules', () => {
     expect(a.filter((p) => p.kind === 'coin').length).toBeGreaterThan(200)
   })
 })
+
+describe('flips on the bike (regression: hard landings used to erase full turns)', () => {
+  it('pays every full flip the Scrambler lands, back and front, on several maps', async () => {
+    const { environment, heightFor } = await import('../src/data/environments')
+    const { scramblerFull } = await import('../src/data/vehicles')
+    let landed = 0
+    let paid = 0
+    for (const envId of ['meadow', 'crater']) {
+      const env = environment(envId)
+      const height = heightFor(env)
+      for (let k = 0; k < 12; k++) {
+        const dir = k % 2 ? -1 : 1
+        const x0 = 120 + k * 37
+        const run = new Run({ vehicle: scramblerFull, height, gravity: env.gravity, groundFriction: env.groundFriction, pickups: fixedPickups([]), bestDistance: 1e9 })
+        const c = run.sim.vehicle.chassis
+        const y0 = height(x0) + 14
+        for (const b of [c, ...run.sim.vehicle.wheels]) {
+          b.setPosition({ x: b.getPosition().x + x0, y: b.getPosition().y + y0 })
+          b.setLinearVelocity({ x: 9, y: 4 })
+        }
+        let flips = 0
+        let down = false
+        for (let i = 0; i < 360 && run.status === 'running'; i++) {
+          const s = run.sim.state()
+          const turned = s.chassis.angle * dir
+          const slope = Math.atan2(height(s.chassis.x + 0.5) - height(s.chassis.x - 0.5), 1)
+          const rel = Math.atan2(Math.sin(s.chassis.angle - slope), Math.cos(s.chassis.angle - slope))
+          let input = { gas: false, brake: false }
+          if (s.airborne && !down) {
+            if (turned < 2 * Math.PI - 0.5) input = dir > 0 ? { gas: true, brake: false } : { gas: false, brake: true }
+            else input = rel > 0.1 ? { gas: false, brake: true } : rel < -0.1 ? { gas: true, brake: false } : input
+          }
+          run.fuel = 1
+          run.step(input)
+          for (const e of run.events) if (e.kind === 'flip') flips += e.flips
+          if (!run.sim.state().airborne && i > 10) down = true
+        }
+        if (run.status === 'running' && Math.abs(run.sim.state().chassis.angle) > 4.5) {
+          landed++
+          if (flips >= 1) paid++
+        }
+      }
+    }
+    expect(landed).toBeGreaterThan(8)
+    expect(paid).toBe(landed)
+  }, 60000)
+})
