@@ -15,7 +15,8 @@ export const RULES = {
   /** Coins per second in the air, for jumps of at least minAirTime. Raised after owner playtest. */
   airCoinsPerSecond: 20,
   minAirTime: 0.8,
-  coinsPerFlip: 100,
+  /** Coins for one jump with this many full flips: single, double, triple, quad (owner's values). */
+  flipPayout: (flips: number) => (flips <= 0 ? 0 : flips <= 4 ? [0, 100, 300, 900, 2000][flips] : 2000 + 1500 * (flips - 4)),
   /** A landing counts when the car is within this angle of the ground (radians, about 80 degrees). */
   landingTolerance: 1.4,
   /** A flip counts from 2π minus this much rotation (radians): about 245 degrees. */
@@ -35,7 +36,7 @@ export type RunEvent =
   | { kind: 'coin'; value: number; x: number; y: number }
   | { kind: 'fuel'; x: number; y: number }
   | { kind: 'air'; value: number; seconds: number }
-  | { kind: 'flip'; value: number; flips: number }
+  | { kind: 'flip'; value: number; flips: number; direction: 'back' | 'front' }
   | { kind: 'wheelie'; value: number; seconds: number }
   | { kind: 'milestone'; value: number; distance: number }
 
@@ -174,7 +175,8 @@ export class Run {
       return
     }
     const seconds = this.airSteps * STEP
-    const turned = Math.abs(rel - this.takeoffAngle)
+    const signedTurn = rel - this.takeoffAngle
+    const turned = Math.abs(signedTurn)
     this.airSteps = 0
     this.lastGroundRel = rel
     if (seconds >= RULES.minAirTime) {
@@ -186,9 +188,10 @@ export class Run {
     // from about 245 degrees per turn counts, which no non-flip landing can reach.
     const flips = Math.floor((turned + RULES.flipTolerance) / TAU)
     if (flips > 0) {
-      const value = flips * RULES.coinsPerFlip
+      const value = RULES.flipPayout(flips)
       this.coins.flips += value
-      this.events.push({ kind: 'flip', value, flips })
+      // Nose-up rotation (counter-clockwise, the car faces right) is a backflip.
+      this.events.push({ kind: 'flip', value, flips, direction: signedTurn > 0 ? 'back' : 'front' })
     }
   }
 

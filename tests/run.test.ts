@@ -74,7 +74,7 @@ describe('run rules', () => {
       return chassis.getAngularVelocity() > 0.2 ? { gas: false, brake: true } : NONE
     }, 6)
     expect(run.status).toBe('running')
-    expect(run.coins.flips).toBe(RULES.coinsPerFlip)
+    expect(run.coins.flips).toBe(RULES.flipPayout(1))
     expect(run.coins.air).toBeGreaterThanOrEqual(RULES.airCoinsPerSecond)
   })
 
@@ -96,7 +96,28 @@ describe('run rules', () => {
       return chassis.getAngularVelocity() > 0.2 ? { gas: false, brake: true } : NONE
     }, 5)
     expect(run.status).toBe('running')
-    expect(run.coins.flips).toBe(RULES.coinsPerFlip)
+    expect(run.coins.flips).toBe(RULES.flipPayout(1))
+  })
+
+  it('pays 100, 300, 900 and 2000 for single to quad flips', () => {
+    expect([1, 2, 3, 4].map(RULES.flipPayout)).toEqual([100, 300, 900, 2000])
+    expect(RULES.flipPayout(5)).toBeGreaterThan(2000)
+  })
+
+  it('counts a double backflip as one double, not two singles', () => {
+    const run = new Run({ vehicle: runabout, height: flat, pickups: fixedPickups([]), bestDistance: 1e9 })
+    const chassis = run.sim.vehicle.chassis
+    for (const b of [chassis, ...run.sim.vehicle.wheels]) b.setPosition({ x: b.getPosition().x, y: b.getPosition().y + 160 })
+    let events: string[] = []
+    drive(run, () => {
+      events = events.concat(run.events.filter((e) => e.kind === 'flip').map((e) => (e.kind === 'flip' ? `${e.flips} ${e.direction}` : '')))
+      if (chassis.getAngle() < Math.PI * 4 - 0.1) return GAS
+      return chassis.getAngularVelocity() > 0.2 ? { gas: false, brake: true } : NONE
+    }, 10)
+    events = events.concat(run.events.filter((e) => e.kind === 'flip').map((e) => (e.kind === 'flip' ? `${e.flips} ${e.direction}` : '')))
+    expect(run.status).toBe('running')
+    expect(events).toEqual(['2 back'])
+    expect(run.coins.flips).toBe(300)
   })
 
   it('pays for a wheelie held for over a second', () => {
