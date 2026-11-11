@@ -81,9 +81,12 @@ export interface WheelLook {
   spin?: number
   /** Colour of mud, dust or snow stuck to the tyre. */
   grime?: string
+  /** Motocross wheel: thin knobbly tyre on a big wire-spoked rim. */
+  mx?: boolean
 }
 
 export function drawWheel(ctx: Ctx, radius: number, look: WheelLook = {}): void {
+  if (look.mx) return drawMxWheel(ctx, radius, look)
   const r = radius
   // 0 when slow, 1 when spinning fast: spokes fade into a blurred disc.
   const blur = Math.min(1, Math.max(0, (Math.abs(look.spin ?? 0) - 10) / 20))
@@ -167,6 +170,82 @@ export function drawWheel(ctx: Ctx, radius: number, look: WheelLook = {}): void 
       const rr = r * (0.82 + (i % 2) * 0.1)
       ctx.beginPath()
       ctx.ellipse(Math.cos(a) * rr, Math.sin(a) * rr, r * 0.11, r * 0.07, a, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+}
+
+function drawMxWheel(ctx: Ctx, r: number, look: WheelLook): void {
+  const blur = Math.min(1, Math.max(0, (Math.abs(look.spin ?? 0) - 10) / 20))
+  // Square knobs all round a thin tyre.
+  ctx.fillStyle = OUTLINE
+  for (let i = 0; i < 20; i++) {
+    ctx.save()
+    ctx.rotate((i / 20) * Math.PI * 2)
+    ctx.fillRect(r * 0.9, -r * 0.07, r * 0.16, r * 0.14)
+    ctx.restore()
+  }
+  ctx.beginPath()
+  ctx.arc(0, 0, r, 0, Math.PI * 2)
+  ctx.fillStyle = '#2a2f38'
+  ctx.fill()
+  ctx.lineWidth = LINE
+  ctx.strokeStyle = OUTLINE
+  ctx.stroke()
+  // Rim: a thin metal hoop, with the dark gap of the wheel showing through the spokes.
+  ctx.beginPath()
+  ctx.arc(0, 0, r * 0.76, 0, Math.PI * 2)
+  ctx.fillStyle = '#3d4450'
+  ctx.fill()
+  ctx.lineWidth = r * 0.09
+  ctx.strokeStyle = '#d7dce4'
+  ctx.stroke()
+  ctx.lineWidth = LINE * 0.6
+  ctx.strokeStyle = OUTLINE
+  ctx.beginPath()
+  ctx.arc(0, 0, r * 0.81, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.arc(0, 0, r * 0.71, 0, Math.PI * 2)
+  ctx.stroke()
+  // Crossed wire spokes, fading to a blur at speed.
+  ctx.globalAlpha = 1 - blur * 0.8
+  ctx.strokeStyle = '#c9ced6'
+  ctx.lineWidth = r * 0.03
+  for (let i = 0; i < 18; i++) {
+    const a = (i / 18) * Math.PI * 2
+    const lean = i % 2 ? 0.5 : -0.5
+    ctx.beginPath()
+    ctx.moveTo(Math.cos(a + lean) * r * 0.14, Math.sin(a + lean) * r * 0.14)
+    ctx.lineTo(Math.cos(a) * r * 0.71, Math.sin(a) * r * 0.71)
+    ctx.stroke()
+  }
+  ctx.globalAlpha = 1
+  if (blur > 0) {
+    ctx.beginPath()
+    ctx.arc(0, 0, r * 0.71, 0, Math.PI * 2)
+    ctx.fillStyle = `rgba(201, 206, 214, ${0.35 * blur})`
+    ctx.fill()
+  }
+  // Brake disc and hub.
+  ctx.beginPath()
+  ctx.arc(0, 0, r * 0.32, 0, Math.PI * 2)
+  ctx.lineWidth = r * 0.07
+  ctx.strokeStyle = '#9aa2ae'
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.arc(0, 0, r * 0.16, 0, Math.PI * 2)
+  ctx.fillStyle = '#b8bfca'
+  ctx.fill()
+  ctx.lineWidth = LINE * 0.8
+  ctx.strokeStyle = OUTLINE
+  ctx.stroke()
+  if (look.grime) {
+    ctx.fillStyle = look.grime
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * Math.PI * 2 + (i % 3) * 0.2
+      ctx.beginPath()
+      ctx.ellipse(Math.cos(a) * r * 0.92, Math.sin(a) * r * 0.92, r * 0.1, r * 0.06, a, 0, Math.PI * 2)
       ctx.fill()
     }
   }
@@ -318,6 +397,131 @@ function coil(ctx: Ctx, from: Pt, to: Pt, turns: number, width: number, colour: 
 }
 
 /**
+ * Two-stroke motocross bike, facing +x: high mudguards, number plates, radiator shrouds, a fat
+ * expansion chamber, upside-down fork and a linked rear shock. The swingarm, shock and fork
+ * follow the wheel hubs (chassis coordinates), so the suspension visibly works. Both mudguards
+ * sit above the tyre at full bump-stop travel (data/vehicles.ts), so a wheel never goes through.
+ */
+function drawMotocross(ctx: Ctx, spec: VehicleSpec, c: { body: string; dark: string; light: string }, hubs?: Pt[]): void {
+  const [rear, front] = hubs ?? spec.wheels.map((w): Pt => [w.anchor.x, w.anchor.y])
+  const pivot: Pt = [-0.12, -0.02]
+  const along = (p: Pt, q: Pt, t: number): Pt => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]
+
+  // Rear shock, upright behind the engine, onto a linkage under the swingarm.
+  coil(ctx, [-0.24, 0.4], along(pivot, rear, 0.3), 6, 0.065, '#ff8a2a')
+  // Chain and sprockets, then the tapered aluminium swingarm.
+  ctx.beginPath()
+  ctx.arc(rear[0], rear[1], 0.13, 0, Math.PI * 2)
+  ctx.fillStyle = '#3d4450'
+  ctx.fill()
+  ctx.lineWidth = LINE
+  ctx.strokeStyle = OUTLINE
+  ctx.stroke()
+  tube(ctx, [[-0.02, -0.04], [rear[0], rear[1] + 0.13]], 0.025, '#2a2f38')
+  tube(ctx, [[-0.02, -0.15], [rear[0], rear[1] - 0.13]], 0.025, '#2a2f38')
+  const ax = rear[0] - pivot[0]
+  const ay = rear[1] - pivot[1]
+  const al = Math.hypot(ax, ay) || 1
+  const [nx, ny] = [-ay / al, ax / al]
+  poly(ctx, [
+    [pivot[0] + nx * 0.08, pivot[1] + ny * 0.08],
+    [rear[0] + nx * 0.045, rear[1] + ny * 0.045],
+    [rear[0] - nx * 0.045, rear[1] - ny * 0.045],
+    [pivot[0] - nx * 0.08, pivot[1] - ny * 0.08],
+  ], '#c9ced6')
+  tube(ctx, [along(pivot, rear, 0.15), along(pivot, rear, 0.85)], 0.012, '#8b93a1')
+  rrect(ctx, rear[0] - 0.05, rear[1] - 0.05, 0.1, 0.1, 0.025, '#8b93a1')
+
+  // Frame: twin spar from the steering head to the swingarm pivot, cradle and subframe.
+  tube(ctx, [[0.42, 0.52], [0.05, 0.3], [pivot[0], pivot[1]]], 0.1, '#b8bfca')
+  tube(ctx, [[0.44, 0.44], [0.32, -0.12], [0.08, -0.26], [-0.12, -0.2]], 0.06, '#b8bfca')
+  tube(ctx, [[-0.02, 0.34], [-0.85, 0.44]], 0.045, '#8b93a1')
+  rrect(ctx, pivot[0] - 0.05, pivot[1] - 0.05, 0.1, 0.1, 0.05, '#5b6372')
+
+  // Engine: crankcase, clutch cover, and the finned cylinder leaning forward.
+  rrect(ctx, -0.2, -0.27, 0.46, 0.28, 0.08, '#5b6372')
+  ctx.beginPath()
+  ctx.arc(0.0, -0.13, 0.1, 0, Math.PI * 2)
+  ctx.fillStyle = '#8b93a1'
+  ctx.fill()
+  ctx.stroke()
+  poly(ctx, [[0.04, -0.02], [0.26, -0.02], [0.34, 0.26], [0.1, 0.28]], '#8b93a1')
+  for (let i = 0; i < 4; i++) {
+    const y = 0.03 + i * 0.06
+    tube(ctx, [[0.03 + y * 0.25, y], [0.29 + y * 0.25, y]], 0.018, '#5b6372')
+  }
+  rrect(ctx, 0.08, 0.25, 0.26, 0.07, 0.03, '#3d4450')
+
+  // Expansion chamber: out of the front of the cylinder, down, a fat belly under the engine,
+  // tapering back up to the silencer under the side panel.
+  const pipe: [Pt, number][] = [
+    [[0.3, 0.1], 0.06], [[0.44, 0.02], 0.07], [[0.47, -0.12], 0.09], [[0.36, -0.24], 0.11],
+    [[0.16, -0.3], 0.12], [[-0.06, -0.29], 0.1], [[-0.26, -0.16], 0.08], [[-0.4, 0.06], 0.06], [[-0.48, 0.24], 0.05],
+  ]
+  for (const [w, col] of [[LINE * 2, OUTLINE], [0, '#6b7380'], [-0.06, '#9aa2ae']] as const) {
+    ctx.lineCap = 'round'
+    ctx.strokeStyle = col
+    for (let i = 1; i < pipe.length; i++) {
+      ctx.beginPath()
+      ctx.moveTo(pipe[i - 1][0][0], pipe[i - 1][0][1] + (w < 0 ? 0.025 : 0))
+      ctx.lineTo(pipe[i][0][0], pipe[i][0][1] + (w < 0 ? 0.025 : 0))
+      ctx.lineWidth = Math.max(0.02, (pipe[i - 1][1] + pipe[i][1]) / 2 + w)
+      ctx.stroke()
+    }
+  }
+  // Silencer
+  tube(ctx, [[-0.46, 0.25], [-0.98, 0.37]], 0.11, '#d7dce4')
+  tube(ctx, [[-0.98, 0.37], [-1.04, 0.38]], 0.06, '#3d4450')
+
+  // Rear mudguard: long and swept up behind the seat. Its underside stays above 0.4 over the
+  // tyre (the tyre top reaches 0.30 at full travel).
+  shaded(ctx, [[-0.3, 0.42], [-0.7, 0.41], [-1.08, 0.44], [-1.36, 0.56], [-1.3, 0.62], [-0.95, 0.54], [-0.3, 0.52]], c.light, c.body, c.dark)
+  // Side panel with the number plate.
+  poly(ctx, [[-0.66, 0.28], [-0.2, 0.25], [-0.12, 0.46], [-0.72, 0.48]], '#ffffff')
+  number(ctx, -0.42, 0.37, 0.17)
+  // Seat: long and flat, running up onto the tank.
+  poly(ctx, [[-1.0, 0.47], [0.0, 0.49], [0.16, 0.58], [0.02, 0.6], [-0.96, 0.57]], '#2a2f38')
+  // Tank and radiator shroud, with a stripe.
+  shaded(ctx, [[-0.02, 0.5], [0.42, 0.55], [0.56, 0.36], [0.44, 0.1], [0.24, 0.12], [0.1, 0.32]], c.light, c.body, c.dark)
+  poly(ctx, [[0.16, 0.36], [0.5, 0.34], [0.46, 0.27], [0.14, 0.29]], '#ffffff', false)
+
+  // Front mudguard, high on the bottom fork clamp (fixed to the chassis): above the tyre at
+  // full travel too (underside 0.38 over the hub; the tyre top reaches 0.30).
+  shaded(ctx, [[0.48, 0.47], [0.78, 0.38], [1.06, 0.4], [1.26, 0.5], [1.18, 0.53], [0.96, 0.47], [0.78, 0.45], [0.52, 0.53]], c.light, c.body, c.dark)
+
+  // Upside-down fork: gold inner legs at the axle slide up into the big outer tubes held in
+  // the clamps, so the fork visibly shortens as the front wheel rises.
+  const clamp: Pt = [0.36, 0.74]
+  const fx = front[0] - clamp[0]
+  const fy = front[1] - clamp[1]
+  const fl = Math.hypot(fx, fy) || 1
+  const outer = Math.min(0.58, fl - 0.12)
+  tube(ctx, [front, clamp], 0.07, '#f2b632')
+  tube(ctx, [clamp, [clamp[0] + (fx / fl) * outer, clamp[1] + (fy / fl) * outer]], 0.11, '#3d4450')
+  tube(ctx, [[clamp[0] + (fx / fl) * 0.05, clamp[1] + (fy / fl) * 0.05], [clamp[0] + (fx / fl) * (outer - 0.04), clamp[1] + (fy / fl) * (outer - 0.04)]], 0.025, '#8b93a1')
+  rrect(ctx, front[0] - 0.055, front[1] - 0.055, 0.11, 0.13, 0.03, '#8b93a1')
+  // Clamps, front number plate and handlebar.
+  rrect(ctx, 0.3, 0.7, 0.16, 0.06, 0.02, '#b8bfca')
+  rrect(ctx, 0.38, 0.46, 0.16, 0.06, 0.02, '#b8bfca')
+  poly(ctx, [[0.44, 0.48], [0.6, 0.52], [0.52, 0.84], [0.38, 0.8]], '#ffffff')
+  number(ctx, 0.49, 0.66, 0.15)
+  tube(ctx, [[0.34, 0.76], [0.32, 0.86], [0.26, 0.86]], 0.04, '#2a2f38')
+}
+
+/** The rider's race number, centred on (x, y), in chassis coordinates (y up). */
+function number(ctx: Ctx, x: number, y: number, size: number): void {
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.scale(1, -1)
+  ctx.font = `900 ${size}px ui-rounded, system-ui, sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = OUTLINE
+  ctx.fillText('7', 0, size * 0.05)
+  ctx.restore()
+}
+
+/**
  * The vehicle body in chassis coordinates, with the seated driver drawn at `lean`
  * unless the driver has been thrown out (ragdoll). `hubs` are the wheel centres in chassis
  * coordinates, for parts that follow the suspension; they default to the wheel anchors.
@@ -327,7 +531,7 @@ export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDrive
   const { head, headRadius } = spec.driver
   const seat: Pt = [head.x, head.y - 0.75]
   // Where Pip's feet rest, relative to the seat: pedals in the cars, the footpeg on the bike.
-  const feet: Record<string, Pt> = { runabout: [0.55, -0.2], scrambler: [0.12, -0.42], hauler: [0.55, -0.25] }
+  const feet: Record<string, Pt> = { runabout: [0.55, -0.2], scrambler: [0.1, -0.46], hauler: [0.55, -0.25] }
   const driver = (hands?: Pt) => {
     if (!withDriver) return
     ctx.save()
@@ -338,38 +542,8 @@ export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDrive
   }
 
   if (spec.id === 'scrambler') {
-    // Dirt bike: swingarm, shock, frame, engine, chain, tank, seat, fork, number plate, fenders.
-    // The swingarm, shock and fork follow the wheels, so the suspension visibly compresses.
-    const [rear, front] = hubs ?? spec.wheels.map((w): Pt => [w.anchor.x, w.anchor.y])
-    const pivot: Pt = [-0.15, -0.05]
-    // Rear shock: from the frame down to a point on the swingarm; it squashes as the arm rises.
-    const mount: Pt = [pivot[0] + (rear[0] - pivot[0]) * 0.42, pivot[1] + (rear[1] - pivot[1]) * 0.42]
-    coil(ctx, [-0.32, 0.3], mount, 5, 0.06, '#f2b632')
-    tube(ctx, [pivot, rear], 0.1, '#5b6372')
-    tube(ctx, [[-0.12, -0.16], rear], 0.03, '#2a2f38')
-    // Fork: the silver legs slide up into the gold tubes held by the steering head.
-    const head: Pt = [0.48, 0.5]
-    const fx = front[0] - head[0]
-    const fy = front[1] - head[1]
-    const len = Math.hypot(fx, fy) || 1
-    const tubeLen = Math.min(0.55, len - 0.12)
-    tube(ctx, [front, head], 0.09, '#d7dce4')
-    tube(ctx, [head, [head[0] + (fx / len) * tubeLen, head[1] + (fy / len) * tubeLen]], 0.12, '#f2b632')
-    rrect(ctx, front[0] - 0.06, front[1] - 0.04, 0.12, 0.12, 0.03, '#8b93a1')
-    rrect(ctx, -0.22, -0.24, 0.46, 0.34, 0.08, '#5b6372')
-    for (let i = 0; i < 3; i++) tube(ctx, [[-0.15 + i * 0.14, -0.22], [-0.15 + i * 0.14, 0.08]], 0.02, '#3d4450')
-    tube(ctx, [[-0.42, -0.18], [-0.82, 0.04], [-0.98, 0.06]], 0.08, '#b8bfca')
-    shaded(ctx, [[-0.55, 0.22], [0.05, 0.12], [0.45, 0.35], [0.5, 0.52], [0.05, 0.44], [-0.6, 0.38]], c.light, c.body, c.dark)
-    poly(ctx, [[-0.05, 0.37], [0.36, 0.45], [0.1, 0.48]], 'rgba(255,255,255,0.5)', false)
-    rrect(ctx, -0.78, 0.33, 0.6, 0.12, 0.06, '#2a2f38')
-    // Front fender rides on the fork legs, just above the tyre, up to the steering head.
-    const dy = Math.min(0.12, front[1] - spec.wheels[1].anchor.y)
-    shaded(ctx, [[0.52, -0.02 + dy], [1.08, -0.02 + dy], [0.98, 0.12 + dy], [0.6, 0.12 + dy]], c.light, c.body, c.dark)
-    shaded(ctx, [[-1.08, 0.05], [-0.55, 0.12], [-0.6, 0.22], [-1.12, 0.16]], c.light, c.body, c.dark)
-    rrect(ctx, 0.42, 0.28, 0.2, 0.22, 0.04, '#ffffff')
-    tube(ctx, [[0.42, 0.62], [0.62, 0.68]], 0.06, '#2a2f38')
-    glow(ctx, 0.64, 0.38, 0.4, 'rgba(255, 240, 170, 0.5)')
-    driver([0.52, 0.64 - seat[1]])
+    drawMotocross(ctx, spec, c, hubs)
+    driver([0.48, 0.84 - seat[1]])
     return
   }
 
@@ -434,7 +608,7 @@ export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDrive
 /** Where each vehicle's exhaust comes out, in chassis coordinates (for smoke puffs). */
 export const EXHAUST: Record<string, Pt> = {
   runabout: [-1.62, -0.24],
-  scrambler: [-0.98, 0.06],
+  scrambler: [-1.05, 0.38],
   hauler: [-2.0, -0.35],
 }
 

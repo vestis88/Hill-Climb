@@ -49,6 +49,7 @@ export class Sim {
     this.terrain.ensure(x - BEHIND, x + AHEAD)
     this.vehicle.applyInput(input)
     this.world.step(STEP, 8, 3)
+    this.vehicle.limitTravel()
     this.steps++
     this.maxX = Math.max(this.maxX, this.vehicle.chassis.getPosition().x)
   }

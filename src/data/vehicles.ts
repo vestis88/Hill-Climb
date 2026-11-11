@@ -92,8 +92,9 @@ export const scrambler: VehicleSpec = {
     centerOfMass: { x: -0.05, y: 0.25 },
   },
   wheels: [
-    { anchor: { x: -0.72, y: -0.4 }, radius: 0.38, mass: 0.5, friction: 0.36, springHz: 4, damping: 0.6, axle: 'rear' },
-    { anchor: { x: 0.78, y: -0.4 }, radius: 0.38, mass: 0.5, friction: 0.36, springHz: 4, damping: 0.6, axle: 'front' },
+    // Travel stops the tyres short of the mudguards (owner: wheels must never go through them).
+    { anchor: { x: -0.72, y: -0.4 }, radius: 0.38, mass: 0.5, friction: 0.36, springHz: 4, damping: 0.6, axle: 'rear', travel: { up: 0.32, down: 0.1 } },
+    { anchor: { x: 0.78, y: -0.4 }, radius: 0.38, mass: 0.5, friction: 0.36, springHz: 4, damping: 0.6, axle: 'front', travel: { up: 0.32, down: 0.1 } },
   ],
   engine: {
     maxTorque: 7,
