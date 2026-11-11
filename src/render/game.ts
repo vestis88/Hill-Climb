@@ -80,6 +80,9 @@ export class GameRenderer {
   /** Coins flying from where they were picked up to the counter, and the counter's pop. */
   private flying: { x: number; y: number; t: number }[] = []
   private counterPop = 0
+  /** Seconds since a fuel-on-empty rescue: drives the flash and the banner. */
+  private rescueT = 9
+  private rescueText = ''
   private vignette: CanvasGradient | null = null
   private vignetteSize = ''
   /** Seconds left of Pip's grin after a stunt or bonus. */
@@ -139,6 +142,45 @@ export class GameRenderer {
     if (up) this.backfire = true
   }
 
+  /**
+   * Reaching a fuel can on an empty tank: a burst of gold and fire, a flash, a shake, a shower
+   * of coins into the counter and a big banner.
+   */
+  fuelRescue(x: number, y: number, bonus: number): void {
+    this.particles.emit(x, y, { count: 36, speed: 6, colour: '#ffd23f', size: 0.13, life: 0.9, gravity: -3 })
+    this.particles.emit(x, y, { count: 18, speed: 4.5, colour: '#ff7a3a', size: 0.17, life: 0.7, gravity: -1 })
+    this.particles.emit(x, y, { count: 12, speed: 2.5, colour: '#ffffff', size: 0.1, life: 0.5, gravity: 0 })
+    this.shake(0.5)
+    this.rescueT = 0
+    this.rescueText = `+${bonus}`
+    const p = this.toScreen(x, y)
+    // Staggered so they stream in one after another.
+    for (let i = 0; i < 14; i++) this.flying.push({ x: p.x + (Math.random() - 0.5) * 60, y: p.y + (Math.random() - 0.5) * 40, t: -i * 0.06 })
+  }
+
+  /** The rescue flash and banner, over everything. */
+  private drawRescue(dt: number): void {
+    if (this.rescueT > 2.2) return
+    this.rescueT += dt
+    const { ctx, width, height: h } = this
+    const t = this.rescueT
+    if (t < 0.35) {
+      ctx.fillStyle = `rgba(255, 220, 120, ${0.45 * (1 - t / 0.35)})`
+      ctx.fillRect(0, 0, width, h)
+    }
+    const fade = t < 1.7 ? 1 : Math.max(0, 1 - (t - 1.7) / 0.5)
+    const pop = t < 0.25 ? 0.4 + 0.75 * Math.sin((t / 0.25) * Math.PI * 0.5) * 1.15 : 1 + 0.06 * Math.sin(t * 9) * Math.max(0, 1 - t)
+    ctx.save()
+    ctx.globalAlpha = fade
+    ctx.translate(width / 2, h * 0.32)
+    ctx.scale(pop, pop)
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    this.outlinedText('MADE IT ON EMPTY!', 0, 0, Math.min(44, width / 16), '#ffffff')
+    this.outlinedText(this.rescueText, 0, Math.min(52, width / 14), Math.min(56, width / 12), '#ffd23f')
+    ctx.restore()
+  }
+
   /** A collected coin flies up to the counter (world position). */
   coinCollected(x: number, y: number): void {
     const p = this.toScreen(x, y)
@@ -152,6 +194,7 @@ export class GameRenderer {
     this.counterPop = Math.max(0, this.counterPop - dt * 4)
     for (const c of this.flying) {
       c.t += dt / 0.55
+      if (c.t < 0) continue
       const t = Math.min(1, c.t)
       const e = t * t * (3 - 2 * t)
       const x = c.x + (tx - c.x) * e
@@ -262,6 +305,7 @@ export class GameRenderer {
     drawWeather(ctx, env, width, h, this.camX, this.time)
     this.drawSpeedLines(view)
     this.drawVignette()
+    this.drawRescue(view.dt)
     if (view.showHud) this.drawHud(view)
     this.drawFlyingCoins(view.dt)
   }

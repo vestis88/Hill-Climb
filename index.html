@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- Opaque, not black-translucent: on iOS/iPadOS 26 a translucent status bar makes the
+         home-screen app one status bar short (a strip at the bottom) and blurs the top. iOS reads
+         this when the app is added to the home screen, so re-add it after changing this. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <!-- Safari tints its top bar with this; match the sky so the top edge blends in. -->
     <meta name="theme-color" content="#7fb6e6" />
     <title>Ridgeline</title>

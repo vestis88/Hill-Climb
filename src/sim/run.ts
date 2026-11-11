@@ -16,7 +16,7 @@ export const RULES = {
    */
   emptyStopSeconds: 1,
   emptyStuckSeconds: 8,
-  emptyRescueBonus: 100,
+  emptyRescueBonus: 1000,
   pickupRadius: 1.1,
   /** Coins per second in the air, for jumps of at least minAirTime. Raised after owner playtest. */
   airCoinsPerSecond: 20,

@@ -48,7 +48,7 @@ to ease off and balance the car in the air. Green Meadows has the most.
   dry the engine dies but the run goes on: the car rolls on, and only the
   brake works (it slows the car and tips the nose down in the air; it cannot
   reverse). Roll into a fuel can on an empty tank and you refuel and get a
-  **100-coin bonus**. The run ends once the car has stood still for a second,
+  **1,000-coin bonus**. The run ends once the car has stood still for a second,
   or has made no new ground for 8 seconds (rocking in a dip).
 - **Crashing**: the run ends at once if the driver's head hits the ground.
 - **Coins** come from six places (values in `src/sim/run.ts` and `src/data/track.ts`):
@@ -62,7 +62,7 @@ to ease off and balance the car in the air. Green Meadows has the most.
     down while moving forward, for wheelies of at least 10 m (by distance, so a
     fast wheelie pays more than a slow one);
   - distance milestones, a one-off bonus the first time you pass each marker on a track;
-  - 100 coins for reaching a fuel can on an empty tank.
+  - 1,000 coins for reaching a fuel can on an empty tank.
 - At the end of a run all coins collected are banked, whether it ended in a crash or an empty tank.
 - Crashing costs nothing except the run itself. There are no checkpoints:
   every run starts from the beginning of the track.
