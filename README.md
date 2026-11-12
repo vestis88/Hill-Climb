@@ -279,6 +279,10 @@ whole list of families cannot be read.
 
 - **Pause:** the ❚❚ button during a run (or leaving the app, e.g. a call) pauses: nothing moves,
   the engine goes quiet, and the menu offers Fortsätt (go on) or Avsluta åket (end the run).
+- **Set pieces:** from 250 m on, most 300 m stretches of every map hold one set piece, placed by
+  the map's seed (the same every run): a double jump with logs at the lips, a wooden table-top
+  bridge, a row of whoops (five quick rollers), or a steep wall up to a plateau. Plain kickers are
+  left out inside them (code: `src/sim/terrain.ts`).
 - **Own paint colour:** every player's vehicle is painted in their name colour while they drive,
   on their ghosts, and in the vehicle pictures on their turn screen.
 - **Time of day and weather:** every run gets a random mood (visual only, the physics are the
