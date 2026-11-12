@@ -181,7 +181,9 @@ export function showResults(el: HTMLElement, v: ResultsView): void {
     : v.roundOver
       ? '<button class="big blue" data-act="standings">Omgångens resultat</button>'
       : '<button class="big blue" data-act="garage">Garaget</button><button class="big" data-act="again">Kör igen</button>'
-  el.innerHTML = `
+  // Two columns when the screen is wide: the result and buttons on the left, the coin breakdown on the right.
+  el.innerHTML = `<div class="res">
+    <div class="res-main">
     <div class="who" style="--c:${v.player.colour}">${v.player.name}</div>
     <h2>${TITLES[v.status]}</h2>
     <div class="results-total"><b class="coin">●</b> <span data-count="${v.total}">0</span></div>
@@ -191,6 +193,8 @@ export function showResults(el: HTMLElement, v: ResultsView): void {
         : `<div>Kom inte i mål: ${Math.floor(v.distance)} av ${v.race.length} m</div>`
       : `<div>${Math.floor(v.distance)} m ${v.newBest ? '<span class="newbest">Nytt rekord!</span>' : ''}</div>`}
     ${v.missions?.length ? `<div class="missions-done">${v.missions.map((m) => `<span>✓ Uppdrag klart: ${m.text} <b class="coin">●</b> ${m.reward}</span>`).join('')}</div>` : ''}
+    <div class="actions">${actions}</div>
+    </div>
     <div class="rows">
       ${row('Mynt på banan', v.coins.track)}
       ${row('Lufttid', v.coins.air)}
@@ -202,8 +206,7 @@ export function showResults(el: HTMLElement, v: ResultsView): void {
       ${row('Bränsle på tom tank', v.coins.rescue)}
       <div class="total"><span>Det här åket</span><span><b class="coin">●</b> <span data-count="${v.total}">0</span></span></div>
       <div><span>Du har</span><span><b class="coin">●</b> ${v.bank}</span></div>
-    </div>
-    <div class="actions">${actions}</div>`
+    </div></div>`
   countUp(el)
   el.onclick = (e) => {
     const b = (e.target as HTMLElement).closest('button')

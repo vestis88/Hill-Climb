@@ -243,6 +243,21 @@
       .mrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
       .mrow .pname { min-width: 56px; }
       .mission { background: rgba(255,255,255,0.08); border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); border-radius: 999px; padding: 3px 10px; font-size: 13px; font-weight: 700; }
+      /* Results: stacked when narrow; side by side when wide (a phone held sideways), so the buttons stay on screen. */
+      .res { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; max-width: 860px; }
+      .res-main { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+      @media (min-aspect-ratio: 4/3) {
+        .res { flex-direction: row; align-items: center; justify-content: center; gap: 36px; }
+        .res-main { flex: 1 1 0; max-width: 440px; }
+        .res .rows { flex: 1 1 0; max-width: 340px; background: rgba(255,255,255,0.06); border-radius: 14px; padding: 10px 14px; }
+      }
+      @media (max-height: 500px) {
+        .res .results-total { font-size: 28px; }
+        .res .rows { font-size: 15px; }
+        .res .rows div { padding: 2px 0; }
+        .res .missions-done { font-size: 13px; }
+        .res button.big { font-size: 19px; padding: 11px 28px; }
+      }
       .missions-done { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #7dff8a; font-weight: 800; }
       canvas.pip { width: 180px; height: 150px; }
       .choices.outfit { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
