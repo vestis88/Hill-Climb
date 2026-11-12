@@ -220,8 +220,8 @@ is confirmed. New vehicles get their own handling tests (as V1, V2) and a stage-
 
 | ID | Task | Character |
 |---|---|---|
-| N1 | Traktorn (tractor) | Huge rear wheels, tiny front; very slow but climbs almost anything and hardly tips backwards; good for younger players |
-| N2 | Monstertrucken (monster truck) | Giant soft bouncy wheels, big air, easy backflips; heavy, so it burns fuel fast |
+| N1 (done) | Traktorn (tractor) | Huge rear wheels, tiny front; very slow but climbs almost anything and hardly tips backwards; good for younger players |
+| N2 (done) | Monstertrucken (monster truck) | Giant soft bouncy wheels, big air, easy backflips; heavy, so it burns fuel fast |
 | N3 | Kartingen (go-kart) | Low and fast with almost no suspension: brilliant on smooth tracks, bad on bumps; a racer |
 | N4 | Månlandaren (moon lander) | A buggy with small thrusters: a boost button for short bursts that refill on the ground; made for Kraterfälten (new control) |
 | N5 | Snöskotern (snowmobile) | A track of many small wheels and a ski in front; great on Frostpasset |

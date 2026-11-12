@@ -20,6 +20,8 @@ export const VEHICLE_COLOURS: Record<string, { body: string; dark: string; light
   scrambler: { body: '#2fae5f', dark: '#1d7a40', light: '#6fd391' },
   hauler: { body: '#f2b632', dark: '#b98318', light: '#ffd877' },
   rover: { body: '#1fb5a8', dark: '#12796f', light: '#6fe0d4' },
+  tractor: { body: '#4f9a2e', dark: '#33691c', light: '#8ccf66' },
+  monster: { body: '#8e44d1', dark: '#5f2a93', light: '#c08cf0' },
 }
 
 type Ctx = CanvasRenderingContext2D
@@ -638,7 +640,7 @@ export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDrive
   const { head, headRadius } = spec.driver
   const seat: Pt = [head.x, head.y - 0.75]
   // Where Pip's feet rest, relative to the seat: pedals in the cars, the footpeg on the bike.
-  const feet: Record<string, Pt> = { runabout: [0.55, -0.2], scrambler: [0.1, -0.46], hauler: [0.55, -0.25], rover: [0.5, -0.25] }
+  const feet: Record<string, Pt> = { runabout: [0.55, -0.2], scrambler: [0.1, -0.46], hauler: [0.55, -0.25], rover: [0.5, -0.25], tractor: [0.5, -0.3], monster: [0.55, -0.25] }
   const driver = (hands?: Pt) => {
     if (!withDriver) return
     ctx.save()
@@ -670,6 +672,64 @@ export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDrive
     tube(ctx, [[0.45, 0.38], [0.6, 0.66], [0.7, 0.66]], 0.05, '#2a2f38')
     glow(ctx, 1.42, 0.2, 0.5, 'rgba(255, 240, 170, 0.5)')
     rrect(ctx, 1.3, 0.14, 0.14, 0.12, 0.05, '#fff6c8')
+    return
+  }
+
+  if (spec.id === 'tractor') {
+    // Tractor: long bonnet over the engine, a roll frame over the seat, a tall exhaust stack and
+    // a big mudguard over the rear wheel.
+    tube(ctx, [[-1.0, 0.3], [-1.0, 1.85], [0.05, 1.85], [0.05, 0.35]], 0.09, '#2a2f38')
+    tube(ctx, [[-1.0, 1.85], [0.05, 1.85]], 0.14, c.dark)
+    driver([0.62, 0.95 - seat[1]])
+    shaded(ctx, [[0.05, -0.3], [1.6, -0.3], [1.66, 0.3], [1.5, 0.52], [0.05, 0.52]], c.light, c.body, c.dark)
+    // Seat box and step
+    shaded(ctx, [[-1.1, -0.3], [0.1, -0.3], [0.1, 0.35], [-1.1, 0.35]], c.light, c.body, c.dark)
+    // Rear mudguard over the big wheel
+    ctx.beginPath()
+    ctx.arc(-0.85, -0.3, 0.98, Math.PI * 0.05, Math.PI * 0.95)
+    ctx.arc(-0.85, -0.3, 0.86, Math.PI * 0.95, Math.PI * 0.05, true)
+    ctx.closePath()
+    ctx.fillStyle = c.dark
+    ctx.fill()
+    ctx.lineWidth = LINE
+    ctx.strokeStyle = OUTLINE
+    ctx.stroke()
+    // Grille slats, steering wheel, exhaust stack with a cap
+    for (let i = 0; i < 4; i++) rrect(ctx, 1.48, -0.18 + i * 0.13, 0.12, 0.06, 0.02, '#2a2f38', false)
+    tube(ctx, [[0.1, 0.55], [0.5, 0.95]], 0.05, '#2a2f38')
+    tube(ctx, [[0.85, 0.5], [0.85, 1.22]], 0.09, '#5b6372')
+    rrect(ctx, 0.76, 1.18, 0.18, 0.08, 0.03, '#2a2f38')
+    glow(ctx, 1.62, 0.3, 0.6, 'rgba(255, 240, 170, 0.5)')
+    rrect(ctx, 1.5, 0.22, 0.14, 0.16, 0.05, '#fff6c8')
+    return
+  }
+
+  if (spec.id === 'monster') {
+    // Monster truck: a pickup body high on a tube frame, with shocks down to the giant wheels.
+    const h = hubs ?? spec.wheels.map((w) => [w.anchor.x, w.anchor.y] as Pt)
+    for (const [hx, hy] of h) {
+      tube(ctx, [[hx * 0.85, -0.15], [hx, hy + 0.2]], 0.12, '#b8bfca')
+      tube(ctx, [[hx * 0.6, -0.15], [hx, hy]], 0.07, '#5b6372')
+    }
+    tube(ctx, [[-1.6, -0.2], [1.6, -0.2]], 0.1, '#5b6372')
+    shaded(ctx, [[-1.75, -0.12], [1.75, -0.12], [1.8, 0.35], [0.85, 0.45], [0.5, 1.05], [-0.6, 1.05], [-0.7, 0.45], [-1.8, 0.4]], c.light, c.body, c.dark)
+    const glass: Pt[] = [[-0.5, 0.5], [0.72, 0.5], [0.45, 0.95], [-0.5, 0.95]]
+    poly(ctx, glass, '#bfe3f7')
+    ctx.save()
+    ctx.beginPath()
+    glass.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)))
+    ctx.closePath()
+    ctx.clip()
+    driver([0.55, 0.45 - seat[1]])
+    ctx.restore()
+    poly(ctx, glass, 'rgba(0,0,0,0)')
+    // Flame stripes along the side, light bar on the roof
+    for (let i = 0; i < 4; i++) poly(ctx, [[0.9 - i * 0.5, 0.05], [1.35 - i * 0.5, 0.15], [0.9 - i * 0.5, 0.25]], '#ffb020', false)
+    rrect(ctx, -0.45, 1.05, 0.8, 0.1, 0.04, '#2a2f38')
+    for (let i = 0; i < 4; i++) rrect(ctx, -0.4 + i * 0.2, 1.07, 0.12, 0.06, 0.02, '#fff6c8', false)
+    glow(ctx, 1.75, 0.2, 0.7, 'rgba(255, 240, 170, 0.55)')
+    rrect(ctx, 1.62, 0.12, 0.16, 0.16, 0.05, '#fff6c8')
+    rrect(ctx, -1.84, 0.1, 0.1, 0.18, 0.03, '#ff4d4d')
     return
   }
 
@@ -737,6 +797,8 @@ export const EXHAUST: Record<string, Pt> = {
   scrambler: [-1.11, 0.39],
   hauler: [-2.0, -0.35],
   rover: [-0.9, 1.08],
+  tractor: [0.85, 1.25],
+  monster: [-1.7, 0.1],
 }
 
 const COIN_COLOURS = [

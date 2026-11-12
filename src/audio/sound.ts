@@ -107,6 +107,10 @@ const ENGINES: Record<string, EngineVoice> = {
   // Big V8 truck: a lumpy rumble at idle, a deep roar on the gas.
   // Firing rate 48 Hz (720 rpm) at idle to 300 Hz (4,500 rpm).
   hauler: { idle: 48, top: 300, firing: 8, pulse: 0, grit: 1.6, cutoff: [380, 1700], sub: 0, noise: 0.1, waves: ['sawtooth', 'sawtooth'], volume: 1.1, kind: 'v8' },
+  // Tractor: a slow, chugging diesel four that hardly revs.
+  tractor: { idle: 14, top: 75, firing: 4, pulse: 0, grit: 2.6, cutoff: [500, 1500], sub: 0, noise: 0.18, waves: ['sawtooth', 'square'], volume: 1.05, kind: 'i4' },
+  // Monster truck: a huge V8, deeper and louder than the Hauler.
+  monster: { idle: 40, top: 260, firing: 8, pulse: 0, grit: 2, cutoff: [320, 1500], sub: 0, noise: 0.14, waves: ['sawtooth', 'sawtooth'], volume: 1.2, kind: 'v8' },
 }
 
 export class Sound {
