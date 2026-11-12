@@ -136,12 +136,12 @@ export class Run {
       const effect = this.launchKind === 'perfect' ? LAUNCH.perfect : LAUNCH.over
       // The effect fades out over its last third rather than stopping dead.
       const fade = Math.max(0, Math.min(1, this.launchLeft / (effect.seconds / 3)))
-      if (this.launchKind === 'over') v.gripScale = 1 + (LAUNCH.over.grip - 1) * fade
-      else {
-        const mass = [v.chassis, ...v.wheels].reduce((m, b) => m + b.getMass(), 0)
-        const a = v.chassis.getAngle()
-        v.chassis.applyForceToCenter(Vec2(Math.cos(a) * mass * LAUNCH.perfect.push * fade, Math.sin(a) * mass * LAUNCH.perfect.push * fade), true)
-      }
+      if (this.launchKind === 'over' && effect.seconds - this.launchLeft < LAUNCH.over.spinSeconds) v.gripScale = LAUNCH.over.grip
+      // A perfect start pushes forward; too many revs drags back (never so much it stops).
+      const mass = [v.chassis, ...v.wheels].reduce((m, b) => m + b.getMass(), 0)
+      const a = v.chassis.getAngle()
+      const push = effect.push * fade
+      v.chassis.applyForceToCenter(Vec2(Math.cos(a) * mass * push, Math.sin(a) * mass * push), true)
     } else if (!input.gas) this.launchLeft = 0
     this.sim.step(input)
     this.fuel -= STEP / (input.gas ? RULES.fuelSecondsOnGas : RULES.fuelSecondsIdle)

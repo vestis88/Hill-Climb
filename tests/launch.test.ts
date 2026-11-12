@@ -43,6 +43,9 @@ describe('start countdown and launch', () => {
         expect(over.status, v.id).toBe('running')
         expect(perfect.t, v.id).toBeLessThan(normal.t - 0.2)
         expect(over.t, v.id).toBeGreaterThan(normal.t + 0.1)
+        // Too many revs is a drag, not a stall: it still gets away within a second of normal.
+        // (A stationary spinning wheel once lost all grip for good: friction compounded.)
+        expect(over.t, v.id).toBeLessThan(normal.t + 1)
       }
     }
   })
@@ -51,7 +54,7 @@ describe('start countdown and launch', () => {
     for (const spec of [runabout, hauler]) {
       const run = new Run({ vehicle: spec, height: flat, pickups: fixedPickups([]), bestDistance: 1e9 })
       run.launch(1)
-      for (let i = 0; i < 30; i++) run.step({ gas: true, brake: false })
+      for (let i = 0; i < 15; i++) run.step({ gas: true, brake: false })
       const rear = spec.wheels.findIndex((w) => w.axle === 'rear')
       const surface = Math.abs(run.sim.vehicle.wheels[rear].getAngularVelocity()) * spec.wheels[rear].radius
       const ground = Math.abs(run.sim.vehicle.chassis.getLinearVelocity().x)
