@@ -161,6 +161,13 @@ export function betterGhost(a: { time?: number; distance: number }, b: { time?: 
   return a.distance > b.distance
 }
 
+/** The best of several ghosts (fastest race, else furthest run), or null if there are none. */
+export function bestOf(ghosts: (Ghost | null | undefined)[]): Ghost | null {
+  let best: Ghost | null = null
+  for (const g of ghosts) if (g && g.data.length && (!best || betterGhost(g, best))) best = g
+  return best
+}
+
 export interface StoredGhost {
   player: string
   env: string

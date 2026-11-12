@@ -8,7 +8,7 @@ import { createInput } from './input/input'
 import { GameRenderer, type Popup } from './render/game'
 import { drawEnvironmentPreview, drawVehiclePreview } from './render/preview'
 import { addScore, earn, emptySave, levelsFor, loadSave, playerBest, playerTime, spend, writeSave } from './save/save'
-import { clearGhosts, GhostRecorder, GhostTrack, loadGhost, storeGhost } from './save/ghosts'
+import { bestOf, clearGhosts, GhostRecorder, GhostTrack, loadGhost, storeGhost, type Ghost } from './save/ghosts'
 import { CloudSync } from './save/cloud'
 import { PLAYERS, playerColour } from './data/players'
 import { formatTime, gameMode, MODES, recordKey } from './data/modes'
@@ -64,9 +64,13 @@ interface Round {
   players: string[]
   turn: number
   results: { name: string; distance: number; time?: number; newBest: boolean }[]
+  /** This round's runs, as ghosts for the players after them (kept in memory only). */
+  ghosts: Ghost[]
+  /** The overall record on this track and mode as it stood when the round began. */
+  record: Ghost | null
 }
 // Declared before the first run is created below, which reads them.
-let round: Round = { players: [...save.players], turn: 0, results: [] }
+let round: Round = { players: [...save.players], turn: 0, results: [], ghosts: [], record: null }
 /** Ghosts raced this run, and the recorder for this run's own ghost. */
 let ghosts: { label: string; colour: string; track: GhostTrack }[] = []
 let recorder = new GhostRecorder(2)
@@ -280,7 +284,8 @@ function startRound(): void {
   // A round from the garage always drives with the family's own upgrades; the Tuning screen's
   // "Drive as" choice only applies to its own test drives.
   driveAs = 'mine'
-  round = { players: [...save.players], turn: 0, results: [] }
+  round = { players: [...save.players], turn: 0, results: [], ghosts: [], record: null }
+  if (round.players.length > 1) round.record = bestOf(PLAYERS.map((p) => loadGhost(p.name, currentKey(), 'best')))
   // With several players, first show who starts and the order (like the "X's turn" button between turns).
   if (round.players.length < 2) return startRun()
   showTurn(resultsEl, {
@@ -303,6 +308,12 @@ function pickGhosts(): void {
   ghosts = []
   const add = (g: ReturnType<typeof loadGhost>, label: string) => {
     if (g && g.data.length) ghosts.push({ label, colour: playerColour(g.player), track: new GhostTrack(g) })
+  }
+  // A round with several players races this round's earlier runs, and the record from before the round.
+  if (round.players.length > 1) {
+    for (const g of round.ghosts) add(g, g.player)
+    if (round.record) add(round.record, `Rekord · ${round.record.player}`)
+    return
   }
   const best = loadGhost(me, env, 'best')
   const last = loadGhost(me, env, 'last')
@@ -355,7 +366,12 @@ function finishRun(): void {
   }
   persist()
   // Every counting run is kept as the player's last ghost (and best, if it went further or faster).
-  if (counts && distance > 0) storeGhost(recorder.finish({ player: me, vehicle: currentVehicle().id, env: key, distance, time }))
+  if (distance > 0) {
+    const ghost = recorder.finish({ player: me, vehicle: currentVehicle().id, env: key, distance, time })
+    if (counts) storeGhost(ghost)
+    // Raced by the players after this one in the round (a retake replaces the earlier run).
+    round.ghosts = [...round.ghosts.filter((g) => g.player !== me), ghost]
+  }
   const newBest = counts && (race.length ? time !== undefined && time < bestTime : distance > best)
   round.results.push({ name: me, distance, time, newBest })
   const nextPlayer = round.players[round.turn + 1]
