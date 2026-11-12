@@ -162,7 +162,7 @@ describe('run rules', () => {
 
   it('pays the bike 2 coins per metre of a feathered wheelie', () => {
     const run = new Run({ vehicle: scrambler, height: flat, gravity: 9, pickups: fixedPickups([]), bestDistance: 1e9 })
-    const wheelies: { value: number; metres: number }[] = []
+    const wheelies: { value: number; metres: number; multiplier: number }[] = []
     let start = 0
     let x0: number | null = null
     for (let i = 0; i < 600 && run.status === 'running'; i++) {
@@ -178,7 +178,54 @@ describe('run rules', () => {
     expect(wheelies.length).toBeGreaterThan(0)
     const longest = wheelies.reduce((a, b) => (b.metres > a.metres ? b : a))
     expect(longest.metres).toBeGreaterThan(RULES.minWheelie)
-    expect(longest.value).toBe(Math.floor(longest.metres * RULES.wheelieCoinsPerMetre))
+    // 2 coins a metre, at ×1 for the first 25 m and more after.
+    if (longest.metres < 25) expect(longest.value).toBe(Math.floor(longest.metres * RULES.wheelieCoinsPerMetre))
+    else expect(longest.value).toBeGreaterThan(longest.metres * RULES.wheelieCoinsPerMetre)
+  })
+
+  describe('wheelie counting (owner: lasts until the front touches; only back-wheel metres count)', () => {
+    const rear = runabout.wheels.findIndex((w) => w.axle === 'rear')
+    const front = runabout.wheels.findIndex((w) => w.axle === 'front')
+    /** Feed the run's wheelie rule a made-up state: x, and which axles touch the ground. */
+    function feed(run: Run, x: number, rearDown: boolean, frontDown: boolean) {
+      const contacts: boolean[] = []
+      contacts[rear] = rearDown
+      contacts[front] = frontDown
+      ;(run as unknown as { wheelie(s: unknown): void }).wheelie({ chassis: { x, y: 0, angle: 0.5 }, wheelContacts: contacts, speed: 8 })
+    }
+    const events = (run: Run) => run.events.filter((e) => e.kind === 'wheelie')
+
+    it('a hop off the back wheel does not end it, but the metres in the air do not count', () => {
+      const run = new Run({ vehicle: runabout, height: flat, pickups: fixedPickups([]), bestDistance: 1e9 })
+      let x = 0
+      for (; x <= 15; x += 0.1) feed(run, x, true, false) // 15 m on the back wheel
+      for (; x <= 25; x += 0.1) feed(run, x, false, false) // 10 m hop, nothing down
+      for (; x <= 30; x += 0.1) feed(run, x, true, false) // 5 m more on the back wheel
+      expect(run.wheelieNow).not.toBeNull()
+      expect(run.wheelieNow!.metres).toBeCloseTo(20, 0)
+      feed(run, x, true, true) // front down: paid
+      expect(run.wheelieNow).toBeNull()
+      expect(events(run)).toHaveLength(1)
+      expect(events(run)[0].value).toBe(40)
+    })
+
+    it('long wheelies pay more per metre: ×2 from 25 m up to ×5 from 200 m', () => {
+      expect([0, 24, 25, 50, 100, 199, 200, 1000].map(RULES.wheelieMultiplier)).toEqual([1, 1, 2, 3, 4, 4, 5, 5])
+      const run = new Run({ vehicle: runabout, height: flat, pickups: fixedPickups([]), bestDistance: 1e9 })
+      for (let x = 0; x <= 100.05; x += 0.1) feed(run, x, true, false)
+      feed(run, 101, true, true)
+      // 25 m ×1, 25 m ×2, 50 m ×3 at 2 coins a metre.
+      expect(events(run)[0].value).toBeGreaterThanOrEqual(2 * (25 + 50 + 150) - 2)
+      expect(events(run)[0].value).toBeLessThanOrEqual(2 * (25 + 50 + 150) + 2)
+      expect(events(run)[0].multiplier).toBe(3)
+    })
+
+    it('too short pays nothing', () => {
+      const run = new Run({ vehicle: runabout, height: flat, pickups: fixedPickups([]), bestDistance: 1e9 })
+      for (let x = 0; x <= 8; x += 0.1) feed(run, x, true, false)
+      feed(run, 8, true, true)
+      expect(events(run)).toHaveLength(0)
+    })
   })
 
   it('pays a milestone bonus only beyond the best distance so far', () => {

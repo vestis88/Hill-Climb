@@ -70,9 +70,13 @@ to ease off and balance the car in the air. Green Meadows has the most.
     quad (and 1,500 more for each rotation beyond), back or front, landing on the wheels (any wheel
     touching, roughly upright relative to the ground; rotation is measured
     against the ground, so ramps and downhill landings count fully);
-  - wheelies: 2 coins per metre with the front wheels up and the back wheels
-    down while moving forward, for wheelies of at least 10 m (by distance, so a
-    fast wheelie pays more than a slow one);
+  - wheelies: 2 coins per metre, for wheelies of at least 10 m (by distance, so a
+    fast wheelie pays more than a slow one). A wheelie starts with the front wheels
+    up and a back wheel down, moving forward, and lasts until a front wheel touches
+    the ground: hops off the back wheel keep it going, but only metres driven with
+    a back wheel down count. Long wheelies pay more: each metre is paid at ×2 from
+    25 m, ×3 from 50 m, ×4 from 100 m and ×5 from 200 m. A live counter under the
+    coins shows the metres, coins and multiplier while you are on the back wheel;
   - distance milestones, a one-off bonus the first time you pass each marker on a track;
   - 1,000 coins for reaching a fuel can on an empty tank.
 - At the end of a run all coins collected are banked, whether it ended in a crash or an empty tank.

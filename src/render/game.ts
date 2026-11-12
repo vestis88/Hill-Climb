@@ -49,6 +49,8 @@ export interface View {
   driver: { lean: number; ragdoll: { torso: Pose; head: Pose } | null }
   /** Whose turn it is, shown by the distance. */
   player?: { name: string; colour: string }
+  /** The wheelie in progress, for the live counter. */
+  wheelie?: { metres: number; coins: number; multiplier: number } | null
   /** Metres to the next fuel can, if there is one ahead. */
   nextFuel?: number | null
   /** Puddles on the track, to draw and splash through. */
@@ -90,6 +92,9 @@ export class GameRenderer {
   /** Seconds since GO (big while the countdown runs), and how the start went. */
   private goT = 9
   private goKind: LaunchKind = 'normal'
+  /** The wheelie multiplier last shown, and seconds since it rose (for its pop). */
+  private wheelieMult = 1
+  private wheeliePop = 9
   private wasAirborne = false
   private shakeAmount = 0
   private toScreen = (x: number, y: number) => ({ x, y })
@@ -325,6 +330,7 @@ export class GameRenderer {
     this.drawRescue(view.dt)
     if (view.showHud) this.drawHud(view)
     if (view.showHud) this.drawCountdown(view)
+    if (view.showHud) this.drawWheelie(view)
     this.drawFlyingCoins(view.dt)
   }
 
@@ -850,6 +856,35 @@ export class GameRenderer {
     this.outlinedText('GO!', 0, -10, Math.round(r * 0.75), '#7dff8a')
     if (this.goKind === 'perfect') this.outlinedText('Perfect start!', 0, r * 0.5, 24, '#ffd23f')
     else if (this.goKind === 'over') this.outlinedText('Too many revs!', 0, r * 0.5, 22, '#ff6b6b')
+    ctx.restore()
+  }
+
+  /** A live wheelie counter under the coins: metres, the multiplier (it pops when it rises) and coins so far. */
+  private drawWheelie(view: View): void {
+    const w = view.wheelie
+    if (!w || w.metres < 3) {
+      this.wheelieMult = 1
+      return
+    }
+    if (w.multiplier > this.wheelieMult) {
+      this.wheelieMult = w.multiplier
+      this.wheeliePop = 0
+    }
+    this.wheeliePop += view.dt
+    const { ctx, width, safe } = this
+    const y = Math.max(12, safe.top) + 58
+    const k = Math.min(1, this.wheeliePop / 0.35)
+    const pop = 1 + 0.5 * Math.sin(k * Math.PI) * (1 - k)
+    const colour = ['#ffffff', '#ffffff', '#7dff8a', '#ffd23f', '#ff9a3c', '#ff5c8a'][Math.min(5, w.multiplier)]
+    ctx.save()
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+    this.outlinedText(`Wheelie ${Math.floor(w.metres)} m  +${Math.floor(w.coins)}`, width / 2, y, 17, w.metres >= 10 ? '#ffffff' : 'rgba(255,255,255,0.75)')
+    if (w.multiplier > 1) {
+      ctx.translate(width / 2, y + 34)
+      ctx.scale(pop, pop)
+      this.outlinedText(`×${w.multiplier}`, 0, -10, 22, colour)
+    }
     ctx.restore()
   }
 
