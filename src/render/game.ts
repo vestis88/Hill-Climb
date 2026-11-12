@@ -4,7 +4,7 @@ import { genitive } from '../data/players'
 import type { Environment } from '../data/environments'
 import type { Pickup } from '../data/track'
 import type { HeightFn, Input, Pose, SimState, VehicleSpec } from '../sim/types'
-import type { GhostPose } from '../save/ghosts'
+import { ghostNearFade, type GhostPose } from '../save/ghosts'
 import type { Puddle, PuddleFn } from '../sim/types'
 import { formatTime } from '../data/modes'
 import { drawHead, drawnHubs, drawPickup, drawVehicle, drawWheel, EXHAUST, OUTLINE, type Mood } from './art'
@@ -321,7 +321,7 @@ export class GameRenderer {
     for (const p of view.pickups) if (!p.taken && p.x > left - 1 && p.x < right + 1) drawPickup(ctx, p, this.time)
 
     this.effects(view, chassis)
-    this.drawGhosts(view)
+    this.drawGhosts(view, chassis)
     this.drawVehicle(view, chassis)
     this.particles.update(view.dt)
     this.particles.draw(ctx)
@@ -613,13 +613,18 @@ export class GameRenderer {
    * Ghost riders: see-through vehicles from recorded runs, behind the player's, each with a
    * name tag in its player's colour. Visual only; they never touch the physics.
    */
-  private drawGhosts(view: View): void {
+  private drawGhosts(view: View, me: Pose): void {
     const { ctx } = this
     // Name tags already placed (in pixels, y up), so overlapping tags stack instead of piling up.
     const placed: { x: number; y: number; w: number }[] = []
     const k = this.width / this.viewWidth
     for (const g of view.ghosts) {
-      const { chassis: c, hubs, wheelAngles, fade } = g.pose
+      const { chassis: c, hubs, wheelAngles } = g.pose
+      // Fade out near the player's vehicle so a ghost never gets in the way: gone when nearly on
+      // top of it (under 0.6 m apart), back to full from 4 m.
+      const near = ghostNearFade(Math.hypot(c.x - me.x, c.y - me.y))
+      const fade = g.pose.fade * near
+      if (fade <= 0.01) continue
       const cos = Math.cos(c.angle)
       const sin = Math.sin(c.angle)
       ctx.save()

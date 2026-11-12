@@ -157,7 +157,9 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
   latest run ("Frans senaste": this round's run, else from the round before, else their saved
   last run) and their record ("Frans rekord"), plus the overall record on the track and mode
   ("Rekord · Johan"), also when its holder is not playing. A run that is both someone's latest and
-  a record shows once, as the record. Overlapping
+  a record shows once, as the record. Ghosts fade
+  out near your own vehicle, so they never get in the way: invisible when nearly on top of it
+  (under 0.6 m), fully visible again from 4 m. Overlapping
   name tags stack. Ghosts replay poses,
   not inputs, so they never affect the physics and still play back after a game update. If
   the device's storage is full, last-run ghosts are dropped first. Ghosts are stored packed

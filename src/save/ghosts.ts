@@ -41,6 +41,12 @@ export interface GhostPose {
   fade: number
 }
 
+/** How visible a ghost is at a distance (metres) from the player's vehicle: 0 under 0.6 m, 1 from 4 m. */
+export function ghostNearFade(d: number): number {
+  const t = Math.min(1, Math.max(0, (d - 0.6) / 3.4))
+  return t * t * (3 - 2 * t)
+}
+
 const SCALE = { pos: 100, hub: 1000, angle: 100 }
 const stride = (wheels: number) => 3 + wheels * 3
 
