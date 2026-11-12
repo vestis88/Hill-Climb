@@ -84,10 +84,10 @@ Every run opens with a quick 3, 2, 1, GO (0.7 s a beat, with beeps). The vehicle
 a big rev counter shows in the middle of the screen; the gas revs the engine. Revs inside the
 green window (66–86 %) at GO give a **perfect start**: a push for about a second, through the
 centre of mass so it cannot flip the vehicle (about half a second quicker to 30 m). Revs in
-the red (the limiter, if the gas is simply held) are **too many revs**: a short burst of
-wheelspin (a third of a second at under half grip, with smoke), then a perfect start in
-reverse: a drag through the centre of mass for about a second, so the vehicle still gets away,
-just about as much slower as a perfect start is quicker. Revs below the green start normally, but the engine **bogs**: low chugs and the
+the red (the limiter, if the gas is simply held) are **too many revs**: the wheels spin in a cloud of
+smoke (half grip) while a perfect start's push runs in reverse, both for about a second and
+fading together, so the vehicle still gets away, just about as much slower as a perfect start is
+quicker. Revs below the green start normally, but the engine **bogs**: low chugs and the
 revs sag before they pick up (sound and rev counter only). Races and ghosts start their clocks at GO.
 
 Each engine revs at its own pace (`engine.revTime`, idle to the limiter out of gear): the

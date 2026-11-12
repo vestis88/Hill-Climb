@@ -592,8 +592,8 @@ export class Sound {
 
   /** Tyres breaking loose: a rising squeal under a burst of grit. */
   wheelspin(): void {
-    this.noise(0, 0.45, 0.45, 2400)
-    this.tone(900, 0, 0.4, 'sawtooth', 0.035, 1300)
+    this.noise(0, 1.1, 0.45, 2400)
+    this.tone(900, 0, 1, 'sawtooth', 0.035, 1300)
   }
 
   tap(): void {
