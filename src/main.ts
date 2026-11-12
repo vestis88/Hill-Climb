@@ -68,9 +68,11 @@ interface Round {
   ghosts: Ghost[]
   /** The overall record on this track and mode as it stood when the round began. */
   record: Ghost | null
+  /** The runs from earlier rounds on this same track and mode, shown until the player drives again. */
+  previous: Ghost[]
 }
 // Declared before the first run is created below, which reads them.
-let round: Round = { players: [...save.players], turn: 0, results: [], ghosts: [], record: null }
+let round: Round = { players: [...save.players], turn: 0, results: [], ghosts: [], record: null, previous: [] }
 /** Ghosts raced this run, and the recorder for this run's own ghost. */
 let ghosts: { label: string; colour: string; track: GhostTrack }[] = []
 let recorder = new GhostRecorder(2)
@@ -284,7 +286,9 @@ function startRound(): void {
   // A round from the garage always drives with the family's own upgrades; the Tuning screen's
   // "Drive as" choice only applies to its own test drives.
   driveAs = 'mine'
-  round = { players: [...save.players], turn: 0, results: [], ghosts: [], record: null }
+  // Same track and mode as the round before: keep everyone's latest run from it as a ghost.
+  const latest = [...round.previous.filter((p) => !round.ghosts.some((g) => g.player === p.player)), ...round.ghosts]
+  round = { players: [...save.players], turn: 0, results: [], ghosts: [], record: null, previous: latest.filter((g) => g.env === currentKey()) }
   if (round.players.length > 1) round.record = bestOf(PLAYERS.map((p) => loadGhost(p.name, currentKey(), 'best')))
   // With several players, first show who starts and the order (like the "X's turn" button between turns).
   if (round.players.length < 2) return startRun()
@@ -311,8 +315,20 @@ function pickGhosts(): void {
   }
   // A round with several players races this round's earlier runs, and the record from before the round.
   if (round.players.length > 1) {
-    for (const g of round.ghosts) add(g, g.player)
-    if (round.record) add(round.record, `Rekord · ${round.record.player}`)
+    for (const p of round.players) {
+      const now = round.ghosts.find((g) => g.player === p)
+      const before = round.previous.find((g) => g.player === p)
+      if (now) add(now, p)
+      else if (before) add(before, `${p} (förra)`)
+    }
+    // The record shows once: if it is one of the runs above, that ghost becomes the record.
+    const rec = round.record
+    if (rec) {
+      const same = (g: Ghost) => g.player === rec.player && g.distance === rec.distance && g.time === rec.time && g.data.length === rec.data.length
+      const i = ghosts.findIndex((x) => same(x.track.ghost))
+      if (i >= 0) ghosts[i].label = `Rekord · ${rec.player}`
+      else add(rec, `Rekord · ${rec.player}`)
+    }
     return
   }
   const best = loadGhost(me, env, 'best')
