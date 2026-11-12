@@ -8,12 +8,14 @@ export interface Settings {
   ghosts: 'all' | 'records' | 'off'
   /** Players who get Hjälp (young players): more fuel, a forgiving start, no tipping over. */
   help: string[]
+  /** Background music on or off. */
+  music: boolean
 }
 
 const KEY = 'ridgeline.settings'
 
 export function loadSettings(): Settings {
-  const defaults: Settings = { sound: true, volume: 0.7, swapPedals: false, ghosts: 'all', help: [] }
+  const defaults: Settings = { sound: true, volume: 0.7, swapPedals: false, ghosts: 'all', help: [], music: true }
   try {
     const raw = localStorage.getItem(KEY)
     return raw ? { ...defaults, ...JSON.parse(raw) } : defaults
@@ -64,6 +66,7 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
       <div class="bar"><h2>Inställningar</h2><button class="small" data-act="back">Tillbaka</button></div>
       <div class="rows" style="max-width:420px">
         <div><span>Ljud</span><span class="seg"><button data-sound="on" class="${s.sound ? 'on' : ''}">På</button><button data-sound="off" class="${s.sound ? '' : 'on'}">Av</button></span></div>
+        <div><span>Musik</span><span class="seg"><button data-music="on" class="${s.music ? 'on' : ''}">På</button><button data-music="off" class="${s.music ? '' : 'on'}">Av</button></span></div>
         <div><span>Volym</span><input type="range" min="0" max="1" step="0.05" value="${s.volume}" data-act="volume" style="width:55%"></div>
         <div><span>Testläge<br><small style="opacity:.7">Allt upplåst, inget köpt</small></span><span class="seg"><button data-test="off" class="${tuningEnabled() ? '' : 'on'}">Av</button><button data-test="on" class="${tuningEnabled() ? 'on' : ''}">På</button></span></div>
         ${syncRows(cloud, joining, joinError)}
@@ -93,6 +96,7 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
     if (!b) return
     if (b.dataset.sound) s.sound = b.dataset.sound === 'on'
     else if (b.dataset.pedals) s.swapPedals = b.dataset.pedals === 'swap'
+    else if (b.dataset.music) s.music = b.dataset.music === 'on'
     else if (b.dataset.ghosts) s.ghosts = b.dataset.ghosts as Settings['ghosts']
     else if (b.dataset.help) {
       const n = b.dataset.help
