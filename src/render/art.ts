@@ -351,6 +351,7 @@ export function setOutfit(o: Outfit | null): void {
 }
 
 export function drawHead(ctx: Ctx, r: number, mood: Mood = 'normal'): void {
+  // An open-face helmet: the shell over the top and back, the face showing at the front (+x).
   const helmet = ctx.createLinearGradient(0, -r, 0, r)
   const hc = outfit ? paintColours(outfit.colour) : { dark: '#0e7779', light: '#2cc6c8' }
   helmet.addColorStop(0, hc.dark)
@@ -359,68 +360,116 @@ export function drawHead(ctx: Ctx, r: number, mood: Mood = 'normal'): void {
   ctx.arc(0, 0, r, 0, Math.PI * 2)
   ctx.fillStyle = helmet
   ctx.fill()
-  ctx.lineWidth = LINE
-  ctx.strokeStyle = OUTLINE
-  ctx.stroke()
   drawPattern(ctx, r, outfit?.pattern ?? 'stripe')
-  // Visor with the face behind it
+  // The face, cut out of the front of the helmet.
+  ctx.save()
   ctx.beginPath()
-  ctx.moveTo(r * 0.02, r * 0.3)
-  ctx.quadraticCurveTo(r * 1.1, r * 0.38, r * 0.98, -r * 0.3)
-  ctx.lineTo(r * 0.1, -r * 0.26)
-  ctx.closePath()
-  ctx.fillStyle = '#ffe0c2'
+  ctx.arc(0, 0, r * 0.97, 0, Math.PI * 2)
+  ctx.clip()
+  ctx.beginPath()
+  ctx.ellipse(r * 0.48, -r * 0.12, r * 0.62, r * 0.6, 0, 0, Math.PI * 2)
+  ctx.fillStyle = '#ffd9b8'
   ctx.fill()
   ctx.lineWidth = LINE
   ctx.strokeStyle = OUTLINE
   ctx.stroke()
-  ctx.fillStyle = OUTLINE
-  ctx.strokeStyle = OUTLINE
-  ctx.lineCap = 'round'
-  for (const ex of [0.42, 0.72]) {
-    ctx.beginPath()
-    if (mood === 'happy') {
-      // Squinting happy eyes: little arcs.
-      ctx.lineWidth = r * 0.07
-      ctx.arc(r * ex, r * 0.02, r * 0.08, 0.2, Math.PI - 0.2)
-      ctx.stroke()
-    } else if (mood === 'worried') {
-      // Wide eyes: white with a small pupil.
-      ctx.ellipse(r * ex, r * 0.08, r * 0.1, r * 0.13, 0, 0, Math.PI * 2)
-      ctx.fillStyle = '#ffffff'
-      ctx.fill()
-      ctx.lineWidth = r * 0.03
-      ctx.stroke()
-      ctx.beginPath()
-      ctx.arc(r * (ex + 0.02), r * 0.08, r * 0.045, 0, Math.PI * 2)
-      ctx.fillStyle = OUTLINE
-      ctx.fill()
-    } else {
-      ctx.ellipse(r * ex, r * 0.06, r * 0.07, r * 0.11, 0, 0, Math.PI * 2)
-      ctx.fill()
-    }
-  }
-  // Mouth, just under the visor edge
-  ctx.lineWidth = r * 0.06
+  // Cheek
   ctx.beginPath()
-  if (mood === 'happy') ctx.arc(r * 0.6, -r * 0.12, r * 0.13, Math.PI + 0.3, Math.PI * 2 - 0.3, true)
-  else if (mood === 'worried') ctx.ellipse(r * 0.62, -r * 0.18, r * 0.05, r * 0.06, 0, 0, Math.PI * 2)
-  else {
-    ctx.moveTo(r * 0.5, -r * 0.17)
-    ctx.lineTo(r * 0.7, -r * 0.15)
-  }
-  ctx.stroke()
-  ctx.fillStyle = 'rgba(190, 230, 255, 0.35)'
-  ctx.beginPath()
-  ctx.moveTo(r * 0.02, r * 0.3)
-  ctx.quadraticCurveTo(r * 1.1, r * 0.38, r * 0.98, -r * 0.3)
-  ctx.lineTo(r * 0.75, -r * 0.29)
-  ctx.quadraticCurveTo(r * 0.7, r * 0.2, r * 0.02, r * 0.3)
+  ctx.ellipse(r * 0.42, -r * 0.3, r * 0.13, r * 0.08, 0, 0, Math.PI * 2)
+  ctx.fillStyle = 'rgba(255, 130, 120, 0.45)'
   ctx.fill()
-  // Shine
+  ctx.restore()
+  // Helmet rim around the face, and the outline.
   ctx.beginPath()
-  ctx.ellipse(-r * 0.35, r * 0.5, r * 0.22, r * 0.12, -0.5, 0, Math.PI * 2)
-  ctx.fillStyle = 'rgba(255,255,255,0.55)'
+  ctx.arc(0, 0, r, 0, Math.PI * 2)
+  ctx.lineWidth = LINE
+  ctx.strokeStyle = OUTLINE
+  ctx.stroke()
+  // Visor peak over the forehead.
+  ctx.beginPath()
+  ctx.moveTo(r * 0.05, r * 0.5)
+  ctx.quadraticCurveTo(r * 0.75, r * 0.62, r * 1.18, r * 0.42)
+  ctx.lineTo(r * 1.1, r * 0.3)
+  ctx.quadraticCurveTo(r * 0.7, r * 0.45, r * 0.1, r * 0.38)
+  ctx.closePath()
+  ctx.fillStyle = hc.dark
+  ctx.fill()
+  ctx.stroke()
+  // Eyes: the near one bigger; pupils look ahead.
+  ctx.lineCap = 'round'
+  for (const [ex, size] of [[0.42, 1], [0.78, 0.8]] as const) {
+    const ey = r * 0.08
+    const w = r * 0.11 * size
+    const h = r * 0.15 * size
+    if (mood === 'happy') {
+      // Squinting with joy: upturned arcs.
+      ctx.beginPath()
+      ctx.arc(r * ex, ey - h * 0.3, w, Math.PI * 0.15, Math.PI * 0.85)
+      ctx.lineWidth = r * 0.07
+      ctx.strokeStyle = OUTLINE
+      ctx.stroke()
+      continue
+    }
+    const big = mood === 'worried' ? 1.25 : 1
+    ctx.beginPath()
+    ctx.ellipse(r * ex, ey, w * big, h * big, 0, 0, Math.PI * 2)
+    ctx.fillStyle = '#ffffff'
+    ctx.fill()
+    ctx.lineWidth = r * 0.035
+    ctx.strokeStyle = OUTLINE
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(r * ex + w * 0.35, ey - (mood === 'worried' ? 0 : h * 0.15), w * (mood === 'worried' ? 0.4 : 0.6), 0, Math.PI * 2)
+    ctx.fillStyle = OUTLINE
+    ctx.fill()
+    // Eyebrow
+    ctx.beginPath()
+    const by = ey + h * big + r * 0.08
+    if (mood === 'worried') {
+      ctx.moveTo(r * ex - w, by - r * 0.05)
+      ctx.lineTo(r * ex + w, by + r * 0.04)
+    } else {
+      ctx.moveTo(r * ex - w, by)
+      ctx.quadraticCurveTo(r * ex, by + r * 0.04, r * ex + w, by)
+    }
+    ctx.lineWidth = r * 0.045
+    ctx.stroke()
+  }
+  // Nose: a small bump at the front of the face.
+  ctx.beginPath()
+  ctx.ellipse(r * 1.0, -r * 0.08, r * 0.09, r * 0.07, 0, 0, Math.PI * 2)
+  ctx.fillStyle = '#f5bf98'
+  ctx.fill()
+  ctx.lineWidth = r * 0.03
+  ctx.strokeStyle = OUTLINE
+  ctx.stroke()
+  // Mouth
+  ctx.beginPath()
+  if (mood === 'happy') {
+    // A big open grin.
+    ctx.moveTo(r * 0.42, -r * 0.3)
+    ctx.quadraticCurveTo(r * 0.68, -r * 0.62, r * 0.92, -r * 0.3)
+    ctx.closePath()
+    ctx.fillStyle = '#8a2a2a'
+    ctx.fill()
+    ctx.lineWidth = r * 0.04
+    ctx.stroke()
+  } else if (mood === 'worried') {
+    ctx.ellipse(r * 0.7, -r * 0.38, r * 0.07, r * 0.09, 0, 0, Math.PI * 2)
+    ctx.fillStyle = '#8a2a2a'
+    ctx.fill()
+    ctx.lineWidth = r * 0.035
+    ctx.stroke()
+  } else {
+    ctx.moveTo(r * 0.52, -r * 0.33)
+    ctx.quadraticCurveTo(r * 0.7, -r * 0.43, r * 0.88, -r * 0.31)
+    ctx.lineWidth = r * 0.045
+    ctx.stroke()
+  }
+  // Shine on the helmet
+  ctx.beginPath()
+  ctx.ellipse(-r * 0.4, r * 0.48, r * 0.22, r * 0.11, -0.5, 0, Math.PI * 2)
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'
   ctx.fill()
   if (outfit && outfit.hat !== 'none') drawHat(ctx, r, outfit.hat)
 }
@@ -430,6 +479,11 @@ function drawPattern(ctx: Ctx, r: number, pattern: Pattern): void {
   ctx.save()
   ctx.beginPath()
   ctx.arc(0, 0, r * 0.96, 0, Math.PI * 2)
+  ctx.clip()
+  // Only on the shell: the back and the top, not where the face is.
+  ctx.beginPath()
+  ctx.rect(-r, -r, r * 1.05, r * 2)
+  ctx.rect(-r, r * 0.45, r * 2, r)
   ctx.clip()
   if (pattern === 'stripe') {
     ctx.beginPath()
@@ -521,37 +575,44 @@ function drawHat(ctx: Ctx, r: number, hat: Hat): void {
 
 /** Pip's body from the seat (origin) up the y axis, with the head on top. */
 export function drawDriver(ctx: Ctx, headRadius: number, torso: number, hands?: Pt, mood: Mood = 'normal', foot?: Pt): void {
-  const neck = torso - headRadius - 0.08
-  // Legs first, behind the body: thigh forward to the knee, shin down to the foot.
+  const neck = torso - headRadius - 0.04
+  const hip: Pt = [0, 0.1]
+  const jacket = '#2f5fae'
+  const jacketDark = '#22457f'
+  const trousers = '#3a3f52'
+  // Leg (the near one): thigh forward to a bent knee, shin down to a boot on the pedal or peg.
   if (foot) {
-    const knee: Pt = [foot[0] * 0.7 + 0.05, Math.max(foot[1] + 0.25, 0.12)]
-    tube(ctx, [[0, 0.08], knee, foot], 0.13, '#2b3f6a')
+    const knee: Pt = [foot[0] * 0.65 + 0.06, Math.max(foot[1] + 0.3, hip[1] + 0.12)]
+    tube(ctx, [hip, knee], 0.16, trousers)
+    tube(ctx, [knee, [foot[0], foot[1] + 0.06]], 0.13, trousers)
     ctx.beginPath()
-    ctx.ellipse(foot[0] + 0.05, foot[1] - 0.02, 0.1, 0.06, 0, 0, Math.PI * 2)
-    ctx.fillStyle = '#3d2a1e'
+    ctx.roundRect(foot[0] - 0.07, foot[1] - 0.05, 0.22, 0.1, 0.04)
+    ctx.fillStyle = '#2a2f38'
     ctx.fill()
     ctx.lineWidth = LINE * 0.8
     ctx.strokeStyle = OUTLINE
     ctx.stroke()
   }
-  const shoulder: Pt = [0.04, neck - 0.1]
+  // Torso: a jacket that widens at the shoulders, leaning a little forward.
+  const shoulderY = neck - 0.05
+  shaded(ctx, [[-0.16, 0.02], [0.14, 0.02], [0.18, shoulderY - 0.06], [0.1, shoulderY + 0.04], [-0.12, shoulderY + 0.04], [-0.2, shoulderY - 0.08]], '#4f7fcc', jacket, jacketDark)
+  // Zip line and a number badge on the chest
+  tube(ctx, [[0.1, 0.06], [0.13, shoulderY - 0.04]], 0.02, jacketDark)
+  // Arm: shoulder, elbow, glove on the bars or wheel.
+  const shoulder: Pt = [0.03, shoulderY - 0.02]
   const hand: Pt = hands ?? [0.4, torso * 0.45]
-  const elbow: Pt = [(shoulder[0] + hand[0]) / 2 - 0.02, (shoulder[1] + hand[1]) / 2 - 0.07]
-  // Jacket body
-  tube(ctx, [[0, 0.06], [0.02, neck - 0.02]], 0.28, '#24365c')
-  tube(ctx, [[0.06, 0.1], [0.07, neck - 0.06]], 0.08, '#35508a')
-  // Arm and glove
-  tube(ctx, [shoulder, elbow, hand], 0.11, '#24365c')
+  const elbow: Pt = [(shoulder[0] + hand[0]) / 2 - 0.04, Math.min(shoulder[1], hand[1]) - 0.08]
+  tube(ctx, [shoulder, elbow], 0.12, jacket)
+  tube(ctx, [elbow, hand], 0.1, jacket)
   ctx.beginPath()
-  ctx.arc(hand[0], hand[1], 0.075, 0, Math.PI * 2)
+  ctx.arc(hand[0], hand[1], 0.07, 0, Math.PI * 2)
   ctx.fillStyle = '#ffffff'
   ctx.fill()
   ctx.lineWidth = LINE * 0.8
   ctx.strokeStyle = OUTLINE
   ctx.stroke()
-  // Scarf, with a tail that streams behind
-  tube(ctx, [[-0.12, neck + 0.02], [0.13, neck + 0.04]], 0.1, '#ff8a2a')
-  tube(ctx, [[-0.08, neck], [-0.26, neck - 0.07], [-0.38, neck - 0.04]], 0.075, '#ff8a2a')
+  // Neck scarf (just around the neck).
+  tube(ctx, [[-0.1, neck + 0.01], [0.12, neck + 0.03]], 0.09, '#ff8a2a')
   ctx.save()
   ctx.translate(0, torso)
   drawHead(ctx, headRadius, mood)
@@ -749,7 +810,7 @@ export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDrive
   const { head, headRadius } = spec.driver
   const seat: Pt = [head.x, head.y - 0.75]
   // Where Pip's feet rest, relative to the seat: pedals in the cars, the footpeg on the bike.
-  const feet: Record<string, Pt> = { runabout: [0.55, -0.2], scrambler: [0.1, -0.46], hauler: [0.55, -0.25], rover: [0.5, -0.25], tractor: [0.5, -0.3], monster: [0.55, -0.25], kart: [0.7, -0.05], snowmobile: [0.35, -0.35], lander: [0.5, -0.25] }
+  const feet: Record<string, Pt> = { runabout: [0.55, -0.2], scrambler: [0.1, -0.46], hauler: [0.55, -0.25], rover: [0.5, -0.25], tractor: [0.55, -0.47], monster: [0.55, -0.25], kart: [0.7, -0.05], snowmobile: [0.35, -0.35], lander: [0.5, -0.25] }
   const driver = (hands?: Pt) => {
     if (!withDriver) return
     ctx.save()
@@ -854,31 +915,44 @@ export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDrive
   }
 
   if (spec.id === 'tractor') {
-    // Tractor: long bonnet over the engine, a roll frame over the seat, a tall exhaust stack and
-    // a big mudguard over the rear wheel.
-    tube(ctx, [[-1.0, 0.3], [-1.0, 1.85], [0.05, 1.85], [0.05, 0.35]], 0.09, '#2a2f38')
-    tube(ctx, [[-1.0, 1.85], [0.05, 1.85]], 0.14, c.dark)
-    driver([0.62, 0.95 - seat[1]])
-    shaded(ctx, [[0.05, -0.3], [1.6, -0.3], [1.66, 0.3], [1.5, 0.52], [0.05, 0.52]], c.light, c.body, c.dark)
-    // Seat box and step
-    shaded(ctx, [[-1.1, -0.3], [0.1, -0.3], [0.1, 0.35], [-1.1, 0.35]], c.light, c.body, c.dark)
-    // Rear mudguard over the big wheel
+    // Tractor: a long bonnet over the engine at the front, the seat high over the big rear axle
+    // with a mudguard arching over the rear wheel, a roll frame over the seat and an exhaust stack.
+    // The big rear wheel stays in full view below the mudguard.
+    const rear = (hubs ?? [[spec.wheels[0].anchor.x, spec.wheels[0].anchor.y]])[0]
+    const rr = spec.wheels[0].radius
+    // Roll frame (behind the driver)
+    tube(ctx, [[-1.0, 0.45], [-1.0, 1.95], [0.0, 1.95], [0.0, 0.62]], 0.08, '#2a2f38')
+    // Chassis rail joining the axles, under everything
+    tube(ctx, [[-0.05, 0.05], [1.3, -0.25]], 0.16, '#3d4450')
+    // Seat on a post over the rear axle, the driver on it
+    tube(ctx, [[-0.45, 0.25], [-0.45, 0.52]], 0.08, '#3d4450')
+    rrect(ctx, -0.72, 0.52, 0.55, 0.12, 0.05, '#2a2f38')
+    tube(ctx, [[-0.7, 0.58], [-0.78, 1.0]], 0.1, '#2a2f38')
+    // Footplate the boots rest on
+    rrect(ctx, -0.1, 0.06, 0.5, 0.07, 0.03, '#3d4450')
+    driver([0.75, 1.0 - seat[1]])
+    // Mudguard: an arc over the rear wheel, open underneath.
     ctx.beginPath()
-    ctx.arc(-0.85, -0.3, 0.98, Math.PI * 0.05, Math.PI * 0.95)
-    ctx.arc(-0.85, -0.3, 0.86, Math.PI * 0.95, Math.PI * 0.05, true)
-    ctx.closePath()
-    ctx.fillStyle = c.dark
-    ctx.fill()
+    ctx.arc(rear[0], rear[1], rr + 0.14, Math.PI * 0.08, Math.PI * 0.92)
+    ctx.lineWidth = 0.16
+    ctx.strokeStyle = c.dark
+    ctx.lineCap = 'round'
+    ctx.stroke()
     ctx.lineWidth = LINE
     ctx.strokeStyle = OUTLINE
-    ctx.stroke()
-    // Grille slats, steering wheel, exhaust stack with a cap
-    for (let i = 0; i < 4; i++) rrect(ctx, 1.48, -0.18 + i * 0.13, 0.12, 0.06, 0.02, '#2a2f38', false)
-    tube(ctx, [[0.1, 0.55], [0.5, 0.95]], 0.05, '#2a2f38')
-    tube(ctx, [[0.85, 0.5], [0.85, 1.22]], 0.09, '#5b6372')
-    rrect(ctx, 0.76, 1.18, 0.18, 0.08, 0.03, '#2a2f38')
-    glow(ctx, 1.62, 0.3, 0.6, 'rgba(255, 240, 170, 0.5)')
-    rrect(ctx, 1.5, 0.22, 0.14, 0.16, 0.05, '#fff6c8')
+    // Bonnet over the engine, sloping down to the grille at the front.
+    shaded(ctx, [[0.0, 0.05], [1.5, 0.0], [1.62, 0.12], [1.55, 0.62], [0.05, 0.72]], c.light, c.body, c.dark)
+    // Engine side vents and the grille
+    for (let i = 0; i < 3; i++) tube(ctx, [[0.45 + i * 0.22, 0.2], [0.55 + i * 0.22, 0.52]], 0.035, c.dark)
+    rrect(ctx, 1.48, 0.12, 0.12, 0.44, 0.04, '#2a2f38')
+    // Steering wheel on its column
+    tube(ctx, [[0.05, 0.7], [0.3, 1.0]], 0.05, '#2a2f38')
+    tube(ctx, [[0.2, 1.08], [0.42, 0.92]], 0.06, '#2a2f38')
+    // Exhaust stack with a flap
+    tube(ctx, [[0.95, 0.68], [0.95, 1.35]], 0.09, '#5b6372')
+    rrect(ctx, 0.86, 1.32, 0.18, 0.07, 0.03, '#2a2f38')
+    glow(ctx, 1.6, 0.45, 0.6, 'rgba(255, 240, 170, 0.5)')
+    rrect(ctx, 1.52, 0.4, 0.12, 0.14, 0.04, '#fff6c8')
     return
   }
 
@@ -975,7 +1049,7 @@ export const EXHAUST: Record<string, Pt> = {
   scrambler: [-1.11, 0.39],
   hauler: [-2.0, -0.35],
   rover: [-0.9, 1.08],
-  tractor: [0.85, 1.25],
+  tractor: [0.95, 1.38],
   kart: [-1.15, 0.05],
   lander: [-1.3, 0.05],
   snowmobile: [-1.35, 0.1],
