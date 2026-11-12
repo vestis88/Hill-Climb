@@ -1,7 +1,7 @@
 /**
  * Pip's outfit, per player: the helmet in the player's own colour, a helmet pattern and a hat.
- * Patterns and hats are bought with coins once for the family (kept in save.unlocked as
- * "pattern:stars", "hat:crown", so they sync like other unlocks) and each player picks theirs.
+ * Free to pick (owner: no paying for the look); only the gold-star pattern is earned, by finding
+ * all three hidden stars on a map.
  */
 export type Pattern = 'stripe' | 'stars' | 'checks' | 'flames' | 'goldstars'
 export type Hat = 'none' | 'cap' | 'cowboy' | 'santa' | 'viking' | 'crown'
@@ -15,20 +15,20 @@ export interface Outfit {
 
 export const PATTERNS: { id: Pattern; name: string; price: number }[] = [
   { id: 'stripe', name: 'Rand', price: 0 },
-  { id: 'stars', name: 'Stjärnor', price: 600 },
-  { id: 'checks', name: 'Rutor', price: 900 },
-  { id: 'flames', name: 'Flammor', price: 1200 },
+  { id: 'stars', name: 'Stjärnor', price: 0 },
+  { id: 'checks', name: 'Rutor', price: 0 },
+  { id: 'flames', name: 'Flammor', price: 0 },
   // Not for sale: found by collecting all three hidden stars on a map (game/stars.ts).
   { id: 'goldstars', name: 'Guldstjärnor', price: -1 },
 ]
 
 export const HATS: { id: Hat; name: string; price: number }[] = [
   { id: 'none', name: 'Ingen hatt', price: 0 },
-  { id: 'cap', name: 'Keps', price: 800 },
-  { id: 'cowboy', name: 'Cowboyhatt', price: 1500 },
-  { id: 'santa', name: 'Tomteluva', price: 1500 },
-  { id: 'viking', name: 'Vikingahorn', price: 2500 },
-  { id: 'crown', name: 'Krona', price: 5000 },
+  { id: 'cap', name: 'Keps', price: 0 },
+  { id: 'cowboy', name: 'Cowboyhatt', price: 0 },
+  { id: 'santa', name: 'Tomteluva', price: 0 },
+  { id: 'viking', name: 'Vikingahorn', price: 0 },
+  { id: 'crown', name: 'Krona', price: 0 },
 ]
 
 export const DEFAULT_OUTFIT: Omit<Outfit, 'colour'> = { pattern: 'stripe', hat: 'none' }

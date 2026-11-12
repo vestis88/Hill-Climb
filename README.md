@@ -161,10 +161,10 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
   places per map, not in the first 100 m): 3 seconds of extra push while the gas is held, with a
   bar under the fuel gauge.
 - **Horn:** the TUT button (or H) honks; every vehicle has its own horn. It changes nothing.
-- **Utstyrsel (outfit):** every player's Pip wears a helmet in their colour, with a pattern
-  (Rand free; Stjärnor 600, Rutor 900, Flammor 1,200) and a hat (Keps 800, Cowboyhatt and
-  Tomteluva 1,500, Vikingahorn 2,500, Krona 5,000). Items are bought once for the family and each
-  player picks theirs on the Utstyrsel screen; ghosts wear their player's outfit too.
+- **Utstyrsel (outfit):** every player's Pip wears a helmet in their colour, with a pattern (Rand,
+  Stjärnor, Rutor, Flammor) and a hat (Keps, Cowboyhatt, Tomteluva, Vikingahorn, Krona), all free to
+  pick on the Utstyrsel screen; the Guldstjärnor pattern is earned by finding all three hidden
+  stars on a map. Ghosts wear their player's outfit too.
 - **Uppdrag (missions):** every player has three missions, shown in the garage, each done within
   a single run (backflips, frontflips, air time, a long wheelie, distance on a given map, coins in
   one run, a combo of so many tricks), each paying 100 to 500 coins. A finished one shows in the
