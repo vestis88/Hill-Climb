@@ -22,6 +22,8 @@ export const VEHICLE_COLOURS: Record<string, { body: string; dark: string; light
   hauler: { body: '#f2b632', dark: '#b98318', light: '#ffd877' },
   rover: { body: '#1fb5a8', dark: '#12796f', light: '#6fe0d4' },
   tractor: { body: '#4f9a2e', dark: '#33691c', light: '#8ccf66' },
+  kart: { body: '#ff7a1a', dark: '#b8500a', light: '#ffb070' },
+  snowmobile: { body: '#e8e8f0', dark: '#9aa0b0', light: '#ffffff' },
   monster: { body: '#8e44d1', dark: '#5f2a93', light: '#c08cf0' },
 }
 
@@ -738,7 +740,7 @@ export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDrive
   const { head, headRadius } = spec.driver
   const seat: Pt = [head.x, head.y - 0.75]
   // Where Pip's feet rest, relative to the seat: pedals in the cars, the footpeg on the bike.
-  const feet: Record<string, Pt> = { runabout: [0.55, -0.2], scrambler: [0.1, -0.46], hauler: [0.55, -0.25], rover: [0.5, -0.25], tractor: [0.5, -0.3], monster: [0.55, -0.25] }
+  const feet: Record<string, Pt> = { runabout: [0.55, -0.2], scrambler: [0.1, -0.46], hauler: [0.55, -0.25], rover: [0.5, -0.25], tractor: [0.5, -0.3], monster: [0.55, -0.25], kart: [0.7, -0.05], snowmobile: [0.35, -0.35] }
   const driver = (hands?: Pt) => {
     if (!withDriver) return
     ctx.save()
@@ -770,6 +772,47 @@ export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDrive
     tube(ctx, [[0.45, 0.38], [0.6, 0.66], [0.7, 0.66]], 0.05, '#2a2f38')
     glow(ctx, 1.42, 0.2, 0.5, 'rgba(255, 240, 170, 0.5)')
     rrect(ctx, 1.3, 0.14, 0.14, 0.12, 0.05, '#fff6c8')
+    return
+  }
+
+  if (spec.id === 'kart') {
+    // Go-kart: a low tub with side pods, an engine at the back and a bumper at the front.
+    rrect(ctx, -1.15, -0.05, 0.4, 0.28, 0.08, '#5b6372')
+    tube(ctx, [[-1.0, 0.25], [-1.0, 0.5]], 0.06, '#b8bfca')
+    driver([0.55, 0.42 - seat[1]])
+    shaded(ctx, [[-1.05, -0.12], [1.15, -0.12], [1.2, 0.05], [0.4, 0.18], [-0.6, 0.2], [-1.1, 0.12]], c.light, c.body, c.dark)
+    tube(ctx, [[0.25, 0.15], [0.45, 0.42]], 0.05, '#2a2f38')
+    tube(ctx, [[0.35, 0.45], [0.55, 0.38]], 0.06, '#2a2f38')
+    poly(ctx, [[-0.6, 0.02], [0.9, -0.02], [0.92, 0.04], [-0.6, 0.08]], 'rgba(255,255,255,0.85)', false)
+    rrect(ctx, 1.12, -0.18, 0.22, 0.14, 0.05, '#3d4450')
+    rrect(ctx, -1.32, -0.12, 0.2, 0.14, 0.05, '#3d4450')
+    return
+  }
+
+  if (spec.id === 'snowmobile') {
+    // Snowmobile: a track around the bogie wheels, a ski in front, a cowling with a windscreen.
+    const h = hubs ?? spec.wheels.map((w) => [w.anchor.x, w.anchor.y] as Pt)
+    const rear = h.slice(0, 4)
+    const ski = h[4]
+    const r = spec.wheels[0].radius
+    ctx.beginPath()
+    ctx.roundRect(rear[0][0] - r - 0.04, Math.min(...rear.map((p) => p[1])) - r - 0.04, rear[3][0] - rear[0][0] + 2 * r + 0.08, 2 * r + 0.08, r + 0.04)
+    ctx.lineWidth = 0.1
+    ctx.strokeStyle = '#2a2f38'
+    ctx.stroke()
+    ctx.lineWidth = LINE
+    ctx.strokeStyle = OUTLINE
+    ctx.stroke()
+    tube(ctx, [[ski[0] - 0.1, ski[1] + 0.05], [ski[0] - 0.05, -0.1]], 0.07, '#5b6372')
+    poly(ctx, [[ski[0] - 0.45, ski[1] - 0.2], [ski[0] + 0.35, ski[1] - 0.2], [ski[0] + 0.55, ski[1] - 0.02], [ski[0] + 0.45, ski[1] - 0.06], [ski[0] + 0.3, ski[1] - 0.12], [ski[0] - 0.45, ski[1] - 0.12]], '#2a2f38')
+    driver([0.55, 0.62 - seat[1]])
+    shaded(ctx, [[-1.3, -0.15], [1.1, -0.15], [1.45, 0.25], [0.4, 0.45], [-0.2, 0.42], [-1.3, 0.3]], c.light, c.body, c.dark)
+    poly(ctx, [[0.45, 0.42], [0.8, 0.38], [0.6, 0.85], [0.5, 0.85]], 'rgba(190, 230, 255, 0.7)')
+    tube(ctx, [[0.35, 0.45], [0.5, 0.65], [0.62, 0.62]], 0.05, '#2a2f38')
+    poly(ctx, [[0.2, 0.0], [1.3, 0.05], [1.36, 0.14], [0.2, 0.1]], '#e5383b', false)
+    rrect(ctx, -1.25, 0.28, 0.9, 0.16, 0.07, '#2a2f38')
+    glow(ctx, 1.42, 0.18, 0.6, 'rgba(255, 240, 170, 0.55)')
+    rrect(ctx, 1.3, 0.12, 0.14, 0.12, 0.04, '#fff6c8')
     return
   }
 
@@ -896,6 +939,8 @@ export const EXHAUST: Record<string, Pt> = {
   hauler: [-2.0, -0.35],
   rover: [-0.9, 1.08],
   tractor: [0.85, 1.25],
+  kart: [-1.15, 0.05],
+  snowmobile: [-1.35, 0.1],
   monster: [-1.7, 0.1],
 }
 
