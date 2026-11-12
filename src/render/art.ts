@@ -440,6 +440,9 @@ function drawPattern(ctx: Ctx, r: number, pattern: Pattern): void {
   } else if (pattern === 'stars') {
     ctx.fillStyle = '#fff6c8'
     for (const [x, y, s] of [[-0.45, 0.45, 0.2], [0.05, 0.72, 0.16], [-0.7, -0.05, 0.15], [-0.25, 0.05, 0.12]] as const) star(ctx, x * r, y * r, s * r)
+  } else if (pattern === 'goldstars') {
+    ctx.fillStyle = '#ffcf33'
+    for (const [x, y, s] of [[-0.45, 0.45, 0.26], [0.05, 0.72, 0.2], [-0.72, -0.05, 0.2], [-0.25, 0.02, 0.15]] as const) star(ctx, x * r, y * r, s * r)
   } else if (pattern === 'checks') {
     ctx.fillStyle = 'rgba(255,255,255,0.85)'
     const s = r * 0.28

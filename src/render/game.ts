@@ -55,6 +55,8 @@ export interface View {
   player?: { name: string; colour: string }
   /** Thrusters (Moon Lander): tank left 0..1 and whether they are firing. */
   thrust?: { left: number; on: boolean }
+  /** Hidden stars still to find on this map. */
+  stars?: { x: number; y: number }[]
   /** Turbo left, 0..1 (from a turbo canister). */
   turbo?: number
   /** A trick chain of two or more, for the live combo counter. */
@@ -329,6 +331,7 @@ export class GameRenderer {
     if (view.race && view.race.length > left - 3 && view.race.length < right + 3) this.drawFinish(height, view.race.length)
     this.drawShadow(view, chassis)
     for (const p of view.pickups) if (!p.taken && p.x > left - 1 && p.x < right + 1) drawPickup(ctx, p, this.time)
+    for (const st of view.stars ?? []) if (st.x > left - 1 && st.x < right + 1) this.drawStar(st.x, st.y)
 
     this.effects(view, chassis)
     this.drawGhosts(view, chassis)
@@ -512,6 +515,32 @@ export class GameRenderer {
         }
       }
     }
+  }
+
+  /** A hidden star: gold, slowly turning and glowing. */
+  private drawStar(x: number, y: number): void {
+    const { ctx } = this
+    ctx.save()
+    ctx.translate(x, y + Math.sin(this.time * 2 + x) * 0.12)
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1.2)
+    g.addColorStop(0, 'rgba(255, 220, 90, 0.55)')
+    g.addColorStop(1, 'rgba(255, 220, 90, 0)')
+    ctx.fillStyle = g
+    ctx.fillRect(-1.2, -1.2, 2.4, 2.4)
+    ctx.scale(Math.abs(Math.cos(this.time * 1.5 + x)) * 0.6 + 0.4, 1)
+    ctx.beginPath()
+    for (let i = 0; i < 10; i++) {
+      const a = Math.PI / 2 + (i * Math.PI) / 5
+      const r = i % 2 ? 0.24 : 0.55
+      ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r)
+    }
+    ctx.closePath()
+    ctx.fillStyle = '#ffcf33'
+    ctx.fill()
+    ctx.lineWidth = 0.06
+    ctx.strokeStyle = OUTLINE
+    ctx.stroke()
+    ctx.restore()
   }
 
   private drawSigns(height: HeightFn, left: number, right: number): void {

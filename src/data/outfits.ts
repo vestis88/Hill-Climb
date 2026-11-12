@@ -3,7 +3,7 @@
  * Patterns and hats are bought with coins once for the family (kept in save.unlocked as
  * "pattern:stars", "hat:crown", so they sync like other unlocks) and each player picks theirs.
  */
-export type Pattern = 'stripe' | 'stars' | 'checks' | 'flames'
+export type Pattern = 'stripe' | 'stars' | 'checks' | 'flames' | 'goldstars'
 export type Hat = 'none' | 'cap' | 'cowboy' | 'santa' | 'viking' | 'crown'
 
 export interface Outfit {
@@ -18,6 +18,8 @@ export const PATTERNS: { id: Pattern; name: string; price: number }[] = [
   { id: 'stars', name: 'Stjärnor', price: 600 },
   { id: 'checks', name: 'Rutor', price: 900 },
   { id: 'flames', name: 'Flammor', price: 1200 },
+  // Not for sale: found by collecting all three hidden stars on a map (game/stars.ts).
+  { id: 'goldstars', name: 'Guldstjärnor', price: -1 },
 ]
 
 export const HATS: { id: Hat; name: string; price: number }[] = [

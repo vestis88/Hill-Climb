@@ -1,3 +1,4 @@
+import { ALL_STARS_COINS, STAR_COINS, starsFor } from './game/stars'
 import { DEFAULT_OUTFIT, HATS, PATTERNS, type Hat, type Outfit, type Pattern } from './data/outfits'
 import { drawHead, setOutfit } from './render/art'
 import { describe, done, fillMissions, type Mission, type RunStats } from './game/missions'
@@ -194,6 +195,7 @@ function newRun(): Run {
     bestDistance: playerBest(save, currentPlayer(), recordEnvId()),
     finish: currentMode().length,
     assist: settings.help.includes(currentPlayer()),
+    stars: starsFor(env).filter((s) => !save.unlocked.includes(s.id)),
   })
 }
 
@@ -297,7 +299,7 @@ function openGarage(justBought?: UpgradeId): void {
     environments: ENVIRONMENTS.map((e) => ({
       id: e.id, name: e.name, blurb: e.blurb, price: e.price,
       owned: owned(e.id, e.price), selected: !daily && e.id === currentEnv().id,
-      note: `Rekord ${Math.floor(save.best[e.id] ?? 0)} m`,
+      note: `Rekord ${Math.floor(save.best[e.id] ?? 0)} m · ★ ${starsFor(e).filter((s) => save.unlocked.includes(s.id)).length}/3`,
       preview: (c: HTMLCanvasElement) => drawEnvironmentPreview(c, e, heightFor(e)),
     })),
     onPick: pick,
@@ -684,6 +686,7 @@ function openOutfit(name: string): void {
       const item = (kind === 'hat' ? HATS : PATTERNS).find((x) => x.id === id)
       if (!item) return
       if (!has(kind, id, item.price)) {
+        if (item.price < 0) return
         if (!spend(save, item.price)) return
         save.unlocked.push(`${kind}:${id}`)
       }
@@ -712,6 +715,32 @@ function checkMissions(name: string, stats: RunStats): { text: string; reward: n
   save.missions![name] = all.filter((m) => !finished.includes(m))
   missionsFor(name)
   return finished.map((m) => ({ text: describe(m, (id) => environment(id).name), reward: m.reward }))
+}
+
+/** A hidden star: coins and a fanfare; all three on a map pay a bonus and the gold-star pattern. */
+function foundStar(id: string, x: number, y: number): void {
+  sound.fanfare()
+  sound.coin()
+  renderer.cheer()
+  renderer.sparkle(x, y, '#ffd23f')
+  // Test mode finds nothing for real.
+  if (tuningEnabled() || save.unlocked.includes(id)) {
+    popups.push({ text: '★ Stjärna!', age: 0 })
+    return
+  }
+  save.unlocked.push(id)
+  earn(save, STAR_COINS)
+  popups.push({ text: `★ Stjärna!  +${STAR_COINS}`, age: 0 })
+  const all = starsFor(currentEnv())
+  if (all.every((s) => save.unlocked.includes(s.id))) {
+    earn(save, ALL_STARS_COINS)
+    popups.push({ text: `Alla stjärnor på ${currentEnv().name}!  +${ALL_STARS_COINS}`, age: 0 })
+    if (!save.unlocked.includes('pattern:goldstars')) {
+      save.unlocked.push('pattern:goldstars')
+      popups.push({ text: 'Nytt hjälmmönster: Guldstjärnor!', age: 0 })
+    }
+  }
+  persist()
 }
 
 /** Note the cup winners in the family table, and pass them on. */
@@ -785,6 +814,7 @@ function handleEvents(): void {
   for (const e of run.events) {
     if (e.kind === 'coin') sound.coin()
     else if (e.kind === 'fuel') sound.fuel()
+    else if (e.kind === 'star') foundStar(e.id, e.x, e.y)
     else if (e.kind === 'turbo') {
       sound.turbo()
       popups.push({ text: 'Turbo!', at: { x: e.x, y: e.y }, age: 0 })
@@ -899,6 +929,7 @@ function frame(now: number): void {
     pickups: run.options.pickups.items,
     wheelie: mode === 'driving' ? run.wheelieNow : null,
     turbo: mode === 'driving' ? run.turboLeft / RULES.turboSeconds : 0,
+    stars: mode === 'driving' || mode === 'ending' ? (run.options.stars ?? []).filter((s) => !run.starsFound.includes(s.id)) : [],
     thrust: mode === 'driving' && run.options.vehicle.thrusters ? { left: run.thrustLeft / run.options.vehicle.thrusters.seconds, on: boosting && run.thrustLeft > 0 } : undefined,
     combo: mode === 'driving' && run.combo && run.combo.tricks >= 2 ? { tricks: run.combo.tricks, multiplier: RULES.comboMultiplier(run.combo.tricks) } : null,
     atmosphere: mode === 'driving' || mode === 'ending' || mode === 'results' ? atmosphere : undefined,

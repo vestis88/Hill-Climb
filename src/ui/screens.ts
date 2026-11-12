@@ -256,8 +256,8 @@ export interface OutfitView {
 /** Utstyrsel: each player's helmet pattern and hat, bought once for the family. */
 export function showOutfit(el: HTMLElement, v: OutfitView): void {
   const item = (kind: 'hat' | 'pattern', x: OutfitView['hats'][number]) =>
-    `<button class="choice ${x.on ? 'on' : ''} ${x.owned ? '' : 'locked'}" data-item="${kind}:${x.id}" ${!x.owned && x.price > v.coins ? 'disabled' : ''}>
-      <span class="name">${x.name}</span>${x.owned ? '' : `<span class="price">Köp ● ${x.price}</span>`}</button>`
+    `<button class="choice ${x.on ? 'on' : ''} ${x.owned ? '' : 'locked'}" data-item="${kind}:${x.id}" ${!x.owned && (x.price < 0 || x.price > v.coins) ? 'disabled' : ''}>
+      <span class="name">${x.name}</span>${x.owned ? '' : x.price < 0 ? '<span class="price">Hitta alla ★ på en bana</span>' : `<span class="price">Köp ● ${x.price}</span>`}</button>`
   el.innerHTML = `
     <div class="bar"><h2>Utstyrsel</h2><span class="coins">● ${v.coins}</span><button class="small" data-act="back">Tillbaka</button></div>
     <div class="players">${v.players.map((p) => `<button class="player ${p.on ? 'on' : ''}" data-player="${p.name}" style="--c:${p.colour}"><span class="tick">${p.on ? '✓' : ''}</span>${p.name}</button>`).join('')}</div>
