@@ -14,11 +14,11 @@ export const LAUNCH = {
   /** A perfect start: an extra push, as a forward acceleration in m/s², through the centre of mass so it cannot flip the vehicle. */
   perfect: { seconds: 1.2, push: 4 },
   /**
-   * Too many revs: a short burst of wheelspin (the tyres keep `grip` of their grip for
-   * `spinSeconds`), then a drag on the launch: a perfect start's push in reverse, so the
-   * vehicle still gets away, just slower.
+   * Too many revs: the wheels spin (the tyres keep `grip` of their grip) and a perfect start's
+   * push runs in reverse, both for `seconds` and fading out together, so the vehicle still gets
+   * away, just slower.
    */
-  over: { seconds: 1.2, push: -2.2, spinSeconds: 0.35, grip: 0.45 },
+  over: { seconds: 1.2, push: -1, grip: 0.5 },
   /** Below the green: a normal start, but the engine bogs (sound and rev counter only). */
   bogSeconds: 0.8,
 }
