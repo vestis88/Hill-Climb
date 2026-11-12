@@ -97,6 +97,8 @@ export class Run {
    * chain ends it pays a bonus on top of the tricks. A messy landing or a crash loses it.
    */
   combo: { tricks: number; coins: number } | null = null
+  /** What this run did, for missions (game/missions.ts). */
+  stats = { backflips: 0, frontflips: 0, airSeconds: 0, longestWheelie: 0, maxCombo: 0 }
   private comboGround = 0
   /** Events from the last step only, for pop-ups and sounds. */
   events: RunEvent[] = []
@@ -283,6 +285,7 @@ export class Run {
       const value = Math.floor(seconds * RULES.airCoinsPerSecond)
       this.coins.air += value
       this.events.push({ kind: 'air', value, seconds })
+      this.stats.airSeconds += seconds
       this.addTrick(value)
     }
     // Upright at both ends, so a real flip turns close to a whole number of turns; anything
@@ -293,6 +296,8 @@ export class Run {
       this.coins.flips += value
       // Nose-up rotation (counter-clockwise, the car faces right) is a backflip.
       this.events.push({ kind: 'flip', value, flips, direction: signedTurn > 0 ? 'back' : 'front' })
+      if (signedTurn > 0) this.stats.backflips += flips
+      else this.stats.frontflips += flips
       this.addTrick(value)
     }
   }
@@ -301,6 +306,7 @@ export class Run {
     this.combo ??= { tricks: 0, coins: 0 }
     this.combo.tricks++
     this.combo.coins += value
+    this.stats.maxCombo = Math.max(this.stats.maxCombo, this.combo.tricks)
     this.comboGround = 0
   }
 
@@ -366,6 +372,7 @@ export class Run {
       const value = Math.floor(w.coins)
       this.coins.wheelies += value
       this.events.push({ kind: 'wheelie', value, metres: w.metres, multiplier: w.multiplier })
+      this.stats.longestWheelie = Math.max(this.stats.longestWheelie, w.metres)
       this.addTrick(value)
     }
   }

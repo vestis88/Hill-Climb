@@ -1,3 +1,4 @@
+import type { Mission } from '../game/missions'
 import { BASE_LEVELS, type Levels } from '../data/upgrades'
 
 /** Everything kept between sessions. Stored in this browser only. */
@@ -33,6 +34,8 @@ export interface SaveData {
   playerTimes: Record<string, Record<string, number>>
   /** Each player's own vehicle for rounds with several players (this device only, not synced). */
   playerVehicles?: Record<string, string>
+  /** Each player's three missions (this device only). */
+  missions?: Record<string, Mission[]>
 }
 
 export interface Score {

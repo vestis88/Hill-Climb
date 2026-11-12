@@ -40,6 +40,8 @@ export interface GarageView {
   /** Everything unlocked for testing; shown as a badge so it is never mistaken for real progress. */
   testMode?: boolean
   onBuy(id: UpgradeId): void
+  /** Missions of the ticked players: three each, with their rewards. */
+  missions: { name: string; colour: string; items: { text: string; reward: number }[] }[]
   /** Who can play, and who is ticked for the next round. */
   players: { name: string; colour: string; on: boolean }[]
   onTogglePlayer(name: string): void
@@ -96,6 +98,7 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
     <div class="choices daily">${v.daily.map((d) => `<button class="choice ${d.on ? 'on' : ''}" data-daily="${d.id}">
       <canvas class="thumb vehicle" data-thumb="daily:${d.id}"></canvas>
       <span class="name">${d.name}</span><span class="blurb">${d.blurb}</span><span class="note">${d.note}</span></button>`).join('')}</div>
+    ${v.missions.length ? `<div class="label">Uppdrag</div><div class="missions">${v.missions.map((p) => `<div class="mrow" style="--c:${p.colour}"><b class="pname">${p.name}</b>${p.items.map((m) => `<span class="mission">${m.text} <b class="coin">●</b> ${m.reward}</span>`).join('')}</div>`).join('')}</div>` : ''}
     <div class="choices envs">${v.environments.map((c) => choice('env', c)).join('')}</div>
     <div class="actions"><button class="small go" data-act="cup" ${v.players.filter((p) => p.on).length >= 2 ? '' : 'disabled'}>🏆 Tävling: 3 banor</button><button class="small" data-act="scores">Topplista</button><button class="small" data-act="settings">Inställningar</button>${v.tuning ? '<button class="small" data-act="tune">Trimning</button>' : ''}</div>`
   // Draw each preview at its card's real size, and again whenever that size changes (rotation,
@@ -145,6 +148,8 @@ export interface ResultsView {
   bank: number
   /** Whose run it was, in a round. */
   player: { name: string; colour: string }
+  /** Missions this run completed, with their rewards. */
+  missions?: { text: string; reward: number }[]
   /** The next player in the round, or nothing after the last turn. */
   next?: string
   /** True after the last turn of a round with several players: show the standings next. */
@@ -174,6 +179,7 @@ export function showResults(el: HTMLElement, v: ResultsView): void {
         ? `<div class="racetime">${formatTime(v.race.time)} ${v.race.newBestTime ? '<span class="newbest">Nytt rekord!</span>' : ''}</div>`
         : `<div>Kom inte i mål: ${Math.floor(v.distance)} av ${v.race.length} m</div>`
       : `<div>${Math.floor(v.distance)} m ${v.newBest ? '<span class="newbest">Nytt rekord!</span>' : ''}</div>`}
+    ${v.missions?.length ? `<div class="missions-done">${v.missions.map((m) => `<span>✓ Uppdrag klart: ${m.text} <b class="coin">●</b> ${m.reward}</span>`).join('')}</div>` : ''}
     <div class="rows">
       ${row('Mynt på banan', v.coins.track)}
       ${row('Lufttid', v.coins.air)}
