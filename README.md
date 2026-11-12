@@ -154,6 +154,11 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
   after the round); the countdown also shows whose turn it is ("Willes tur").
   After each run their results show with a big "Frans tur" button to hand the iPad over; after the
   last turn come the round's standings (with each player's vehicle), then back to the garage.
+- **Tävling (tournament):** with two or more players ticked, the garage's "🏆 Tävling: 3 banor"
+  starts a cup on three of the family's maps (different ones when three are owned) in the chosen
+  mode. Each track is a round; placings give 5, 3, 2 and 1 points (ties share), the table shows
+  after each track ("Nästa bana: Kraterfälten"), and after the third the winner gets a trophy
+  (code: `src/game/cup.ts`).
 - **Own vehicle each:** in a round with several players, the screen before each turn shows the
   vehicles the family owns and the player picks theirs; the track and mode stay shared. Each
   player's pick is remembered on the device (it starts as the garage's vehicle).

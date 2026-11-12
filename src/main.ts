@@ -1,3 +1,4 @@
+import { CUP_TRACKS, cupTable, cupWinners, lastTrack, newCup, scoreTrack, type Cup } from './game/cup'
 import { advance, emptyRound, nextPlayerOf, nextRound, playerOf, recordTurn, roundOver, standings, together, type Round } from './game/round'
 import { WEATHER_NAME, type Atmosphere } from './data/weather'
 import { EngineRevs, LAUNCH } from './sim/launch'
@@ -82,6 +83,8 @@ type Mode = 'garage' | 'driving' | 'ending' | 'results' | 'tuning' | 'settings' 
 let mode: Mode = 'garage'
 /** Today's challenge, when one of its two events is picked in the garage (not saved). */
 let daily: 'race' | 'endless' | null = null
+/** A tournament in progress: three tracks, points per placing (src/game/cup.ts). */
+let cup: Cup | null = null
 /** This run's time of day and weather (today's challenge only). */
 let atmosphere: Atmosphere | undefined
 /** Seconds left of the start countdown, and the engine revs it shows (sim/launch.ts). */
@@ -112,7 +115,7 @@ function owned(id: string, price: number): boolean {
 }
 const today = () => dailyFor(new Date())
 function currentEnv() {
-  return daily ? today().env : environment(save.envId)
+  return daily ? today().env : cup ? environment(cup.tracks[cup.index]) : environment(save.envId)
 }
 /** Where this track's records live: the map, or today's challenge ("daily-2026-11-12"). */
 function recordEnvId(): string {
@@ -120,6 +123,7 @@ function recordEnvId(): string {
 }
 /** The track's name for screens: the map, or "Dagens lopp · Frostpasset". */
 function trackName(): string {
+  if (cup) return `Tävling, bana ${cup.index + 1} av ${CUP_TRACKS} · ${currentEnv().name}${currentMode().length ? ` · ${currentMode().name}` : ''}`
   return daily ? `${daily === 'race' ? 'Dagens lopp' : 'Dagens oändliga'} · ${currentEnv().name}` : currentEnv().name
 }
 function currentVehicle() {
@@ -298,6 +302,7 @@ function openGarage(justBought?: UpgradeId): void {
       openGarage()
     },
     onScores: () => openScores(recordEnvId(), currentMode().id),
+    onCup: startCup,
     onDrive: startRound,
     onTune: openTuning,
     onSettings: openSettings,
@@ -434,7 +439,7 @@ function openTurn(): void {
   showTurn(resultsEl, {
     players: round.players.map((name) => ({ name, colour: playerColour(name) })),
     turn: round.turn,
-    info: daily ? trackName() : `${currentEnv().name} · ${currentMode().name}`,
+    info: daily || cup ? trackName() : `${currentEnv().name} · ${currentMode().name}`,
     // Today's challenge sets the vehicle for everyone.
     vehicles: (daily ? [driveVehicle()] : VEHICLES.filter((v) => owned(v.id, v.price))).map((v) => ({
       id: v.id, name: v.name, selected: daily ? true : v.id === mine.id,
@@ -573,7 +578,7 @@ function finishRun(): void {
 /** The round's results, furthest first; then back to the garage or another round. */
 function openStandings(): void {
   showStandings(resultsEl, {
-    track: daily ? trackName() : currentMode().length ? `${currentEnv().name} · ${currentMode().name}-lopp` : currentEnv().name,
+    track: cup ? `${currentEnv().name}${currentMode().length ? ` · ${currentMode().name}-lopp` : ''}` : daily ? trackName() : currentMode().length ? `${currentEnv().name} · ${currentMode().name}-lopp` : currentEnv().name,
     // Races: finishers by time, then the rest by how far they got. Endless: by distance.
     rows: standings(round)
       .map((r) => ({
@@ -583,10 +588,39 @@ function openStandings(): void {
         newBest: r.newBest,
         result: r.time !== undefined ? formatTime(r.time) : currentMode().length ? `Ej i mål · ${Math.floor(r.distance)} m` : `${Math.floor(r.distance)} m`,
       })),
-    onHome: () => openGarage(),
-    onAgain: startRound,
+    cup: cupView(),
+    onHome: () => {
+      cup = null
+      openGarage()
+    },
+    onAgain: () => (cup ? startCup() : startRound()),
+    onNextTrack: () => {
+      if (!cup) return
+      cup.index++
+      startRound()
+    },
   })
   show('results')
+}
+
+/** Start a tournament on three of the family's maps, with the ticked players. */
+function startCup(): void {
+  daily = null
+  cup = newCup(ENVIRONMENTS.filter((e) => owned(e.id, e.price)).map((e) => e.id), save.players)
+  startRound()
+}
+
+/** After a tournament track: score it and show the points so far (and the winners after the last). */
+function cupView() {
+  if (!cup) return undefined
+  scoreTrack(cup, standings(round))
+  const last = lastTrack(cup)
+  return {
+    title: `Tävling · bana ${cup.index + 1} av ${CUP_TRACKS}`,
+    table: cupTable(cup).map((t) => ({ ...t, colour: playerColour(t.name) })),
+    nextTrack: last ? undefined : environment(cup.tracks[cup.index + 1]).name,
+    winners: last ? cupWinners(cup) : undefined,
+  }
 }
 
 endRunBtn.addEventListener('click', finishRun)
