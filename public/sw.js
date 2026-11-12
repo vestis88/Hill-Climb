@@ -19,6 +19,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const request = event.request
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return
+  // The version check must always ask the server (src/main.ts checkForUpdate).
+  if (new URL(request.url).pathname.endsWith('/version.json')) return
   const store = (response) => {
     if (response.ok) {
       const copy = response.clone()

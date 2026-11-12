@@ -275,6 +275,20 @@ Database rules (Firebase console, Realtime Database, Rules):
 The family code (12 random characters) is the only key to a family's progress, and the
 whole list of families cannot be read.
 
+### Pause, ghosts setting and updates
+
+- **Pause:** the ❚❚ button during a run (or leaving the app, e.g. a call) pauses: nothing moves,
+  the engine goes quiet, and the menu offers Fortsätt (go on) or Avsluta åket (end the run).
+- **Spöken (settings):** race all ghosts, only records, or none.
+- **Updates:** a home-screen app can stay open for days. The game checks `version.json` every few
+  minutes and, outside a run, shows "Ny version finns · tryck för att uppdatera".
+- **Rotate prompt:** shown only in the menus, never over a run in progress.
+- **iPad screen size:** home-screen apps on iOS/iPadOS 26 can report a viewport about a status bar
+  shorter than the window (WebKit bug 301108), leaving a strip at the bottom; the game then sizes
+  itself from the large viewport instead (`src/ui/viewport.ts`). The settings screen shows what the
+  device reports (window, screen, safe areas, home-screen app or browser) to help with layout
+  problems.
+
 ## Develop
 
 ```

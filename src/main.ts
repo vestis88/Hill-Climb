@@ -30,6 +30,9 @@ const scoresEl = $('scores')
 const tuneEl = $('tune')
 const settingsEl = $('settings')
 const endRunBtn = $('endRun')
+const pauseBtn = $('pauseBtn')
+const pausedEl = $('paused')
+const updateBtn = $('update')
 
 const settings = loadSettings()
 const sound = new Sound()
@@ -183,7 +186,67 @@ function show(m: Mode): void {
   tuneEl.classList.toggle('hidden', m !== 'tuning')
   settingsEl.classList.toggle('hidden', m !== 'settings')
   endRunBtn.classList.toggle('hidden', m !== 'driving')
+  pauseBtn.classList.toggle('hidden', m !== 'driving')
+  pausedEl.classList.add('hidden')
+  paused = false
+  document.body.classList.toggle('playing', m === 'driving' || m === 'ending')
   controls.reset()
+  showUpdateIfReady()
+}
+
+/** Pause a run: the world stops, the engine goes quiet, and a menu offers to go on or end it. */
+let paused = false
+function pause(): void {
+  if (mode !== 'driving' || paused) return
+  paused = true
+  pausedEl.classList.remove('hidden')
+  pauseBtn.classList.add('hidden')
+  endRunBtn.classList.add('hidden')
+  controls.reset()
+}
+function resume(): void {
+  if (!paused) return
+  paused = false
+  pausedEl.classList.add('hidden')
+  pauseBtn.classList.remove('hidden')
+  endRunBtn.classList.remove('hidden')
+  controls.reset()
+}
+pauseBtn.addEventListener('click', pause)
+pausedEl.addEventListener('click', (e) => {
+  const act = (e.target as HTMLElement).closest('button')?.dataset.act
+  if (act === 'resume') resume()
+  else if (act === 'end') {
+    resume()
+    finishRun()
+  }
+})
+
+/**
+ * A newer version published while the game is open (a home-screen app can stay open for days):
+ * offer to reload, but never in the middle of a run.
+ */
+let updateReady = false
+function showUpdateIfReady(): void {
+  updateBtn.classList.toggle('hidden', !updateReady || mode === 'driving' || mode === 'ending')
+}
+async function checkForUpdate(): Promise<void> {
+  try {
+    const res = await fetch('./version.json', { cache: 'no-store' })
+    const { id } = (await res.json()) as { id?: string }
+    if (id && id !== __BUILD_ID__) {
+      updateReady = true
+      showUpdateIfReady()
+    }
+  } catch {
+    // Offline: try again later.
+  }
+}
+updateBtn.addEventListener('click', () => location.reload())
+if (import.meta.env.PROD) {
+  void checkForUpdate()
+  setInterval(() => void checkForUpdate(), 5 * 60 * 1000)
+  document.addEventListener('visibilitychange', () => !document.hidden && void checkForUpdate())
 }
 
 function openGarage(justBought?: UpgradeId): void {
@@ -400,6 +463,13 @@ function openTurn(): void {
  * the others in the round.
  */
 function pickGhosts(): void {
+  collectGhosts()
+  // The ghost setting: all of them, only records, or none.
+  if (settings.ghosts === 'off') ghosts = []
+  else if (settings.ghosts === 'records') ghosts = ghosts.filter((g) => /rekord/i.test(g.label))
+}
+
+function collectGhosts(): void {
   const env = currentKey()
   const me = currentPlayer()
   ghosts = []
@@ -529,7 +599,8 @@ window.addEventListener('keydown', (e) => {
 })
 // Bank the run's coins if the page is closed or hidden mid-run.
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && mode === 'driving') finishRun()
+  // Interrupted (a call, the home button): pause rather than end the run.
+  if (document.hidden && mode === 'driving') pause()
 })
 
 let wasAirborne = false
@@ -586,7 +657,9 @@ function frame(now: number): void {
   updateViewport()
   const dt = Math.min(0.1, (now - last) / 1000)
   last = now
-  if (mode === 'driving' && countdown > 0) {
+  if (paused) {
+    // Nothing moves while paused.
+  } else if (mode === 'driving' && countdown > 0) {
     const beat = Math.ceil(countdown / LAUNCH.beat)
     countdown -= dt
     revs.free(controls.input.gas, dt)
@@ -636,7 +709,7 @@ function frame(now: number): void {
   }
   const sag = bogStarted && bogLeft > 0 ? 0.08 + 0.3 * (1 - bogLeft / LAUNCH.bogSeconds) : 1
   const shownRevs = countdown > 0 ? revs.revs : revs.follow(Math.min(next.revs, sag), dt)
-  sound.engine(shownRevs, controls.input.gas && run.fuel > 0 && !next.shifting, mode === 'driving' && run.fuel > 0)
+  sound.engine(shownRevs, controls.input.gas && run.fuel > 0 && !next.shifting, mode === 'driving' && run.fuel > 0 && !paused)
   renderer.draw({
     prev,
     next,
