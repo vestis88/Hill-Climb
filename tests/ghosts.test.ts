@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { environment, heightFor } from '../src/data/environments'
 import { runabout } from '../src/data/vehicles'
-import { bestOf, roundGhosts, GHOST_EVERY, GhostRecorder, GhostTrack, loadGhost, storeGhost, type Ghost } from '../src/save/ghosts'
+import { bestOf, roundGhosts, storeVehicleBest, vehicleKey, GHOST_EVERY, GhostRecorder, GhostTrack, loadGhost, storeGhost, type Ghost } from '../src/save/ghosts'
 import type { SimState } from '../src/sim/types'
 import { Sim, STEP } from '../src/sim/world'
 
@@ -126,5 +126,32 @@ describe('ghosts in a round with several players (owner: last and record for eve
     const rec = g('Wille', 800)
     const out = roundGhosts(['Wille', 'Frans'], everyone, [], [], (p, kind) => (p === 'Wille' ? rec : kind === 'last' ? g('Frans', 100) : null))
     expect(out.map((o) => o.label)).toEqual(['Rekord · Wille', 'Frans senaste'])
+  })
+})
+
+describe('records per vehicle (owner: race your record in the vehicle you picked, and your overall one)', () => {
+  beforeEach(() => {
+    ;(globalThis as { localStorage?: unknown }).localStorage = fakeStorage()
+  })
+  const run = (vehicle: string, distance: number): Ghost => ({ v: 1, player: 'Wille', vehicle, env: 'meadow', distance, wheels: 2, data: [1, 2] })
+
+  it('keeps a record per vehicle next to the overall record', () => {
+    for (const g of [run('hauler', 600), run('scrambler', 300), run('scrambler', 250), run('scrambler', 420)]) {
+      storeGhost(g)
+      storeVehicleBest(g)
+    }
+    expect(loadGhost('Wille', 'meadow', 'best')!.distance).toBe(600)
+    expect(loadGhost('Wille', vehicleKey('meadow', 'scrambler'), 'best')!.distance).toBe(420)
+    expect(loadGhost('Wille', vehicleKey('meadow', 'hauler'), 'best')!.distance).toBe(600)
+  })
+
+  it("adds the driver's record in their vehicle to the round's ghosts when it is a different run", () => {
+    const overall = run('hauler', 600)
+    const inBike = run('scrambler', 420)
+    const out = roundGhosts(['Wille', 'Frans'], ['Wille', 'Frans'], [], [], (p, kind) => (p === 'Wille' && kind === 'best' ? overall : null), { player: 'Wille', vehicleBest: inBike, vehicleName: 'Crossen' })
+    expect(out.map((o) => o.label)).toEqual(['Rekord · Wille', 'Wille rekord · Crossen'])
+    // Driving the hauler, whose record is the overall one: shown once.
+    const same = roundGhosts(['Wille', 'Frans'], ['Wille', 'Frans'], [], [], (p, kind) => (p === 'Wille' && kind === 'best' ? overall : null), { player: 'Wille', vehicleBest: { ...overall, env: 'meadow@hauler' }, vehicleName: 'Bjässen' })
+    expect(same.map((o) => o.label)).toEqual(['Rekord · Wille'])
   })
 })
