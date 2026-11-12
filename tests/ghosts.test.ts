@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { environment, heightFor } from '../src/data/environments'
 import { runabout } from '../src/data/vehicles'
-import { bestOf, packGhost, putGhost, unpackGhost, roundGhosts, storeVehicleBest, vehicleKey, GHOST_EVERY, GhostRecorder, GhostTrack, loadGhost, storeGhost, type Ghost } from '../src/save/ghosts'
+import { bestOf, ghostNearFade, packGhost, putGhost, unpackGhost, roundGhosts, storeVehicleBest, vehicleKey, GHOST_EVERY, GhostRecorder, GhostTrack, loadGhost, storeGhost, type Ghost } from '../src/save/ghosts'
 import type { SimState } from '../src/sim/types'
 import { Sim, STEP } from '../src/sim/world'
 
@@ -179,5 +179,18 @@ describe('ghost storage format (owner: room for many more ghosts)', () => {
     putGhost('last', ghost)
     expect(localStorage.getItem('ridgeline.ghost.Wille.meadow.last')).toContain('"packed"')
     expect(loadGhost('Wille', 'meadow', 'last')).toEqual({ ...ghost, data: ghost.data.map((v) => v || 0) })
+  })
+})
+
+describe('ghosts near the player (owner: no ghost in the way)', () => {
+  it('vanishes when nearly on top of the player, fades in with distance, full from 4 m', () => {
+    expect(ghostNearFade(0)).toBe(0)
+    expect(ghostNearFade(0.5)).toBe(0)
+    const mid = [1, 2, 3].map(ghostNearFade)
+    expect(mid[0]).toBeGreaterThan(0)
+    expect(mid[0]).toBeLessThan(mid[1])
+    expect(mid[1]).toBeLessThan(mid[2])
+    expect(ghostNearFade(4)).toBe(1)
+    expect(ghostNearFade(40)).toBe(1)
   })
 })
