@@ -326,7 +326,9 @@ export interface ScoresView {
   /** Best first, each with its distance or race time written out. */
   rows: { name: string; colour: string; vehicle: string; result: string }[]
   /** Each player's best on this track in this mode. */
-  bests: { name: string; colour: string; result: string }[]
+  bests: { name: string; colour: string; result: string; replay?: boolean }[]
+  /** Watch a player's record on this track as a replay. */
+  onReplay(name: string): void
   /** The family table: round wins and cup wins per player, and this week's winner. */
   family: { rows: { name: string; colour: string; rounds: number; cups: number; week: number }[]; weekWinner?: string }
   onTrack(id: string): void
@@ -343,13 +345,14 @@ export function showScores(el: HTMLElement, v: ScoresView): void {
     <div class="rows scores">
       ${v.rows.length ? v.rows.map((r, i) => `<div style="--c:${r.colour}"><span class="rank">${i + 1}</span><b class="pname">${r.name}</b><span class="veh">${r.vehicle}</span><span class="dist">${r.result}</span></div>`).join('') : '<div class="empty">Inga åk på den här banan än.</div>'}
     </div>
-    <div class="bests">${v.bests.map((b) => `<span style="--c:${b.colour}"><b class="pname">${b.name}</b> bäst ${b.result}</span>`).join('')}</div>
+    <div class="bests">${v.bests.map((b) => `<span style="--c:${b.colour}"><b class="pname">${b.name}</b> bäst ${b.result}${b.replay ? `<button class="play" data-replay="${b.name}" aria-label="Se repris">▶</button>` : ''}</span>`).join('')}</div>
     <div class="family"><div><b>Familjen</b>${v.family.weekWinner ? ` · Veckans vinnare: <b class="week">🏅 ${v.family.weekWinner}</b>` : ''}</div>
       <div class="ftable">${v.family.rows.map((r) => `<span style="--c:${r.colour}"><b class="pname">${r.name}</b> ${r.rounds} omgångar${r.cups ? ` · ${r.cups} 🏆` : ''}${r.week ? ` · ${r.week} denna vecka` : ''}</span>`).join('')}</div></div>
     <div class="actions"><button class="big blue" data-act="back">Tillbaka</button></div>`
   el.onclick = (e) => {
     const b = (e.target as HTMLElement).closest('button')
-    if (b?.dataset.track) v.onTrack(b.dataset.track)
+    if (b?.dataset.replay) v.onReplay(b.dataset.replay)
+    else if (b?.dataset.track) v.onTrack(b.dataset.track)
     else if (b?.dataset.mode) v.onMode(b.dataset.mode)
     else if (b?.dataset.act === 'back') v.onBack()
   }

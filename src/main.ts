@@ -1,3 +1,4 @@
+import type { VehicleSpec } from './sim/types'
 import { PARTS, partEffects, type PartId } from './data/parts'
 import { ALL_STARS_COINS, STAR_COINS, starsFor } from './game/stars'
 import { DEFAULT_OUTFIT, HATS, PATTERNS, type Hat, type Outfit, type Pattern } from './data/outfits'
@@ -17,7 +18,7 @@ import { createInput } from './input/input'
 import { GameRenderer, type Popup } from './render/game'
 import { drawEnvironmentPreview, drawVehiclePreview } from './render/preview'
 import { addScore, earn, emptySave, levelsFor, loadSave, playerBest, playerTime, spend, writeSave } from './save/save'
-import { clearGhosts, roundGhosts, GhostRecorder, GhostTrack, loadGhost, storeGhost, storeVehicleBest, vehicleKey, type Ghost } from './save/ghosts'
+import { clearGhosts, poseToState, roundGhosts, GhostRecorder, GhostTrack, loadGhost, storeGhost, storeVehicleBest, vehicleKey, type Ghost } from './save/ghosts'
 import { CloudSync } from './save/cloud'
 import { PLAYERS, playerColour } from './data/players'
 import { formatTime, gameMode, MODES, recordKey } from './data/modes'
@@ -42,6 +43,8 @@ const pauseBtn = $('pauseBtn')
 const pausedEl = $('paused')
 const updateBtn = $('update')
 const hornBtn = $('horn')
+const replayBar = $('replayBar')
+replayBar.addEventListener('click', (e) => (e.target as HTMLElement).closest('button') && endReplay())
 const boostBtn = $('boost')
 /** The boost button (thrusters): held down while touched, or Space / Up on a keyboard. */
 let boosting = false
@@ -101,12 +104,14 @@ function persist(): void {
 const tuning = loadTuning()
 let driveAs: DriveAs = 'mine'
 
-type Mode = 'garage' | 'driving' | 'ending' | 'results' | 'tuning' | 'settings' | 'scores'
+type Mode = 'garage' | 'driving' | 'ending' | 'results' | 'tuning' | 'settings' | 'scores' | 'replay'
 let mode: Mode = 'garage'
 /** Today's challenge, when one of its two events is picked in the garage (not saved). */
 let daily: 'race' | 'endless' | null = null
 /** A tournament in progress: three tracks, points per placing (src/game/cup.ts). */
 let cup: Cup | null = null
+/** A record being watched as a replay (from Topplista). */
+let replay: { track: GhostTrack; t: number; env: string; startX: number; spec: VehicleSpec; player: string; back: () => void } | null = null
 /** This run's time of day and weather (today's challenge only). */
 let atmosphere: Atmosphere | undefined
 /** Seconds left of the start countdown, and the engine revs it shows (sim/launch.ts). */
@@ -137,6 +142,7 @@ function owned(id: string, price: number): boolean {
 }
 const today = () => dailyFor(new Date())
 function currentEnv() {
+  if (replay) return environment(replay.env)
   return daily ? today().env : cup ? environment(cup.tracks[cup.index]) : environment(save.envId)
 }
 /** Where this track's records live: the map, or today's challenge ("daily-2026-11-12"). */
@@ -224,6 +230,7 @@ function show(m: Mode): void {
   settingsEl.classList.toggle('hidden', m !== 'settings')
   endRunBtn.classList.toggle('hidden', m !== 'driving')
   pauseBtn.classList.toggle('hidden', m !== 'driving')
+  replayBar.classList.toggle('hidden', m !== 'replay')
   hornBtn.classList.toggle('hidden', m !== 'driving')
   boostBtn.classList.toggle('hidden', m !== 'driving' || !driveVehicle().base.thrusters)
   document.body.classList.toggle('swapped', settings.swapPedals)
@@ -418,8 +425,9 @@ function openScores(envId: string, modeId: string): void {
       .map((s) => ({ name: s.name, colour: playerColour(s.name), vehicle: vehicleEntry(s.vehicle).name, result: s.time !== undefined ? formatTime(s.time) : m.length ? `Ej i mål · ${Math.floor(s.distance)} m` : `${Math.floor(s.distance)} m` })),
     bests: PLAYERS.map((p) => {
       const t = playerTime(save, p.name, key)
-      return { name: p.name, colour: p.colour, result: m.length ? (t < Infinity ? formatTime(t) : '–') : `${Math.floor(playerBest(save, p.name, env.id))} m` }
+      return { name: p.name, colour: p.colour, replay: !!loadGhost(p.name, key, 'best') && !isDaily, result: m.length ? (t < Infinity ? formatTime(t) : '–') : `${Math.floor(playerBest(save, p.name, env.id))} m` }
     }),
+    onReplay: (name) => startReplay(name, key, () => openScores(envId, modeId)),
     onTrack: (id) => openScores(id, m.id),
     onMode: (id) => openScores(env.id, id),
     onBack: () => openGarage(),
@@ -779,6 +787,29 @@ function foundStar(id: string, x: number, y: number): void {
   persist()
 }
 
+/** Watch a player's record on a track (its stored best ghost) with the camera following it. */
+function startReplay(name: string, key: string, back: () => void): void {
+  const g = loadGhost(name, key, 'best')
+  if (!g) return
+  const track = new GhostTrack(g)
+  const first = track.at(0)
+  replay = { track, t: 0, env: key.split('.')[0], startX: first?.chassis.x ?? 0, spec: vehicleEntry(g.vehicle).base, player: name, back }
+  run = newRun()
+  prev = next = poseToState(first!, replay.startX)
+  renderer.resetCamera(next)
+  replayBar.querySelector('span')!.textContent = `Repris: ${name} · ${currentEnv().name} · ${g.time !== undefined ? formatTime(g.time) : `${Math.floor(g.distance)} m`}`
+  show('replay')
+}
+
+function endReplay(): void {
+  const back = replay?.back
+  replay = null
+  run = newRun()
+  prev = next = run.sim.state()
+  renderer.resetCamera(next)
+  back?.()
+}
+
 /** Note the cup winners in the family table, and pass them on. */
 function recordCupWin(winners: string[]): string[] {
   save.cupWins = [...(save.cupWins ?? []), ...winners.map((winner) => ({ at: Date.now(), winner }))]
@@ -897,6 +928,15 @@ function frame(now: number): void {
   last = now
   if (paused) {
     // Nothing moves while paused.
+  } else if (mode === 'replay' && replay) {
+    // A replay: the recorded poses drive the vehicle; the camera follows; back when it ends.
+    replay.t += dt
+    const pose = replay.track.at(replay.t)
+    if (pose) {
+      prev = next
+      next = poseToState(pose, replay.startX, prev)
+    }
+    if (replay.t > replay.track.duration + 1.5) endReplay()
   } else if (mode === 'driving' && countdown > 0) {
     const beat = Math.ceil(countdown / LAUNCH.beat)
     countdown -= dt
@@ -957,7 +997,7 @@ function frame(now: number): void {
     prev,
     next,
     alpha: mode === 'driving' || mode === 'ending' ? accumulator / STEP : 1,
-    spec: run.options.vehicle,
+    spec: mode === 'replay' && replay ? replay.spec : run.options.vehicle,
     height: run.options.height,
     env: currentEnv(),
     dt,
@@ -979,8 +1019,8 @@ function frame(now: number): void {
     showPedals: mode === 'driving',
     swapPedals: settings.swapPedals,
     driver: { lean: run.sway.lean, ragdoll: run.ragdoll?.poses() ?? null },
-    player: mode === 'driving' || mode === 'ending' ? { name: currentPlayer(), colour: playerColour(currentPlayer()) } : undefined,
-    outfit: outfitFor(currentPlayer()),
+    player: mode === 'replay' && replay ? { name: replay.player, colour: playerColour(replay.player) } : mode === 'driving' || mode === 'ending' ? { name: currentPlayer(), colour: playerColour(currentPlayer()) } : undefined,
+    outfit: outfitFor(mode === 'replay' && replay ? replay.player : currentPlayer()),
     ghosts: mode === 'driving' || mode === 'ending' ? ghostPoses() : [],
     puddles: puddlesFor(currentEnv()),
     race: currentMode().length ? { length: currentMode().length!, time: run.finishTime ?? run.sim.steps * STEP } : undefined,

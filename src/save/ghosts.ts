@@ -47,6 +47,16 @@ export function ghostNearFade(d: number): number {
   return t * t * (3 - 2 * t)
 }
 
+/** A ghost pose as the renderer's vehicle state, for watching a replay. */
+export function poseToState(p: GhostPose, startX: number, previous?: SimState): SimState {
+  const { x, y, angle } = p.chassis
+  const c = Math.cos(angle)
+  const s = Math.sin(angle)
+  const wheels = p.hubs.map(([hx, hy], i) => ({ x: x + hx * c - hy * s, y: y + hx * s + hy * c, angle: p.wheelAngles[i] }))
+  const speed = previous ? (x - previous.chassis.x) * 60 : 0
+  return { chassis: { x, y, angle }, wheels, speed, rpm: 0.5, distance: Math.max(0, x - startX), airborne: false, wheelContacts: wheels.map(() => true), gear: 1, revs: 0.5, shifting: false }
+}
+
 const SCALE = { pos: 100, hub: 1000, angle: 100 }
 const stride = (wheels: number) => 3 + wheels * 3
 
