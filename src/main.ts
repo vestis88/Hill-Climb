@@ -440,7 +440,7 @@ function handleEvents(): void {
       } else renderer.sparkle(e.x, e.y, '#ff9a9a')
     }
     else if (e.kind === 'air') popups.push({ text: `Air ${e.seconds.toFixed(1)} s  +${e.value}`, age: 0 })
-    else if (e.kind === 'wheelie') popups.push({ text: `Wheelie ${Math.floor(e.metres)} m  +${e.value}`, age: 0 })
+    else if (e.kind === 'wheelie') popups.push({ text: `Wheelie ${Math.floor(e.metres)} m${e.multiplier > 1 ? ` ×${e.multiplier}` : ''}  +${e.value}`, age: 0 })
     else if (e.kind === 'flip') {
       const name = ['', '', 'Double ', 'Triple ', 'Quad '][e.flips] ?? `${e.flips}× `
       popups.push({ text: `${name}${e.direction === 'back' ? 'backflip' : 'frontflip'}!  +${e.value}`, age: 0 })
@@ -517,6 +517,7 @@ function frame(now: number): void {
     dt,
     input: controls.input,
     pickups: run.options.pickups.items,
+    wheelie: mode === 'driving' ? run.wheelieNow : null,
     nextFuel: (() => {
       const at = run.options.pickups.nextFuel(next.chassis.x)
       return at === null ? null : at - next.chassis.x
@@ -559,7 +560,7 @@ document.addEventListener('visibilitychange', () => {
 })
 
 // Development only: lets screenshot scripts trigger effects without playing to them.
-if (import.meta.env.DEV) (window as unknown as { __game: unknown }).__game = { renderer }
+if (import.meta.env.DEV) (window as unknown as { __game: unknown }).__game = { renderer, get run() { return run } }
 
 // Offline play and home-screen install (published builds only).
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

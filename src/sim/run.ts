@@ -30,11 +30,17 @@ export const RULES = {
   /** A flip counts from 2π minus this much rotation (radians): about 245 degrees. */
   flipTolerance: 2,
   /**
-   * Coins per metre of wheelie (front wheels up, back wheels down, moving forward), for
-   * wheelies of at least minWheelie metres. Distance, not time (owner): a fast wheelie pays more.
+   * Coins per metre of wheelie, for wheelies of at least minWheelie metres. A wheelie lasts until
+   * a front wheel touches the ground (hops on the back wheel keep it going), but only metres
+   * driven forward with a back wheel on the ground count. Distance, not time (owner).
    */
   wheelieCoinsPerMetre: 2,
   minWheelie: 10,
+  /**
+   * Long wheelies pay more: each metre is paid at the multiplier for how far the wheelie has
+   * gone so far (×2 from 25 m, ×3 from 50 m, ×4 from 100 m, ×5 from 200 m).
+   */
+  wheelieMultiplier: (metres: number) => (metres < 25 ? 1 : metres < 50 ? 2 : metres < 100 ? 3 : metres < 200 ? 4 : 5),
   /** A first-time bonus at every multiple of this distance. */
   milestoneEvery: 100,
   /** Bonus for the k-th milestone (k = 1 at 100 m). Flat, set by the economy simulation (npm run economy). */
@@ -48,7 +54,7 @@ export type RunEvent =
   | { kind: 'fuel'; x: number; y: number; /** Coins for reaching it on an empty tank. */ bonus: number }
   | { kind: 'air'; value: number; seconds: number }
   | { kind: 'flip'; value: number; flips: number; direction: 'back' | 'front' }
-  | { kind: 'wheelie'; value: number; metres: number }
+  | { kind: 'wheelie'; value: number; metres: number; multiplier: number }
   | { kind: 'milestone'; value: number; distance: number }
 
 export interface RunOptions {
@@ -89,8 +95,12 @@ export class Run {
   private airSteps = 0
   /** The car's angle relative to the ground on the last step with wheels down. */
   private lastGroundRel = 0
-  /** Where the current wheelie started (chassis x), or null when not on the back wheel. */
-  private wheelieStart: number | null = null
+  /**
+   * The wheelie in progress, or null: metres counted (back wheel down) and coins earned so far.
+   * Read by the HUD.
+   */
+  wheelieNow: { metres: number; coins: number; multiplier: number } | null = null
+  private wheelieLastX = 0
   private takeoffAngle = 0
   private stoppedSteps = 0
   /** Furthest point reached on an empty tank, and steps since it last moved on. */
@@ -265,23 +275,40 @@ export class Run {
     return Math.atan2(h(x + 0.5) - h(x - 0.5), 1)
   }
 
-  /** Front wheels up, back wheels on the ground, moving forward: a wheelie. Paid when it ends. */
+  /**
+   * A wheelie starts with the front wheels up and a back wheel down, moving forward, and lasts
+   * until a front wheel touches the ground. Only forward metres with a back wheel down count, at
+   * a multiplier that grows with the length. Paid when it ends.
+   */
   private wheelie(s: SimState): void {
     const wheels = this.options.vehicle.wheels
     const front = wheels.map((w, i) => (w.axle === 'front' ? s.wheelContacts[i] : null)).filter((c) => c !== null)
     const rear = wheels.map((w, i) => (w.axle === 'rear' ? s.wheelContacts[i] : null)).filter((c) => c !== null)
-    const on = front.length > 0 && front.every((c) => !c) && rear.some((c) => c) && s.speed > 1.5
-    if (on) {
-      this.wheelieStart ??= s.chassis.x
+    const frontDown = front.length === 0 || front.some((c) => c)
+    const rearDown = rear.some((c) => c)
+    const w = this.wheelieNow
+    if (!w) {
+      if (!frontDown && rearDown && s.speed > 1.5) {
+        this.wheelieNow = { metres: 0, coins: 0, multiplier: 1 }
+        this.wheelieLastX = s.chassis.x
+      }
       return
     }
-    if (this.wheelieStart === null) return
-    const metres = s.chassis.x - this.wheelieStart
-    this.wheelieStart = null
-    if (metres >= RULES.minWheelie) {
-      const value = Math.floor(metres * RULES.wheelieCoinsPerMetre)
+    if (!frontDown) {
+      const dx = s.chassis.x - this.wheelieLastX
+      this.wheelieLastX = s.chassis.x
+      if (rearDown && dx > 0) {
+        w.multiplier = RULES.wheelieMultiplier(w.metres)
+        w.metres += dx
+        w.coins += dx * RULES.wheelieCoinsPerMetre * w.multiplier
+      }
+      return
+    }
+    this.wheelieNow = null
+    if (w.metres >= RULES.minWheelie) {
+      const value = Math.floor(w.coins)
       this.coins.wheelies += value
-      this.events.push({ kind: 'wheelie', value, metres })
+      this.events.push({ kind: 'wheelie', value, metres: w.metres, multiplier: w.multiplier })
     }
   }
 
