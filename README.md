@@ -169,6 +169,11 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
   a single run (backflips, frontflips, air time, a long wheelie, distance on a given map, coins in
   one run, a combo of so many tricks), each paying 100 to 500 coins. A finished one shows in the
   results and is replaced by a new kind; test-mode runs do not count (code: `src/game/missions.ts`).
+- **Delar (parts):** a second layer once upgrades are maxed. Bought once for the family and one
+  fitted per vehicle in the garage: Större tank (fuel lasts 30 % longer, 4,000), Stötdämpare
+  (softer landings, 4,000), Myntmagnet (coins from twice as far, 6,000), Stegringsmästare (+50 % for
+  wheelies, 6,000), Voltbonus (+50 % for flips, 6,000). Not used on the daily challenge
+  (code: `src/data/parts.ts`).
 - **Hidden stars:** three gold stars per map float high above its first jumps and table-tops,
   so they take a good jump (or the Moon Lander's thrusters). Each pays 250 coins once; all three
   on a map pay 1,000 more and unlock the Guldstjärnor helmet pattern. The garage shows ★ n/3 per

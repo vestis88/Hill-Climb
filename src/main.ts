@@ -1,3 +1,4 @@
+import { PARTS, partEffects, type PartId } from './data/parts'
 import { ALL_STARS_COINS, STAR_COINS, starsFor } from './game/stars'
 import { DEFAULT_OUTFIT, HATS, PATTERNS, type Hat, type Outfit, type Pattern } from './data/outfits'
 import { drawHead, setOutfit } from './render/art'
@@ -173,7 +174,21 @@ function currentPlayer(): string {
   return playerOf(round, save.players[0] ?? PLAYERS[0].name)
 }
 
+/** The part fitted to a vehicle (none on the daily challenge, where all are tuned alike). */
+function partFor(vehicleId: string): PartId {
+  if (daily) return 'none'
+  const id = save.parts?.[vehicleId] ?? 'none'
+  return id === 'none' || tuningEnabled() || save.unlocked.includes(`part:${id}`) ? id : 'none'
+}
+
 function vehicleSpec() {
+  const spec = upgradedSpec()
+  // Stötdämpare: more damping and slightly softer springs.
+  const fx = partEffects(partFor(spec.id))
+  return fx.damping === 1 ? spec : { ...spec, wheels: spec.wheels.map((w) => ({ ...w, damping: w.damping * fx.damping, springHz: w.springHz * fx.springs })) }
+}
+
+function upgradedSpec() {
   const entry = driveVehicle()
   const levels = daily ? today()[daily].levels : driveAs === 'base' ? BASE_LEVELS : driveAs === 'full' ? FULL_LEVELS : levelsFor(save, entry.id)
   // The tuning sandbox edits the starter car; other vehicles use their own data.
@@ -195,6 +210,7 @@ function newRun(): Run {
     bestDistance: playerBest(save, currentPlayer(), recordEnvId()),
     finish: currentMode().length,
     assist: settings.help.includes(currentPlayer()),
+    part: partFor(driveVehicle().id),
     stars: starsFor(env).filter((s) => !save.unlocked.includes(s.id)),
   })
 }
@@ -340,6 +356,19 @@ function openGarage(justBought?: UpgradeId): void {
     },
     onScores: () => openScores(recordEnvId(), currentMode().id),
     onCup: startCup,
+    parts: PARTS.map((p) => ({ ...p, owned: p.price === 0 || tuningEnabled() || save.unlocked.includes(`part:${p.id}`), on: (save.parts?.[vehicle.id] ?? 'none') === p.id })),
+    onPart: (id) => {
+      const p = PARTS.find((x) => x.id === id)
+      if (!p) return
+      if (p.price > 0 && !tuningEnabled() && !save.unlocked.includes(`part:${p.id}`)) {
+        if (!spend(save, p.price)) return
+        save.unlocked.push(`part:${p.id}`)
+      }
+      save.parts = { ...save.parts, [vehicle.id]: p.id }
+      persist()
+      run = newRun()
+      openGarage()
+    },
     onOutfit: () => openOutfit(save.players[0] ?? PLAYERS[0].name),
     missions: save.players.map((p) => ({
       name: p,

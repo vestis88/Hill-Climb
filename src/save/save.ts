@@ -1,3 +1,4 @@
+import type { PartId } from '../data/parts'
 import type { Hat, Pattern } from '../data/outfits'
 import type { Mission } from '../game/missions'
 import { BASE_LEVELS, type Levels } from '../data/upgrades'
@@ -41,6 +42,8 @@ export interface SaveData {
   outfits?: Record<string, { pattern: Pattern; hat: Hat }>
   /** The family table: who won each round (and each cup) with several players, and when (this device). */
   roundWins?: { at: number; winner: string }[]
+  /** The part fitted to each vehicle (this device; the parts bought are in unlocked). */
+  parts?: Record<string, PartId>
   cupWins?: { at: number; winner: string }[]
 }
 

@@ -40,6 +40,9 @@ export interface GarageView {
   /** Everything unlocked for testing; shown as a badge so it is never mistaken for real progress. */
   testMode?: boolean
   onBuy(id: UpgradeId): void
+  /** Parts for the selected vehicle: one can be fitted (bought once for the family). */
+  parts: { id: string; name: string; blurb: string; price: number; owned: boolean; on: boolean }[]
+  onPart(id: string): void
   /** Missions of the ticked players: three each, with their rewards. */
   missions: { name: string; colour: string; items: { text: string; reward: number }[] }[]
   /** Who can play, and who is ticked for the next round. */
@@ -94,6 +97,8 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
     <div class="choices vehicles">${v.vehicles.map((c) => choice('vehicle', c)).join('')}</div>
     <div class="label">Uppgraderingar för ${v.vehicleName}</div>
     <div class="cards">${v.upgrades.map(card).join('')}</div>
+    <div class="label">Del för ${v.vehicleName}</div>
+    <div class="partrow">${v.parts.map((p) => `<button class="part ${p.on ? 'on' : ''} ${p.owned ? '' : 'locked'}" data-part="${p.id}" ${!p.owned && p.price > v.coins ? 'disabled' : ''} title="${p.blurb}"><b>${p.name}</b>${p.blurb ? `<small>${p.blurb}</small>` : ''}${p.owned ? '' : `<span class="price">Köp ● ${p.price}</span>`}</button>`).join('')}</div>
     <div class="modebar"><span class="label">Läge</span><div class="seg">${v.modes.map((m) => `<button class="${m.on ? 'on' : ''}" data-mode="${m.id}">${m.name}</button>`).join('')}</div></div>
     <div class="label daily-label">${v.dailyTitle}</div>
     <div class="choices daily">${v.daily.map((d) => `<button class="choice ${d.on ? 'on' : ''}" data-daily="${d.id}">
@@ -126,6 +131,7 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
     else if (b.dataset.player) v.onTogglePlayer(b.dataset.player)
     else if (b.dataset.mode) v.onMode(b.dataset.mode)
     else if (b.dataset.daily) v.onDaily(b.dataset.daily as 'race' | 'endless')
+    else if (b.dataset.part) v.onPart(b.dataset.part)
     else if (b.dataset.act === 'scores') v.onScores()
     else if (b.dataset.act === 'cup') v.onCup()
     else if (b.dataset.act === 'outfit') v.onOutfit()
