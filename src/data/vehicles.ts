@@ -318,6 +318,97 @@ export const monsterFull: VehicleSpec = {
   airControl: { ...monster.airControl, spinRate: 3.6, spinResponse: 15 },
 }
 
+/**
+ * Go-kart: low, light and fast on tiny wheels with almost no suspension. Brilliant on smooth
+ * ground (Dynhavet), skittish on bumps; a racer. Base spec.
+ */
+export const kart: VehicleSpec = {
+  id: 'kart',
+  chassis: {
+    polygon: [
+      { x: -1.05, y: -0.12 },
+      { x: 1.15, y: -0.12 },
+      { x: 1.2, y: 0.05 },
+      { x: -1.1, y: 0.12 },
+    ],
+    mass: 5,
+    centerOfMass: { x: 0, y: -0.15 },
+  },
+  wheels: [
+    { anchor: { x: -0.8, y: -0.22 }, radius: 0.3, mass: 0.5, friction: 0.5, springHz: 7, damping: 1, axle: 'rear' },
+    { anchor: { x: 0.85, y: -0.22 }, radius: 0.28, mass: 0.4, friction: 0.5, springHz: 7, damping: 1, axle: 'front' },
+  ],
+  engine: {
+    maxTorque: 7,
+    frontShare: 0,
+    torqueFalloff: 0.45,
+    maxWheelSpeed: 48,
+    brakeTorque: 14,
+    revTime: 0.4,
+    reverseWheelSpeed: 20,
+    idleDragTorque: 0.4,
+    gearbox: { gears: 5, shiftTime: 0.1, cut: 0.6 },
+  },
+  driver: { head: { x: -0.25, y: 0.85 }, headRadius: 0.19 },
+  airControl: { spinRate: 2.2, spinResponse: 11, groundTorque: 0 },
+}
+
+export const kartFull: VehicleSpec = {
+  ...kart,
+  chassis: { ...kart.chassis, mass: 3.6 },
+  wheels: kart.wheels.map((w) => ({ ...w, friction: 1.05, springHz: 7, damping: 1.6 })),
+  engine: { ...kart.engine, maxTorque: 11, torqueFalloff: 0.2, maxWheelSpeed: 75 },
+}
+
+/**
+ * Snowmobile: a track on four small bogie wheels at the back and a ski in front. The studded
+ * track grips on snow and ice (never under minGrip there), the ski just slides. Great on Frost
+ * Pass, ordinary elsewhere. Base spec.
+ */
+export const snowmobile: VehicleSpec = {
+  id: 'snowmobile',
+  chassis: {
+    polygon: [
+      { x: -1.3, y: -0.15 },
+      { x: 1.1, y: -0.15 },
+      { x: 1.45, y: 0.25 },
+      { x: 0.4, y: 0.45 },
+      { x: -1.3, y: 0.3 },
+    ],
+    mass: 8,
+    centerOfMass: { x: 0.05, y: -0.2 },
+  },
+  wheels: [
+    { anchor: { x: -1.15, y: -0.38 }, radius: 0.24, mass: 0.4, friction: 0.45, springHz: 3.4, damping: 0.7, axle: 'rear' },
+    { anchor: { x: -0.75, y: -0.4 }, radius: 0.24, mass: 0.4, friction: 0.45, springHz: 3.4, damping: 0.7, axle: 'rear' },
+    { anchor: { x: -0.35, y: -0.4 }, radius: 0.24, mass: 0.4, friction: 0.45, springHz: 3.4, damping: 0.7, axle: 'rear' },
+    { anchor: { x: 0.05, y: -0.38 }, radius: 0.24, mass: 0.4, friction: 0.45, springHz: 3.4, damping: 0.7, axle: 'rear' },
+    { anchor: { x: 1.15, y: -0.45 }, radius: 0.2, mass: 0.3, friction: 0.05, springHz: 3.4, damping: 0.7, axle: 'front' },
+  ],
+  engine: {
+    maxTorque: 9,
+    frontShare: 0,
+    torqueFalloff: 0.5,
+    maxWheelSpeed: 55,
+    brakeTorque: 20,
+    revTime: 0.45,
+    reverseWheelSpeed: 18,
+    idleDragTorque: 0.5,
+    gearbox: { gears: 3, shiftTime: 0.12, cut: 0.6 },
+  },
+  amphibious: { minGrip: 0.75 },
+  driver: { head: { x: -0.35, y: 1.15 }, headRadius: 0.2 },
+  airControl: { spinRate: 2.2, spinResponse: 11, groundTorque: 0 },
+}
+
+export const snowmobileFull: VehicleSpec = {
+  ...snowmobile,
+  chassis: { ...snowmobile.chassis, mass: 6.5 },
+  wheels: snowmobile.wheels.map((w) => ({ ...w, friction: w.axle === 'front' ? 0.05 : 1.15, damping: 0.95 })),
+  engine: { ...snowmobile.engine, maxTorque: 17, torqueFalloff: 0.25, maxWheelSpeed: 80 },
+  amphibious: { minGrip: 1.0 },
+}
+
 export const VEHICLES: VehicleEntry[] = [
   {
     id: 'runabout', name: 'Buggyn', blurb: 'Liten, lätt och lättkörd', price: 0, base: runabout, full: runaboutFull,
@@ -342,6 +433,16 @@ export const VEHICLES: VehicleEntry[] = [
   {
     id: 'tractor', name: 'Traktorn', blurb: 'Långsam men klättrar överallt och välter nästan aldrig', price: 8000, base: tractor, full: tractorFull,
     upgrades: [ENGINE, TYRES, SUSPENSION, { ...DRIVETRAIN, blurb: 'Fyrhjulsdrift: kraft till framhjulen också' }],
+    launchSafe: true,
+  },
+  {
+    id: 'kart', name: 'Kartingen', blurb: 'Låg och snabb: suverän på släta banor, studsig på gupp', price: 9000, base: kart, full: kartFull,
+    upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'weight', name: 'Lättare ram', blurb: 'Mindre vikt: snabbare från start och uppför backar' }],
+    launchSafe: true,
+  },
+  {
+    id: 'snowmobile', name: 'Snöskotern', blurb: 'Larvband och skida: bäst av alla på snö och is', price: 12000, base: snowmobile, full: snowmobileFull,
+    upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'weight', name: 'Lättare ram', blurb: 'Mindre vikt: snabbare från start och uppför backar' }],
     launchSafe: true,
   },
   {

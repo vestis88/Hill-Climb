@@ -109,6 +109,10 @@ const ENGINES: Record<string, EngineVoice> = {
   hauler: { idle: 48, top: 300, firing: 8, pulse: 0, grit: 1.6, cutoff: [380, 1700], sub: 0, noise: 0.1, waves: ['sawtooth', 'sawtooth'], volume: 1.1, kind: 'v8' },
   // Tractor: a slow, chugging diesel four that hardly revs.
   tractor: { idle: 14, top: 75, firing: 4, pulse: 0, grit: 2.6, cutoff: [500, 1500], sub: 0, noise: 0.18, waves: ['sawtooth', 'square'], volume: 1.05, kind: 'i4' },
+  // Go-kart: a small, screaming single (like the bike, but thinner and higher).
+  kart: { idle: 34, top: 210, firing: 1, pulse: 0, grit: 2.6, cutoff: [1600, 5600], sub: 0, noise: 0.16, waves: ['square', 'square'], volume: 0.85, kind: 'twoStroke' },
+  // Snowmobile: a buzzy two-stroke twin.
+  snowmobile: { idle: 32, top: 200, firing: 2, pulse: 0, grit: 2.4, cutoff: [1200, 4600], sub: 0, noise: 0.2, waves: ['square', 'sawtooth'], volume: 0.95, kind: 'twoStroke' },
   // Monster truck: a huge V8, deeper and louder than the Hauler.
   monster: { idle: 40, top: 260, firing: 8, pulse: 0, grit: 2, cutoff: [320, 1500], sub: 0, noise: 0.14, waves: ['sawtooth', 'sawtooth'], volume: 1.2, kind: 'v8' },
 }
@@ -614,6 +618,8 @@ export class Sound {
       hauler: [[220, 277], 0.45, 'sawtooth', 0.12],
       rover: [[330], 0.25, 'triangle', 0.2],
       tractor: [[175, 233], 0.5, 'square', 0.09],
+      kart: [[740, 880], 0.1, 'square', 0.08],
+      snowmobile: [[600], 0.3, 'triangle', 0.15],
       monster: [[185, 233, 277], 0.7, 'sawtooth', 0.1],
     }
     const [freqs, length, wave, gain] = notes[vehicle] ?? notes.runabout
