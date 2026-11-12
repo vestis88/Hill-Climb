@@ -51,6 +51,8 @@ export interface GarageView {
   dailyTitle: string
   onDaily(id: 'race' | 'endless'): void
   onScores(): void
+  /** Start a tournament: three tracks, points per placing (needs two or more players). */
+  onCup(): void
   onDrive(): void
   onTune(): void
   onSettings(): void
@@ -95,7 +97,7 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
       <canvas class="thumb vehicle" data-thumb="daily:${d.id}"></canvas>
       <span class="name">${d.name}</span><span class="blurb">${d.blurb}</span><span class="note">${d.note}</span></button>`).join('')}</div>
     <div class="choices envs">${v.environments.map((c) => choice('env', c)).join('')}</div>
-    <div class="actions"><button class="small" data-act="scores">Topplista</button><button class="small" data-act="settings">Inställningar</button>${v.tuning ? '<button class="small" data-act="tune">Trimning</button>' : ''}</div>`
+    <div class="actions"><button class="small go" data-act="cup" ${v.players.filter((p) => p.on).length >= 2 ? '' : 'disabled'}>🏆 Tävling: 3 banor</button><button class="small" data-act="scores">Topplista</button><button class="small" data-act="settings">Inställningar</button>${v.tuning ? '<button class="small" data-act="tune">Trimning</button>' : ''}</div>`
   // Draw each preview at its card's real size, and again whenever that size changes (rotation,
   // browser bars, layout switching): a canvas drawn at one size and shown at another looks stretched.
   thumbObserver?.disconnect()
@@ -121,6 +123,7 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
     else if (b.dataset.mode) v.onMode(b.dataset.mode)
     else if (b.dataset.daily) v.onDaily(b.dataset.daily as 'race' | 'endless')
     else if (b.dataset.act === 'scores') v.onScores()
+    else if (b.dataset.act === 'cup') v.onCup()
     else if (b.dataset.pick) {
       const [kind, id] = b.dataset.pick.split(':')
       v.onPick(kind as 'vehicle' | 'env', id)
@@ -233,25 +236,34 @@ export interface StandingsView {
   track: string
   /** Furthest (endless) or fastest (race) first, with the result already written out. */
   rows: { name: string; colour: string; vehicle: string; result: string; newBest: boolean }[]
+  /** In a tournament: which track this was, the points so far, and the winners after the last. */
+  cup?: { title: string; table: { name: string; colour: string; points: number }[]; nextTrack?: string; winners?: string[] }
   onHome(): void
   onAgain(): void
+  onNextTrack?(): void
 }
 
 /** After the last turn: who got furthest this round. */
 export function showStandings(el: HTMLElement, v: StandingsView): void {
   const medal = ['🥇', '🥈', '🥉']
+  const cup = v.cup
+  const table = cup ? `<div class="cup-table">${cup.table.map((t, i) => `<span style="--c:${t.colour}" class="${i === 0 ? 'lead' : ''}"><b class="pname">${t.name}</b> ${t.points} p</span>`).join('')}</div>` : ''
+  const actions = cup && cup.nextTrack
+    ? `<button class="big" data-act="next">Nästa bana: ${cup.nextTrack}</button>`
+    : cup
+      ? '<button class="big blue" data-act="home">Garaget</button><button class="big" data-act="again">Ny tävling</button>'
+      : '<button class="big blue" data-act="home">Garaget</button><button class="big" data-act="again">Spela igen</button>'
   el.innerHTML = `
-    <h2>Omgångens resultat</h2>
+    ${cup?.winners ? `<div class="trophy">🏆</div><div class="who big-who" style="--c:${cup.table[0].colour}">${cup.winners.join(' och ')} ${cup.winners.length > 1 ? 'vinner' : 'vinner'} tävlingen!</div>` : `<h2>${cup ? cup.title : 'Omgångens resultat'}</h2>`}
     <div class="best">${v.track}</div>
     <div class="rows standings">${v.rows.map((r, i) => `<div style="--c:${r.colour}"><span>${medal[i] ?? ''} <b class="pname">${r.name}</b> <small class="veh">${r.vehicle}</small></span><span>${r.result} ${r.newBest ? '<span class="newbest">Nytt rekord!</span>' : ''}</span></div>`).join('')}</div>
-    <div class="actions">
-      <button class="big blue" data-act="home">Garaget</button>
-      <button class="big" data-act="again">Spela igen</button>
-    </div>`
+    ${table}
+    <div class="actions">${actions}</div>`
   el.onclick = (e) => {
     const b = (e.target as HTMLElement).closest('button')
     if (b?.dataset.act === 'home') v.onHome()
     else if (b?.dataset.act === 'again') v.onAgain()
+    else if (b?.dataset.act === 'next') v.onNextTrack?.()
   }
 }
 
