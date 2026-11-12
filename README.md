@@ -106,6 +106,23 @@ Hauler's V8 1.1 s. So the two-stroke needs quick taps to hold the green, while t
 slowly. While driving, the rev counter and the engine sound follow the wheels at the same pace
 (code: `src/sim/launch.ts`).
 
+### Dagens utmaning (daily challenge)
+
+A new track every day, the same on every device, rebuilt from the date alone (code:
+`src/data/daily.ts`). The date picks a base map (its look, gravity, grip and puddles; the harder
+maps come up less often), one of five terrain styles (Långa vågor, Guppig, Hoppark, Branta
+backar, Lugn) that scale its hills, crests, bumps and jumps within safe ranges, a small jitter,
+and the seed. Two events run on it: **Dagens lopp**, a 500 m race, and **Dagens oändliga**, an
+endless run, each with its own vehicle (two different ones) at a balanced tuning that is the same
+for everyone: every upgrade between level 3 and 7, adding up to 20 (the family's own upgrades do
+not count). Pick an event in the garage under "Dagens utmaning" and press Kör; it works in rounds
+too (everyone drives the set vehicle). Coins are earned as usual.
+
+Records, ghosts and highscores are kept under the date (a "Dagens" tab in Topplista), and dropped
+after two weeks. Quality: a variant steeper than its base map is never used (the next variant of
+the same date is tried instead); tests check a year of dates against that, and a scripted driver
+finishes both events on a month of tracks.
+
 ### Modes: endless and races
 
 Pick a mode in the garage. **Endless** is the classic: drive as far as you can. **Races**

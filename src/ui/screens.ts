@@ -46,6 +46,10 @@ export interface GarageView {
   /** Endless or a race length; races are timed to a finish line. */
   modes: { id: string; name: string; on: boolean }[]
   onMode(id: string): void
+  /** Today's challenge: a 500 m race and an endless run, each with a set vehicle and tuning. */
+  daily: { id: 'race' | 'endless'; name: string; blurb: string; note: string; on: boolean; preview: (c: HTMLCanvasElement) => void }[]
+  dailyTitle: string
+  onDaily(id: 'race' | 'endless'): void
   onScores(): void
   onDrive(): void
   onTune(): void
@@ -86,6 +90,10 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
     <div class="label">Uppgraderingar för ${v.vehicleName}</div>
     <div class="cards">${v.upgrades.map(card).join('')}</div>
     <div class="modebar"><span class="label">Läge</span><div class="seg">${v.modes.map((m) => `<button class="${m.on ? 'on' : ''}" data-mode="${m.id}">${m.name}</button>`).join('')}</div></div>
+    <div class="label daily-label">${v.dailyTitle}</div>
+    <div class="choices daily">${v.daily.map((d) => `<button class="choice ${d.on ? 'on' : ''}" data-daily="${d.id}">
+      <canvas class="thumb vehicle" data-thumb="daily:${d.id}"></canvas>
+      <span class="name">${d.name}</span><span class="blurb">${d.blurb}</span><span class="note">${d.note}</span></button>`).join('')}</div>
     <div class="choices envs">${v.environments.map((c) => choice('env', c)).join('')}</div>
     <div class="actions"><button class="small" data-act="scores">Topplista</button><button class="small" data-act="settings">Inställningar</button>${v.tuning ? '<button class="small" data-act="tune">Trimning</button>' : ''}</div>`
   // Draw each preview at its card's real size, and again whenever that size changes (rotation,
@@ -98,7 +106,7 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
     }
   })
   const previews = new Map<HTMLCanvasElement, (c: HTMLCanvasElement) => void>()
-  for (const c of [...v.vehicles.map((x) => ['vehicle', x] as const), ...v.environments.map((x) => ['env', x] as const)]) {
+  for (const c of [...v.vehicles.map((x) => ['vehicle', x] as const), ...v.environments.map((x) => ['env', x] as const), ...v.daily.map((x) => ['daily', x] as const)]) {
     const canvas = el.querySelector<HTMLCanvasElement>(`canvas[data-thumb="${c[0]}:${c[1].id}"]`)
     if (canvas && c[1].preview) {
       previews.set(canvas, c[1].preview)
@@ -111,6 +119,7 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
     if (b.dataset.buy) v.onBuy(b.dataset.buy as UpgradeId)
     else if (b.dataset.player) v.onTogglePlayer(b.dataset.player)
     else if (b.dataset.mode) v.onMode(b.dataset.mode)
+    else if (b.dataset.daily) v.onDaily(b.dataset.daily as 'race' | 'endless')
     else if (b.dataset.act === 'scores') v.onScores()
     else if (b.dataset.pick) {
       const [kind, id] = b.dataset.pick.split(':')

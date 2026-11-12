@@ -1,4 +1,5 @@
 import { EngineRevs, LAUNCH } from './sim/launch'
+import { dailyFor, dateKey, oldDaily } from './data/daily'
 import { ENVIRONMENTS, environment, heightFor, puddlesFor } from './data/environments'
 import { PickupField } from './data/track'
 import { VEHICLES, vehicleEntry } from './data/vehicles'
@@ -38,6 +39,30 @@ const controls = createInput(canvas, () => settings.swapPedals)
 for (const type of ['pointerdown', 'keydown']) window.addEventListener(type, () => sound.unlock(), { capture: true })
 const renderer = new GameRenderer(canvas)
 const save = loadSave()
+pruneOldDailies()
+
+/**
+ * Today's challenge leaves records under its date; drop those (bests, times, highscores and
+ * ghosts) once they are more than two weeks old, so they do not pile up.
+ */
+function pruneOldDailies(): void {
+  const now = dateKey(new Date())
+  const old = (k: string) => oldDaily(k, now)
+  const strip = <T>(o: Record<string, T>) => Object.fromEntries(Object.entries(o).filter(([k]) => !old(k)))
+  save.best = strip(save.best)
+  for (const p of Object.keys(save.playerBest)) save.playerBest[p] = strip(save.playerBest[p])
+  for (const p of Object.keys(save.playerTimes)) save.playerTimes[p] = strip(save.playerTimes[p])
+  save.scores = save.scores.filter((x) => !old(x.env))
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i) ?? ''
+      const at = k.indexOf('.daily-')
+      if (k.startsWith('ridgeline.ghost.') && at >= 0 && old(k.slice(at + 1))) localStorage.removeItem(k)
+    }
+  } catch {
+    // Storage unavailable.
+  }
+}
 // Shares progress between the family's devices (see save/cloud.ts); off until set up.
 const cloud = new CloudSync(save)
 /** Save locally, and sync to the family's other devices shortly after. */
@@ -50,6 +75,8 @@ let driveAs: DriveAs = 'mine'
 
 type Mode = 'garage' | 'driving' | 'ending' | 'results' | 'tuning' | 'settings' | 'scores'
 let mode: Mode = 'garage'
+/** Today's challenge, when one of its two events is picked in the garage (not saved). */
+let daily: 'race' | 'endless' | null = null
 /** Seconds left of the start countdown, and the engine revs it shows (sim/launch.ts). */
 let countdown = 0
 let revs = new EngineRevs(0.6)
@@ -86,8 +113,17 @@ function owned(id: string, price: number): boolean {
   // Test mode (?tune in the address): everything is open, nothing is bought.
   return price === 0 || tuningEnabled() || save.unlocked.includes(id)
 }
+const today = () => dailyFor(new Date())
 function currentEnv() {
-  return environment(save.envId)
+  return daily ? today().env : environment(save.envId)
+}
+/** Where this track's records live: the map, or today's challenge ("daily-2026-11-12"). */
+function recordEnvId(): string {
+  return daily ? today().id : currentEnv().id
+}
+/** The track's name for screens: the map, or "Dagens lopp · Frostpasset". */
+function trackName(): string {
+  return daily ? `${daily === 'race' ? 'Dagens lopp' : 'Dagens oändliga'} · ${currentEnv().name}` : currentEnv().name
 }
 function currentVehicle() {
   return vehicleEntry(save.vehicleId)
@@ -100,14 +136,16 @@ function playerVehicle(name: string) {
 }
 /** The vehicle for the turn being driven now. */
 function driveVehicle() {
+  if (daily) return vehicleEntry(today()[daily].vehicle)
   return round.players.length > 1 ? playerVehicle(currentPlayer()) : currentVehicle()
 }
 function currentMode() {
+  if (daily) return gameMode(daily === 'race' ? 'race500' : 'endless')
   return gameMode(save.modeId)
 }
 /** Where this track's records are kept in the current mode (bests, ghosts, scores). */
 function currentKey(): string {
-  return recordKey(currentEnv().id, currentMode().id)
+  return recordKey(recordEnvId(), currentMode().id)
 }
 function currentPlayer(): string {
   return round.players[round.turn] ?? save.players[0] ?? PLAYERS[0].name
@@ -115,7 +153,7 @@ function currentPlayer(): string {
 
 function vehicleSpec() {
   const entry = driveVehicle()
-  const levels = driveAs === 'base' ? BASE_LEVELS : driveAs === 'full' ? FULL_LEVELS : levelsFor(save, entry.id)
+  const levels = daily ? today()[daily].levels : driveAs === 'base' ? BASE_LEVELS : driveAs === 'full' ? FULL_LEVELS : levelsFor(save, entry.id)
   // The tuning sandbox edits the starter car; other vehicles use their own data.
   const [base, full] = entry.id === 'runabout' ? [tuning.base, tuning.full] : [entry.base, entry.full]
   return applyUpgrades(base, full, levels)
@@ -132,7 +170,7 @@ function newRun(): Run {
     puddles: puddlesFor(env),
     pickups: new PickupField(height, env.seed),
     // Distance bonuses count from this player's own best.
-    bestDistance: playerBest(save, currentPlayer(), env.id),
+    bestDistance: playerBest(save, currentPlayer(), recordEnvId()),
     finish: currentMode().length,
   })
 }
@@ -162,7 +200,7 @@ function openGarage(justBought?: UpgradeId): void {
     })),
     environments: ENVIRONMENTS.map((e) => ({
       id: e.id, name: e.name, blurb: e.blurb, price: e.price,
-      owned: owned(e.id, e.price), selected: e.id === currentEnv().id,
+      owned: owned(e.id, e.price), selected: !daily && e.id === currentEnv().id,
       note: `Rekord ${Math.floor(save.best[e.id] ?? 0)} m`,
       preview: (c: HTMLCanvasElement) => drawEnvironmentPreview(c, e, heightFor(e)),
     })),
@@ -172,13 +210,37 @@ function openGarage(justBought?: UpgradeId): void {
     onBuy: buy,
     players: PLAYERS.map((p) => ({ name: p.name, colour: p.colour, on: save.players.includes(p.name) })),
     onTogglePlayer: togglePlayer,
-    modes: MODES.map((m) => ({ id: m.id, name: m.name, on: m.id === currentMode().id })),
+    modes: MODES.map((m) => ({ id: m.id, name: m.name, on: !daily && m.id === currentMode().id })),
+    dailyTitle: `Dagens utmaning · ${today().env.name} · ${today().style}`,
+    daily: (['race', 'endless'] as const).map((id) => {
+      const d = today()
+      const v = vehicleEntry(d[id].vehicle)
+      const key = recordKey(d.id, id === 'race' ? 'race500' : 'endless')
+      const results = PLAYERS.map((p) => ({ name: p.name, t: playerTime(save, p.name, key), m: playerBest(save, p.name, d.id) }))
+      const leader = id === 'race' ? results.filter((r) => r.t < Infinity).sort((a, b) => a.t - b.t)[0] : results.filter((r) => r.m > 0).sort((a, b) => b.m - a.m)[0]
+      return {
+        id,
+        name: id === 'race' ? 'Dagens lopp · 500 m' : 'Dagens oändliga',
+        blurb: `${v.name}, trimmad för alla`,
+        note: leader ? `Bäst idag: ${leader.name} ${id === 'race' ? formatTime(leader.t) : `${Math.floor(leader.m)} m`}` : 'Ingen har kört än',
+        on: daily === id,
+        preview: (c: HTMLCanvasElement) => drawVehiclePreview(c, v.base),
+      }
+    }),
+    onDaily: (id) => {
+      daily = id
+      run = newRun()
+      prev = next = run.sim.state()
+      renderer.resetCamera(next)
+      openGarage()
+    },
     onMode: (id: string) => {
+      daily = null
       save.modeId = id
       persist()
       openGarage()
     },
-    onScores: () => openScores(currentEnv().id, currentMode().id),
+    onScores: () => openScores(recordEnvId(), currentMode().id),
     onDrive: startRound,
     onTune: openTuning,
     onSettings: openSettings,
@@ -198,13 +260,17 @@ function togglePlayer(name: string): void {
 }
 
 function openScores(envId: string, modeId: string): void {
-  const env = environment(envId)
-  const m = gameMode(modeId)
+  // Today's challenge has its own tab, with its two events.
+  const d = today()
+  const isDaily = envId === d.id
+  const env = isDaily ? { id: d.id } : environment(envId)
+  const modes = isDaily ? MODES.filter((x) => x.id === 'endless' || x.id === 'race500') : MODES
+  const m = modes.find((x) => x.id === modeId) ?? modes[0]
   const key = recordKey(env.id, m.id)
   showScores(scoresEl, {
-    tracks: ENVIRONMENTS.map((e) => ({ id: e.id, name: e.name })),
+    tracks: [...ENVIRONMENTS.map((e) => ({ id: e.id, name: e.name })), { id: d.id, name: 'Dagens' }],
     track: env.id,
-    modes: MODES.map((x) => ({ id: x.id, name: x.name })),
+    modes: modes.map((x) => ({ id: x.id, name: x.name })),
     mode: m.id,
     rows: save.scores
       .filter((s) => s.env === env.id && (s.mode ?? 'endless') === m.id)
@@ -228,7 +294,10 @@ function pick(kind: 'vehicle' | 'env', id: string): void {
     save.unlocked.push(item.id)
   }
   if (kind === 'vehicle') save.vehicleId = item.id
-  else save.envId = item.id
+  else {
+    save.envId = item.id
+    daily = null
+  }
   persist()
   run = newRun()
   prev = next = run.sim.state()
@@ -309,12 +378,14 @@ function openTurn(): void {
   showTurn(resultsEl, {
     players: round.players.map((name) => ({ name, colour: playerColour(name) })),
     turn: round.turn,
-    info: `${currentEnv().name} · ${currentMode().name}`,
-    vehicles: VEHICLES.filter((v) => owned(v.id, v.price)).map((v) => ({
-      id: v.id, name: v.name, selected: v.id === mine.id,
+    info: daily ? trackName() : `${currentEnv().name} · ${currentMode().name}`,
+    // Today's challenge sets the vehicle for everyone.
+    vehicles: (daily ? [driveVehicle()] : VEHICLES.filter((v) => owned(v.id, v.price))).map((v) => ({
+      id: v.id, name: v.name, selected: daily ? true : v.id === mine.id,
       preview: (c: HTMLCanvasElement) => drawVehiclePreview(c, v.base),
     })),
     onVehicle: (id) => {
+      if (daily) return
       save.playerVehicles = { ...save.playerVehicles, [me]: id }
       writeSave(save)
       openTurn()
@@ -379,7 +450,7 @@ function finishRun(): void {
   if (mode !== 'driving' && mode !== 'ending') return
   const total = run.totalCoins
   const distance = run.endDistance ?? next.distance
-  const envId = currentEnv().id
+  const envId = recordEnvId()
   const race = currentMode()
   const key = currentKey()
   const me = currentPlayer()
@@ -434,7 +505,7 @@ function finishRun(): void {
 /** The round's results, furthest first; then back to the garage or another round. */
 function openStandings(): void {
   showStandings(resultsEl, {
-    track: currentMode().length ? `${currentEnv().name} · ${currentMode().name}-lopp` : currentEnv().name,
+    track: daily ? trackName() : currentMode().length ? `${currentEnv().name} · ${currentMode().name}-lopp` : currentEnv().name,
     // Races: finishers by time, then the rest by how far they got. Endless: by distance.
     rows: [...round.results]
       .sort((a, b) => (a.time ?? Infinity) - (b.time ?? Infinity) || b.distance - a.distance)
