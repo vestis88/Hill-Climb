@@ -154,6 +154,10 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
   after the round); the countdown also shows whose turn it is ("Willes tur").
   After each run their results show with a big "Frans tur" button to hand the iPad over; after the
   last turn come the round's standings (with each player's vehicle), then back to the garage.
+- **Uppdrag (missions):** every player has three missions, shown in the garage, each done within
+  a single run (backflips, frontflips, air time, a long wheelie, distance on a given map, coins in
+  one run, a combo of so many tricks), each paying 100 to 500 coins. A finished one shows in the
+  results and is replaced by a new kind; test-mode runs do not count (code: `src/game/missions.ts`).
 - **Tävling (tournament):** with two or more players ticked, the garage's "🏆 Tävling: 3 banor"
   starts a cup on three of the family's maps (different ones when three are owned) in the chosen
   mode. Each track is a round; placings give 5, 3, 2 and 1 points (ties share), the table shows

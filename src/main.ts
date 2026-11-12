@@ -1,3 +1,4 @@
+import { describe, done, fillMissions, type Mission, type RunStats } from './game/missions'
 import { CUP_TRACKS, cupTable, cupWinners, lastTrack, newCup, scoreTrack, type Cup } from './game/cup'
 import { advance, emptyRound, nextPlayerOf, nextRound, playerOf, recordTurn, roundOver, standings, together, type Round } from './game/round'
 import { WEATHER_NAME, type Atmosphere } from './data/weather'
@@ -303,6 +304,11 @@ function openGarage(justBought?: UpgradeId): void {
     },
     onScores: () => openScores(recordEnvId(), currentMode().id),
     onCup: startCup,
+    missions: save.players.map((p) => ({
+      name: p,
+      colour: playerColour(p),
+      items: missionsFor(p).map((m) => ({ text: describe(m, (id) => environment(id).name), reward: m.reward })),
+    })),
     onDrive: startRound,
     onTune: openTuning,
     onSettings: openSettings,
@@ -538,6 +544,8 @@ function finishRun(): void {
     if (time !== undefined) save.playerTimes[me] = { ...save.playerTimes[me], [key]: Math.min(bestTime, time) }
     addScore(save, { name: me, vehicle: driveVehicle().id, env: envId, distance, mode: race.id, time })
   }
+  // Missions done in this run pay their coins and make way for new ones.
+  const missionsDone = counts ? checkMissions(me, { ...run.stats, distance, env: currentEnv().id, coins: total }) : []
   persist()
   // Every counting run is kept as the player's last ghost (and best, if it went further or faster).
   let turnGhost: Ghost | null = null
@@ -562,6 +570,7 @@ function finishRun(): void {
     total,
     bank: save.coins,
     player: { name: me, colour: playerColour(me) },
+    missions: missionsDone,
     next: nextPlayer,
     roundOver: roundOver(round),
     onGarage: openGarage,
@@ -601,6 +610,24 @@ function openStandings(): void {
     },
   })
   show('results')
+}
+
+/** A player's three missions, topped up on maps the family owns. */
+function missionsFor(name: string): Mission[] {
+  save.missions ??= {}
+  const maps = ENVIRONMENTS.filter((e) => owned(e.id, e.price)).map((e) => e.id)
+  return (save.missions[name] = fillMissions(save.missions[name] ?? [], maps))
+}
+
+/** Pay and replace the missions a run completed; returns them for the results screen. */
+function checkMissions(name: string, stats: RunStats): { text: string; reward: number }[] {
+  const all = missionsFor(name)
+  const finished = all.filter((m) => done(m, stats))
+  if (!finished.length) return []
+  for (const m of finished) earn(save, m.reward)
+  save.missions![name] = all.filter((m) => !finished.includes(m))
+  missionsFor(name)
+  return finished.map((m) => ({ text: describe(m, (id) => environment(id).name), reward: m.reward }))
 }
 
 /** Start a tournament on three of the family's maps, with the ticked players. */
