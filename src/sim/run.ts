@@ -37,6 +37,9 @@ export const RULES = {
   wheelieCoinsPerMetre: 2,
   /** Combos: seconds on the ground (not on the back wheel) before a chain ends and pays. */
   comboGap: 2.5,
+  /** Hjälp: fuel lasts this many times longer; tipping past this angle to the ground is gently resisted. */
+  assistFuel: 1.6,
+  assistTilt: 0.75,
   /** Turbo canister: seconds of extra push forward while the gas is held, and how strong (m/s²). */
   turboSeconds: 3,
   turboPush: 4.5,
@@ -81,6 +84,11 @@ export interface RunOptions {
   finish?: number
   /** Puddles on the track. */
   puddles?: import('./types').PuddleFn
+  /**
+   * Hjälp, for a young player: fuel lasts longer, too many revs at the start does not bog, and on
+   * the ground a gentle hand keeps the vehicle from tipping over backwards (or onto its nose).
+   */
+  assist?: boolean
 }
 
 const TAU = Math.PI * 2
@@ -150,6 +158,8 @@ export class Run {
   /** GO: the revs at that moment decide the start (sim/launch.ts). */
   launch(revs: number): LaunchKind {
     this.launchKind = judgeLaunch(revs)
+    // Hjälp: too many revs just gives a normal start.
+    if (this.options.assist && this.launchKind === 'over') this.launchKind = 'normal'
     this.launchLeft = this.launchKind === 'perfect' ? LAUNCH.perfect.seconds : this.launchKind === 'over' ? LAUNCH.over.seconds : 0
     return this.launchKind
   }
@@ -196,6 +206,13 @@ export class Run {
         v.chassis.applyForceToCenter(Vec2(-Math.sin(a) * mass * th.push, Math.cos(a) * mass * th.push), true)
       } else if (this.sim.vehicle.wheelContacts().some(Boolean)) this.thrustLeft = Math.min(th.seconds, this.thrustLeft + STEP * th.refill)
     }
+    // Hjälp: on the ground, a torque against tipping too far from the slope, growing with the tilt.
+    if (this.options.assist && this.sim.vehicle.wheelContacts().some(Boolean)) {
+      const x = v.chassis.getPosition().x
+      const tilt = wrapAngle(v.chassis.getAngle() - this.slopeAngle(x))
+      const over = Math.abs(tilt) - RULES.assistTilt
+      if (over > 0) v.chassis.applyTorque(-Math.sign(tilt) * over * v.chassis.getMass() * 40, true)
+    }
     // Turbo: a push along the vehicle while the gas is held, through the centre of mass.
     if (this.turboLeft > 0) {
       this.turboLeft = Math.max(0, this.turboLeft - STEP)
@@ -206,7 +223,7 @@ export class Run {
       }
     }
     this.sim.step(input)
-    this.fuel -= (STEP / (input.gas ? RULES.fuelSecondsOnGas : RULES.fuelSecondsIdle)) * (this.options.vehicle.fuelUse ?? 1)
+    this.fuel -= (STEP / (input.gas ? RULES.fuelSecondsOnGas : RULES.fuelSecondsIdle)) * (this.options.vehicle.fuelUse ?? 1) / (this.options.assist ? RULES.assistFuel : 1)
     this.fuel = Math.max(0, this.fuel)
 
     const s = this.sim.state()

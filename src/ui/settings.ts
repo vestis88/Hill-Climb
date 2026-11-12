@@ -6,12 +6,14 @@ export interface Settings {
   swapPedals: boolean
   /** Which ghost riders to race: all of them, only records, or none. */
   ghosts: 'all' | 'records' | 'off'
+  /** Players who get Hjälp (young players): more fuel, a forgiving start, no tipping over. */
+  help: string[]
 }
 
 const KEY = 'ridgeline.settings'
 
 export function loadSettings(): Settings {
-  const defaults: Settings = { sound: true, volume: 0.7, swapPedals: false, ghosts: 'all' }
+  const defaults: Settings = { sound: true, volume: 0.7, swapPedals: false, ghosts: 'all', help: [] }
   try {
     const raw = localStorage.getItem(KEY)
     return raw ? { ...defaults, ...JSON.parse(raw) } : defaults
@@ -31,6 +33,7 @@ export function saveSettings(s: Settings): void {
 import { setTestMode, tuningEnabled } from './tuning'
 import { showCode, type CloudSync } from '../save/cloud'
 import { screenInfo } from './viewport'
+import { PLAYERS } from '../data/players'
 
 const when = (t: number | null) => (t ? new Date(t).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }) : '')
 
@@ -65,6 +68,7 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
         <div><span>Testläge<br><small style="opacity:.7">Allt upplåst, inget köpt</small></span><span class="seg"><button data-test="off" class="${tuningEnabled() ? '' : 'on'}">Av</button><button data-test="on" class="${tuningEnabled() ? 'on' : ''}">På</button></span></div>
         ${syncRows(cloud, joining, joinError)}
         <div><span>Spöken</span><span class="seg"><button data-ghosts="all" class="${s.ghosts === 'all' ? 'on' : ''}">Alla</button><button data-ghosts="records" class="${s.ghosts === 'records' ? 'on' : ''}">Bara rekord</button><button data-ghosts="off" class="${s.ghosts === 'off' ? 'on' : ''}">Av</button></span></div>
+        <div><span>Hjälp<br><small style="opacity:.7">Mer bränsle, snällare start och välter inte lika lätt</small></span><span class="seg">${PLAYERS.map((p) => `<button data-help="${p.name}" class="${s.help.includes(p.name) ? 'on' : ''}">${p.name}</button>`).join('')}</span></div>
         <div><span>Pedaler</span><span class="seg"><button data-pedals="normal" class="${s.swapPedals ? '' : 'on'}">Broms vänster</button><button data-pedals="swap" class="${s.swapPedals ? 'on' : ''}">Gas vänster</button></span></div>
       </div>
       <div class="screeninfo">${screenInfo()}</div>
@@ -90,6 +94,10 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
     if (b.dataset.sound) s.sound = b.dataset.sound === 'on'
     else if (b.dataset.pedals) s.swapPedals = b.dataset.pedals === 'swap'
     else if (b.dataset.ghosts) s.ghosts = b.dataset.ghosts as Settings['ghosts']
+    else if (b.dataset.help) {
+      const n = b.dataset.help
+      s.help = s.help.includes(n) ? s.help.filter((x) => x !== n) : [...s.help, n]
+    }
     else if (b.dataset.test) setTestMode(b.dataset.test === 'on')
     else if (b.dataset.act === 'back') return onBack()
     else if (b.dataset.act === 'reset') confirming = true

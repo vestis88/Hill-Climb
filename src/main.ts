@@ -193,6 +193,7 @@ function newRun(): Run {
     // Distance bonuses count from this player's own best.
     bestDistance: playerBest(save, currentPlayer(), recordEnvId()),
     finish: currentMode().length,
+    assist: settings.help.includes(currentPlayer()),
   })
 }
 
@@ -370,6 +371,7 @@ function openScores(envId: string, modeId: string): void {
   const m = modes.find((x) => x.id === modeId) ?? modes[0]
   const key = recordKey(env.id, m.id)
   showScores(scoresEl, {
+    family: familyTable(),
     tracks: [...ENVIRONMENTS.map((e) => ({ id: e.id, name: e.name })), { id: d.id, name: 'Dagens' }],
     track: env.id,
     modes: modes.map((x) => ({ id: x.id, name: x.name })),
@@ -620,6 +622,12 @@ function finishRun(): void {
 
 /** The round's results, furthest first; then back to the garage or another round. */
 function openStandings(): void {
+  // The family table: every round with several players has a winner (ties go to the first).
+  const winner = standings(round)[0]?.name
+  if (winner && together(round)) {
+    save.roundWins = [...(save.roundWins ?? []), { at: Date.now(), winner }].slice(-2000)
+    persist()
+  }
   showStandings(resultsEl, {
     track: cup ? `${currentEnv().name}${currentMode().length ? ` · ${currentMode().name}-lopp` : ''}` : daily ? trackName() : currentMode().length ? `${currentEnv().name} · ${currentMode().name}-lopp` : currentEnv().name,
     // Races: finishers by time, then the rest by how far they got. Endless: by distance.
@@ -706,6 +714,28 @@ function checkMissions(name: string, stats: RunStats): { text: string; reward: n
   return finished.map((m) => ({ text: describe(m, (id) => environment(id).name), reward: m.reward }))
 }
 
+/** Note the cup winners in the family table, and pass them on. */
+function recordCupWin(winners: string[]): string[] {
+  save.cupWins = [...(save.cupWins ?? []), ...winners.map((winner) => ({ at: Date.now(), winner }))]
+  persist()
+  return winners
+}
+
+/** The family table for Topplista: wins per player, and the most round wins in the last seven days. */
+function familyTable() {
+  const weekAgo = Date.now() - 7 * 24 * 3600 * 1000
+  const rows = PLAYERS.map((p) => ({
+    name: p.name,
+    colour: p.colour,
+    rounds: (save.roundWins ?? []).filter((w) => w.winner === p.name).length,
+    cups: (save.cupWins ?? []).filter((w) => w.winner === p.name).length,
+    week: (save.roundWins ?? []).filter((w) => w.winner === p.name && w.at >= weekAgo).length,
+  }))
+  const best = Math.max(...rows.map((r) => r.week))
+  const top = rows.filter((r) => r.week === best && best > 0)
+  return { rows: [...rows].sort((a, b) => b.rounds - a.rounds), weekWinner: top.length === 1 ? top[0].name : undefined }
+}
+
 /** Start a tournament on three of the family's maps, with the ticked players. */
 function startCup(): void {
   daily = null
@@ -722,7 +752,7 @@ function cupView() {
     title: `Tävling · bana ${cup.index + 1} av ${CUP_TRACKS}`,
     table: cupTable(cup).map((t) => ({ ...t, colour: playerColour(t.name) })),
     nextTrack: last ? undefined : environment(cup.tracks[cup.index + 1]).name,
-    winners: last ? cupWinners(cup) : undefined,
+    winners: last ? recordCupWin(cupWinners(cup)) : undefined,
   }
 }
 
