@@ -68,7 +68,7 @@ to ease off and balance the car in the air. Green Meadows has the most.
   **1,000-coin bonus**. The run ends once the car has stood still for a second,
   or has made no new ground for 8 seconds (rocking in a dip).
 - **Crashing**: the run ends at once if the driver's head hits the ground.
-- **Coins** come from six places (values in `src/sim/run.ts` and `src/data/track.ts`):
+- **Coins** come from seven places (values in `src/sim/run.ts` and `src/data/track.ts`):
   - coins lying on the track, in small groups, worth more the further out they are;
   - air time: 20 coins per second in the air, for jumps of at least 0.8 s;
   - flips: 100 for a single, 300 for a double, 900 for a triple, 2,000 for a
@@ -84,6 +84,10 @@ to ease off and balance the car in the air. Green Meadows has the most.
     coins shows the metres, coins and multiplier while you are on the back wheel;
   - distance milestones, a one-off bonus the first time you pass each marker on a track;
   - 1,000 coins for reaching a fuel can on an empty tank.
+  - combos: tricks (flips, air time, wheelies) chained one after another, each within 2.5 s on
+    the ground of the last, pay a bonus when the chain ends: ×1.5 for two, +0.5 per trick, up to ×4
+    (the bonus is the tricks' coins times the multiplier minus one). A messy landing or a crash
+    loses the chain; a live counter shows it.
 - At the end of a run all coins collected are banked, whether it ended in a crash or an empty tank.
 - Crashing costs nothing except the run itself. There are no checkpoints:
   every run starts from the beginning of the track.
