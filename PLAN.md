@@ -194,9 +194,10 @@ frame-time budget (60 fps on an iPhone 11, automatic resolution drop as the safe
 Not part of the first version; pick up once phases 1 to 4 are done.
 
 - (done) Timed race modes (500 m, 1 km, 2 km) with a finish line, per-mode bests, ghosts and highscores.
-- (done) Players (Wille, Frans, Johan), rounds that take turns, ghost riders (own best and last, best of the round) and a highscore board per track. Ghosts record poses rather than inputs, so they survive physics changes.
+- (done) Players (Wille, Frans, Johan, Bim), rounds that take turns with a who-starts screen and each player's own vehicle, ghost riders (everyone's latest run and record, records per vehicle, the overall record) and a highscore board per track. Ghosts record poses rather than inputs, so they survive physics changes.
+- (done) Start countdown with a launch boost and per-engine rev pace; wheelie multiplier; distance to the next fuel can; Swedish interface.
 - (done) Three more maps: Dune Sea, Red Canyon, Moonlit Woods; puddles; a fourth vehicle, the Marsh Rover. Cloud sync between devices.
-- Daily challenge: a date-seeded track with a personal best.
+- (done) Daily challenge (Dagens utmaning): a date-seeded track with a 500 m race and an endless run, each with its own vehicle at a balanced tuning.
 - Vehicle tuning parts or perks as a second upgrade layer.
 - App Store build via a Capacitor wrapper.
 

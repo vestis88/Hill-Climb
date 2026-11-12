@@ -12,6 +12,8 @@ export interface Environment {
   groundFriction: number
   seed: number
   terrain: TerrainParams
+  /** A variant of this map with its own terrain (the daily challenge); keeps the map's look. */
+  variant?: string
   palette: { skyTop: string; skyBottom: string; ground: string; surface: string; far: string; near: string }
   /** Puddles: one possible per `spacing` metres, present with `chance`, `length` metres long. */
   puddles?: { kind: Puddle['kind']; spacing: number; chance: number; length: [number, number]; drag: number; grip: number }
@@ -111,13 +113,17 @@ function hash(i: number, salt: number): number {
   return (h >>> 0) / 4294967295
 }
 
+/** Cache key: the map, or the map's variant (a daily track). */
+const cacheKey = (env: Environment) => (env.variant ? `${env.id}#${env.variant}` : env.id)
+
 const puddleFns = new Map<string, PuddleFn | undefined>()
 /**
  * Where the puddles are on an environment's track (cached): fixed spots, the same every run,
  * only on gentle ground (water does not lie on a steep slope) and never on the starting flat.
  */
 export function puddlesFor(env: Environment): PuddleFn | undefined {
-  if (puddleFns.has(env.id)) return puddleFns.get(env.id)
+  const key = cacheKey(env)
+  if (puddleFns.has(key)) return puddleFns.get(key)
   const p = env.puddles
   let fn: PuddleFn | undefined
   if (p) {
@@ -149,14 +155,14 @@ export function puddlesFor(env: Environment): PuddleFn | undefined {
       return pd && x >= pd.start && x <= pd.end ? pd : null
     }
   }
-  puddleFns.set(env.id, fn)
+  puddleFns.set(key, fn)
   return fn
 }
 
 const heights = new Map<string, HeightFn>()
 /** The terrain height function for an environment (cached). */
 export function heightFor(env: Environment): HeightFn {
-  let h = heights.get(env.id)
-  if (!h) heights.set(env.id, (h = makeTerrain(env.terrain, env.seed)))
+  let h = heights.get(cacheKey(env))
+  if (!h) heights.set(cacheKey(env), (h = makeTerrain(env.terrain, env.seed)))
   return h
 }
