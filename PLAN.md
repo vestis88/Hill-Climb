@@ -241,7 +241,7 @@ is confirmed. New vehicles get their own handling tests (as V1, V2) and a stage-
 | F1 (done) | Help per player (Hjälp): extra fuel, a gentler start and softer flips for a younger player | Set per name in settings; only that player's runs change; tests |
 | F2 (done) | Family table: round wins over time and this week's winner (Veckans vinnare) | Shown in Topplista; synced |
 | F3 (done) | Tournament (Tävling): a cup of three tracks (or three daily challenges), points per placing, an overall winner with a trophy | Played as rounds; standings after each track and a final podium |
-| F4 | Two players at once on the iPad: split screen, each with their own pedals at the screen edge, racing live | Both sims step together; fits iPad landscape; frame time within budget |
+| F4 (done) | Two players at once on the iPad: split screen, each with their own pedals at the screen edge, racing live | Both sims step together; fits iPad landscape; frame time within budget |
 
 **E. Show off**
 
@@ -249,7 +249,7 @@ is confirmed. New vehicles get their own handling tests (as V1, V2) and a stage-
 |---|---|---|
 | R1 (done) | Replay of a record: watch any highscore run from the highscore list, the camera following its ghost | Plays from the stored ghost; pause and back |
 
-Owner: no coin balance check needed (still balanced) and no App Store version. Order: E2, N1, N2, F3, E3, E6, then the rest.
+Owner: no coin balance check needed (still balanced) and no App Store version. All of phase 6 is done.
 
 ## 6. How to run these tasks in the Claude app
 

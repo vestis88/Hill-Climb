@@ -1,4 +1,4 @@
-import type { VehicleSpec } from './sim/types'
+import type { Input, VehicleSpec } from './sim/types'
 import { PARTS, partEffects, type PartId } from './data/parts'
 import { ALL_STARS_COINS, STAR_COINS, starsFor } from './game/stars'
 import { DEFAULT_OUTFIT, HATS, PATTERNS, type Hat, type Outfit, type Pattern } from './data/outfits'
@@ -69,6 +69,10 @@ const controls = createInput(canvas, () => settings.swapPedals)
 // Safari only allows sound after a tap; any first touch or click unlocks it.
 for (const type of ['pointerdown', 'keydown']) window.addEventListener(type, () => { sound.unlock(); applyMusic() }, { capture: true })
 const renderer = new GameRenderer(canvas)
+// The second player's half of the screen in a duel: its own canvas, renderer and pedals.
+const canvas2 = $('game2') as HTMLCanvasElement
+const renderer2 = new GameRenderer(canvas2)
+const controls2 = createInput(canvas2, () => settings.swapPedals)
 const save = loadSave()
 pruneOldDailies()
 
@@ -104,7 +108,7 @@ function persist(): void {
 const tuning = loadTuning()
 let driveAs: DriveAs = 'mine'
 
-type Mode = 'garage' | 'driving' | 'ending' | 'results' | 'tuning' | 'settings' | 'scores' | 'replay'
+type Mode = 'garage' | 'driving' | 'ending' | 'results' | 'tuning' | 'settings' | 'scores' | 'replay' | 'duel'
 let mode: Mode = 'garage'
 /** Today's challenge, when one of its two events is picked in the garage (not saved). */
 let daily: 'race' | 'endless' | null = null
@@ -228,8 +232,10 @@ function show(m: Mode): void {
   scoresEl.classList.toggle('hidden', m !== 'scores')
   tuneEl.classList.toggle('hidden', m !== 'tuning')
   settingsEl.classList.toggle('hidden', m !== 'settings')
-  endRunBtn.classList.toggle('hidden', m !== 'driving')
-  pauseBtn.classList.toggle('hidden', m !== 'driving')
+  endRunBtn.classList.toggle('hidden', m !== 'driving' && m !== 'duel')
+  document.body.classList.toggle('duel', m === 'duel')
+  canvas2.classList.toggle('hidden', m !== 'duel')
+  pauseBtn.classList.toggle('hidden', m !== 'driving' && m !== 'duel')
   replayBar.classList.toggle('hidden', m !== 'replay')
   hornBtn.classList.toggle('hidden', m !== 'driving')
   boostBtn.classList.toggle('hidden', m !== 'driving' || !driveVehicle().base.thrusters)
@@ -251,7 +257,7 @@ function applyMusic(): void {
 /** Pause a run: the world stops, the engine goes quiet, and a menu offers to go on or end it. */
 let paused = false
 function pause(): void {
-  if (mode !== 'driving' || paused) return
+  if ((mode !== 'driving' && mode !== 'duel') || paused) return
   paused = true
   pausedEl.classList.remove('hidden')
   pauseBtn.classList.add('hidden')
@@ -282,7 +288,8 @@ pausedEl.addEventListener('click', (e) => {
   if (act === 'resume') resume()
   else if (act === 'end') {
     resume()
-    finishRun()
+    if (mode === 'duel') finishDuel()
+    else finishRun()
   }
 })
 
@@ -369,6 +376,7 @@ function openGarage(justBought?: UpgradeId): void {
     },
     onScores: () => openScores(recordEnvId(), currentMode().id),
     onCup: startCup,
+    onDuel: startDuel,
     parts: PARTS.map((p) => ({ ...p, owned: p.price === 0 || tuningEnabled() || save.unlocked.includes(`part:${p.id}`), on: (save.parts?.[vehicle.id] ?? 'none') === p.id })),
     onPart: (id) => {
       const p = PARTS.find((x) => x.id === id)
@@ -810,6 +818,169 @@ function endReplay(): void {
   back?.()
 }
 
+/**
+ * Duell: the first two ticked players race at the same time on a split screen, the first on the
+ * top half and the second on the bottom half, each with their own vehicle and pedals at the edges
+ * of their half. Same track and mode as the garage. Coins, bests and highscores count as usual
+ * (no ghosts are recorded); the engine you hear is the top player's.
+ */
+interface DuelSide {
+  player: string
+  run: Run
+  prev: SimState
+  next: SimState
+  revs: EngineRevs
+  input: Input
+  renderer: GameRenderer
+  popups: Popup[]
+}
+let duel: { sides: DuelSide[]; countdown: number; acc: number; endTimer: number } | null = null
+
+function startDuel(): void {
+  if (save.players.length < 2) return
+  daily = null
+  cup = null
+  driveAs = 'mine'
+  const names = save.players.slice(0, 2)
+  round = emptyRound(names)
+  const sides = names.map((player, i) => {
+    round.turn = i
+    const r = newRun()
+    const s = r.sim.state()
+    return { player, run: r, prev: s, next: s, revs: new EngineRevs(r.options.vehicle.engine.revTime), input: i === 0 ? controls.input : controls2.input, renderer: i === 0 ? renderer : renderer2, popups: [] as Popup[] }
+  })
+  round.turn = 0
+  sound.setVehicle(driveVehicle().id)
+  for (const side of sides) {
+    side.renderer.resetCamera(side.next)
+  }
+  atmosphere = undefined
+  duel = { sides, countdown: 3 * LAUNCH.beat, acc: 0, endTimer: 1.2 }
+  sound.beep(false)
+  show('duel')
+}
+
+function stepDuel(dt: number): void {
+  const d = duel!
+  if (d.countdown > 0) {
+    const beat = Math.ceil(d.countdown / LAUNCH.beat)
+    d.countdown -= dt
+    for (const side of d.sides) side.revs.free(side.input.gas, dt)
+    if (d.countdown <= 0) {
+      sound.beep(true)
+      for (const side of d.sides) side.renderer.launch(side.run.launch(side.revs.revs))
+    } else if (Math.ceil(d.countdown / LAUNCH.beat) !== beat) sound.beep(false)
+    return
+  }
+  d.acc += dt
+  while (d.acc >= STEP) {
+    for (const side of d.sides) {
+      side.prev = side.next
+      const wasRunning = side.run.status === 'running'
+      side.run.step(side.input)
+      side.next = side.run.sim.state()
+      for (const e of side.run.events) {
+        if (e.kind === 'coin') {
+          side.popups.push({ text: `+${e.value}`, at: { x: e.x, y: e.y }, age: 0 })
+          if (side === d.sides[0]) sound.coin()
+        } else if (e.kind === 'flip') side.popups.push({ text: `${e.direction === 'back' ? 'Bakåtvolt' : 'Framåtvolt'}!  +${e.value}`, age: 0 })
+        else if (e.kind === 'fuel') side.popups.push({ text: 'Bränsle!', at: { x: e.x, y: e.y }, age: 0 })
+      }
+      if (wasRunning && side.run.status === 'crashed') {
+        sound.crash()
+        side.renderer.shake(1)
+      } else if (wasRunning && side.run.status === 'finished') side.renderer.cheer()
+    }
+    d.acc -= STEP
+  }
+  // Both done: a moment to see it, then the result.
+  if (d.sides.every((s) => s.run.status !== 'running') && (d.endTimer -= dt) <= 0) finishDuel()
+}
+
+function drawDuel(dt: number): void {
+  const d = duel!
+  const top = d.sides[0]
+  const shown = d.countdown > 0 ? top.revs.revs : top.revs.follow(top.next.revs, dt)
+  sound.engine(shown, top.input.gas && top.run.fuel > 0 && !top.next.shifting, top.run.status === 'running' && top.run.fuel > 0 && !paused)
+  for (const side of d.sides) {
+    side.popups = side.popups.filter((p) => (p.age += dt) < (p.at ? 0.9 : 1.6))
+    const r = side.run
+    const revsNow = d.countdown > 0 ? side.revs.revs : side.next.revs
+    side.renderer.draw({
+      prev: side.prev,
+      next: side.next,
+      alpha: d.countdown > 0 ? 1 : d.acc / STEP,
+      spec: r.options.vehicle,
+      height: r.options.height,
+      env: currentEnv(),
+      dt,
+      input: side.input,
+      pickups: r.options.pickups.items,
+      wheelie: r.wheelieNow,
+      combo: null,
+      fuel: r.fuel,
+      runCoins: r.totalCoins,
+      popups: side.popups,
+      showPedals: true,
+      swapPedals: settings.swapPedals,
+      driver: { lean: r.sway.lean, ragdoll: r.ragdoll?.poses() ?? null },
+      player: { name: side.player, colour: playerColour(side.player) },
+      outfit: outfitFor(side.player),
+      ghosts: [],
+      puddles: puddlesFor(currentEnv()),
+      race: currentMode().length ? { length: currentMode().length!, time: r.finishTime ?? r.sim.steps * STEP } : undefined,
+      showHud: true,
+      revs: revsNow,
+      countdown: d.countdown > 0 ? d.countdown : undefined,
+    })
+  }
+}
+
+/** The duel's result: both runs count like ordinary runs; the further (or faster) wins. */
+function finishDuel(): void {
+  const d = duel
+  if (!d) return
+  duel = null
+  const envId = currentEnv().id
+  const race = currentMode()
+  const key = currentKey()
+  const counts = !tuningEnabled()
+  const results = d.sides.map((side, i) => {
+    round.turn = i
+    const r = side.run
+    r.endCombo()
+    const distance = r.endDistance ?? side.next.distance
+    const time = r.finishTime ?? undefined
+    earn(save, r.totalCoins)
+    const newBest = counts && (race.length ? time !== undefined && time < playerTime(save, side.player, key) : distance > playerBest(save, side.player, envId))
+    if (counts) {
+      save.best[envId] = Math.max(save.best[envId] ?? 0, distance)
+      save.playerBest[side.player] = { ...save.playerBest[side.player], [envId]: Math.max(playerBest(save, side.player, envId), distance) }
+      if (time !== undefined) save.playerTimes[side.player] = { ...save.playerTimes[side.player], [key]: Math.min(playerTime(save, side.player, key), time) }
+      addScore(save, { name: side.player, vehicle: driveVehicle().id, env: envId, distance, mode: race.id, time })
+    }
+    return { name: side.player, vehicle: driveVehicle().name, distance, time, newBest, coins: r.totalCoins }
+  })
+  round.turn = 0
+  persist()
+  const ranked = [...results].sort((a, b) => (a.time ?? Infinity) - (b.time ?? Infinity) || b.distance - a.distance)
+  const tie = ranked[0].time === ranked[1].time && ranked[0].distance === ranked[1].distance
+  show('results')
+  showStandings(resultsEl, {
+    heading: tie ? '⚔ Oavgjort!' : `⚔ ${ranked[0].name} vinner duellen!`,
+    track: `${currentEnv().name}${race.length ? ` · ${race.name}-lopp` : ''}`,
+    rows: ranked.map((r) => ({
+      name: r.name,
+      colour: playerColour(r.name),
+      vehicle: `${r.vehicle} · ● ${r.coins}`,
+      newBest: r.newBest,
+      result: r.time !== undefined ? formatTime(r.time) : race.length ? `Ej i mål · ${Math.floor(r.distance)} m` : `${Math.floor(r.distance)} m`,
+    })),
+    onHome: () => openGarage(),
+    onAgain: startDuel,
+  })
+}
+
 /** Note the cup winners in the family table, and pass them on. */
 function recordCupWin(winners: string[]): string[] {
   save.cupWins = [...(save.cupWins ?? []), ...winners.map((winner) => ({ at: Date.now(), winner }))]
@@ -852,7 +1023,7 @@ function cupView() {
   }
 }
 
-endRunBtn.addEventListener('click', finishRun)
+endRunBtn.addEventListener('click', () => (mode === 'duel' ? finishDuel() : finishRun()))
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyR' && mode === 'driving') startRun()
   if (e.code === 'KeyH' && mode === 'driving') sound.horn(driveVehicle().id)
@@ -861,7 +1032,7 @@ window.addEventListener('keydown', (e) => {
 // Bank the run's coins if the page is closed or hidden mid-run.
 document.addEventListener('visibilitychange', () => {
   // Interrupted (a call, the home button): pause rather than end the run.
-  if (document.hidden && mode === 'driving') pause()
+  if (document.hidden && (mode === 'driving' || mode === 'duel')) pause()
 })
 
 let wasAirborne = false
@@ -928,6 +1099,8 @@ function frame(now: number): void {
   last = now
   if (paused) {
     // Nothing moves while paused.
+  } else if (mode === 'duel' && duel) {
+    stepDuel(dt)
   } else if (mode === 'replay' && replay) {
     // A replay: the recorded poses drive the vehicle; the camera follows; back when it ends.
     replay.t += dt
@@ -992,6 +1165,11 @@ function frame(now: number): void {
   }
   const sag = bogStarted && bogLeft > 0 ? 0.08 + 0.3 * (1 - bogLeft / LAUNCH.bogSeconds) : 1
   const shownRevs = countdown > 0 ? revs.revs : revs.follow(Math.min(next.revs, sag), dt)
+  if (mode === 'duel' && duel) {
+    drawDuel(dt)
+    requestAnimationFrame(frame)
+    return
+  }
   sound.engine(shownRevs, controls.input.gas && run.fuel > 0 && !next.shifting, mode === 'driving' && run.fuel > 0 && !paused)
   renderer.draw({
     prev,

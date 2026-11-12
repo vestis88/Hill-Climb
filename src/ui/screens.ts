@@ -58,6 +58,8 @@ export interface GarageView {
   onScores(): void
   /** Start a tournament: three tracks, points per placing (needs two or more players). */
   onCup(): void
+  /** Two players at once on a split screen (the first two ticked). */
+  onDuel(): void
   onOutfit(): void
   onDrive(): void
   onTune(): void
@@ -106,7 +108,7 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
       <span class="name">${d.name}</span><span class="blurb">${d.blurb}</span><span class="note">${d.note}</span></button>`).join('')}</div>
     ${v.missions.length ? `<div class="label">Uppdrag</div><div class="missions">${v.missions.map((p) => `<div class="mrow" style="--c:${p.colour}"><b class="pname">${p.name}</b>${p.items.map((m) => `<span class="mission">${m.text} <b class="coin">●</b> ${m.reward}</span>`).join('')}</div>`).join('')}</div>` : ''}
     <div class="choices envs">${v.environments.map((c) => choice('env', c)).join('')}</div>
-    <div class="actions"><button class="small go" data-act="cup" ${v.players.filter((p) => p.on).length >= 2 ? '' : 'disabled'}>🏆 Tävling: 3 banor</button><button class="small" data-act="outfit">Utstyrsel</button><button class="small" data-act="scores">Topplista</button><button class="small" data-act="settings">Inställningar</button>${v.tuning ? '<button class="small" data-act="tune">Trimning</button>' : ''}</div>`
+    <div class="actions"><button class="small go" data-act="duel" ${v.players.filter((p) => p.on).length >= 2 ? '' : 'disabled'}>⚔ Duell: två samtidigt</button><button class="small go" data-act="cup" ${v.players.filter((p) => p.on).length >= 2 ? '' : 'disabled'}>🏆 Tävling: 3 banor</button><button class="small" data-act="outfit">Utstyrsel</button><button class="small" data-act="scores">Topplista</button><button class="small" data-act="settings">Inställningar</button>${v.tuning ? '<button class="small" data-act="tune">Trimning</button>' : ''}</div>`
   // Draw each preview at its card's real size, and again whenever that size changes (rotation,
   // browser bars, layout switching): a canvas drawn at one size and shown at another looks stretched.
   thumbObserver?.disconnect()
@@ -134,6 +136,7 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
     else if (b.dataset.part) v.onPart(b.dataset.part)
     else if (b.dataset.act === 'scores') v.onScores()
     else if (b.dataset.act === 'cup') v.onCup()
+    else if (b.dataset.act === 'duel') v.onDuel()
     else if (b.dataset.act === 'outfit') v.onOutfit()
     else if (b.dataset.pick) {
       const [kind, id] = b.dataset.pick.split(':')
@@ -285,6 +288,8 @@ export function showOutfit(el: HTMLElement, v: OutfitView): void {
 
 export interface StandingsView {
   track: string
+  /** A heading instead of "Omgångens resultat" (e.g. the duel's winner). */
+  heading?: string
   /** Furthest (endless) or fastest (race) first, with the result already written out. */
   rows: { name: string; colour: string; vehicle: string; result: string; newBest: boolean }[]
   /** In a tournament: which track this was, the points so far, and the winners after the last. */
@@ -305,7 +310,7 @@ export function showStandings(el: HTMLElement, v: StandingsView): void {
       ? '<button class="big blue" data-act="home">Garaget</button><button class="big" data-act="again">Ny tävling</button>'
       : '<button class="big blue" data-act="home">Garaget</button><button class="big" data-act="again">Spela igen</button>'
   el.innerHTML = `
-    ${cup?.winners ? `<div class="trophy">🏆</div><div class="who big-who" style="--c:${cup.table[0].colour}">${cup.winners.join(' och ')} ${cup.winners.length > 1 ? 'vinner' : 'vinner'} tävlingen!</div>` : `<h2>${cup ? cup.title : 'Omgångens resultat'}</h2>`}
+    ${cup?.winners ? `<div class="trophy">🏆</div><div class="who big-who" style="--c:${cup.table[0].colour}">${cup.winners.join(' och ')} ${cup.winners.length > 1 ? 'vinner' : 'vinner'} tävlingen!</div>` : `<h2>${cup ? cup.title : v.heading ?? 'Omgångens resultat'}</h2>`}
     <div class="best">${v.track}</div>
     <div class="rows standings">${v.rows.map((r, i) => `<div style="--c:${r.colour}"><span>${medal[i] ?? ''} <b class="pname">${r.name}</b> <small class="veh">${r.vehicle}</small></span><span>${r.result} ${r.newBest ? '<span class="newbest">Nytt rekord!</span>' : ''}</span></div>`).join('')}</div>
     ${table}
