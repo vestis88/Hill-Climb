@@ -1,3 +1,5 @@
+import { DEFAULT_OUTFIT, HATS, PATTERNS, type Hat, type Outfit, type Pattern } from './data/outfits'
+import { drawHead, setOutfit } from './render/art'
 import { describe, done, fillMissions, type Mission, type RunStats } from './game/missions'
 import { CUP_TRACKS, cupTable, cupWinners, lastTrack, newCup, scoreTrack, type Cup } from './game/cup'
 import { advance, emptyRound, nextPlayerOf, nextRound, playerOf, recordTurn, roundOver, standings, together, type Round } from './game/round'
@@ -20,7 +22,7 @@ import { formatTime, gameMode, MODES, recordKey } from './data/modes'
 import { Run, RULES } from './sim/run'
 import type { SimState } from './sim/types'
 import { STEP } from './sim/world'
-import { showGarage, showResults, showScores, showStandings, showTurn } from './ui/screens'
+import { showGarage, showOutfit, showResults, showScores, showStandings, showTurn } from './ui/screens'
 import { loadSettings, saveSettings, showSettings } from './ui/settings'
 import { trackViewport, updateViewport } from './ui/viewport'
 import { loadTuning, showTuning, tuningEnabled, type DriveAs } from './ui/tuning'
@@ -304,6 +306,7 @@ function openGarage(justBought?: UpgradeId): void {
     },
     onScores: () => openScores(recordEnvId(), currentMode().id),
     onCup: startCup,
+    onOutfit: () => openOutfit(save.players[0] ?? PLAYERS[0].name),
     missions: save.players.map((p) => ({
       name: p,
       colour: playerColour(p),
@@ -612,6 +615,48 @@ function openStandings(): void {
   show('results')
 }
 
+/** A player's outfit: their colour on the helmet, and the pattern and hat they picked. */
+function outfitFor(name: string): Outfit {
+  return { colour: playerColour(name), ...DEFAULT_OUTFIT, ...save.outfits?.[name] }
+}
+
+/** Utstyrsel: pick (and buy) each player's helmet pattern and hat. */
+function openOutfit(name: string): void {
+  const mine = outfitFor(name)
+  const has = (kind: string, id: string, price: number) => price === 0 || tuningEnabled() || save.unlocked.includes(`${kind}:${id}`)
+  showOutfit(scoresEl, {
+    coins: save.coins,
+    players: PLAYERS.map((p) => ({ name: p.name, colour: p.colour, on: p.name === name })),
+    preview: (c) => {
+      const ctx = c.getContext('2d')!
+      ctx.clearRect(0, 0, c.width, c.height)
+      ctx.save()
+      ctx.translate(c.width / 2, c.height * 0.62)
+      ctx.scale(95, -95)
+      setOutfit(mine)
+      drawHead(ctx, 1, 'happy')
+      setOutfit(null)
+      ctx.restore()
+    },
+    hats: HATS.map((h) => ({ ...h, owned: has('hat', h.id, h.price), on: mine.hat === h.id })),
+    patterns: PATTERNS.map((p) => ({ ...p, owned: has('pattern', p.id, p.price), on: mine.pattern === p.id })),
+    onPlayer: openOutfit,
+    onItem: (kind, id) => {
+      const item = (kind === 'hat' ? HATS : PATTERNS).find((x) => x.id === id)
+      if (!item) return
+      if (!has(kind, id, item.price)) {
+        if (!spend(save, item.price)) return
+        save.unlocked.push(`${kind}:${id}`)
+      }
+      save.outfits = { ...save.outfits, [name]: { pattern: mine.pattern, hat: mine.hat, [kind]: id } as { pattern: Pattern; hat: Hat } }
+      persist()
+      openOutfit(name)
+    },
+    onBack: () => openGarage(),
+  })
+  show('scores')
+}
+
 /** A player's three missions, topped up on maps the family owns. */
 function missionsFor(name: string): Mission[] {
   save.missions ??= {}
@@ -794,6 +839,7 @@ function frame(now: number): void {
     swapPedals: settings.swapPedals,
     driver: { lean: run.sway.lean, ragdoll: run.ragdoll?.poses() ?? null },
     player: mode === 'driving' || mode === 'ending' ? { name: currentPlayer(), colour: playerColour(currentPlayer()) } : undefined,
+    outfit: outfitFor(currentPlayer()),
     ghosts: mode === 'driving' || mode === 'ending' ? ghostPoses() : [],
     puddles: puddlesFor(currentEnv()),
     race: currentMode().length ? { length: currentMode().length!, time: run.finishTime ?? run.sim.steps * STEP } : undefined,
@@ -810,7 +856,7 @@ function ghostPoses() {
   const t = Math.max(0, (run.sim.steps - 1 + alpha) * STEP)
   return ghosts.flatMap((g) => {
     const pose = g.track.at(t)
-    return pose && pose.fade > 0 ? [{ label: g.label, colour: g.colour, spec: vehicleEntry(g.track.ghost.vehicle).base, pose }] : []
+    return pose && pose.fade > 0 ? [{ label: g.label, colour: g.colour, spec: vehicleEntry(g.track.ghost.vehicle).base, pose, outfit: outfitFor(g.track.ghost.player) }] : []
   })
 }
 

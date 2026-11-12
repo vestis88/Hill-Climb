@@ -214,7 +214,7 @@ is confirmed. New vehicles get their own handling tests (as V1, V2) and a stage-
 | E3 (done) | Missions (Uppdrag): three at a time per player, e.g. "3 bakåtvolter i ett åk", "200 m stegring", "nå 1 km i Frostpasset"; coins when done, a new one replaces it | Missions listed in the garage, progress saved per player, tests for counting |
 | E4 | Hidden stars: three per map, some only reachable with a big jump or a certain vehicle; finding all of a map's stars unlocks a paint pattern | Stars placed by seed, found ones saved and synced, shown per map in the garage |
 | E5 | Second upgrade layer: one part per vehicle chosen before a run (bigger tank, softer landings, extra wheelie coins, ...) to spend coins on once upgrades are maxed | Parts bought and equipped per vehicle; economy check |
-| E6 | Pip's outfit: each player buys and picks a helmet or hat and a pattern | Drawn on Pip and ghosts; bought with coins; saved per player |
+| E6 (done) | Pip's outfit: each player buys and picks a helmet or hat and a pattern | Drawn on Pip and ghosts; bought with coins; saved per player |
 
 **B. New vehicles** (original designs; each with its own upgrades, prices and tests)
 

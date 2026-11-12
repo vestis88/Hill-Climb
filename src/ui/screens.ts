@@ -55,6 +55,7 @@ export interface GarageView {
   onScores(): void
   /** Start a tournament: three tracks, points per placing (needs two or more players). */
   onCup(): void
+  onOutfit(): void
   onDrive(): void
   onTune(): void
   onSettings(): void
@@ -100,7 +101,7 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
       <span class="name">${d.name}</span><span class="blurb">${d.blurb}</span><span class="note">${d.note}</span></button>`).join('')}</div>
     ${v.missions.length ? `<div class="label">Uppdrag</div><div class="missions">${v.missions.map((p) => `<div class="mrow" style="--c:${p.colour}"><b class="pname">${p.name}</b>${p.items.map((m) => `<span class="mission">${m.text} <b class="coin">●</b> ${m.reward}</span>`).join('')}</div>`).join('')}</div>` : ''}
     <div class="choices envs">${v.environments.map((c) => choice('env', c)).join('')}</div>
-    <div class="actions"><button class="small go" data-act="cup" ${v.players.filter((p) => p.on).length >= 2 ? '' : 'disabled'}>🏆 Tävling: 3 banor</button><button class="small" data-act="scores">Topplista</button><button class="small" data-act="settings">Inställningar</button>${v.tuning ? '<button class="small" data-act="tune">Trimning</button>' : ''}</div>`
+    <div class="actions"><button class="small go" data-act="cup" ${v.players.filter((p) => p.on).length >= 2 ? '' : 'disabled'}>🏆 Tävling: 3 banor</button><button class="small" data-act="outfit">Utstyrsel</button><button class="small" data-act="scores">Topplista</button><button class="small" data-act="settings">Inställningar</button>${v.tuning ? '<button class="small" data-act="tune">Trimning</button>' : ''}</div>`
   // Draw each preview at its card's real size, and again whenever that size changes (rotation,
   // browser bars, layout switching): a canvas drawn at one size and shown at another looks stretched.
   thumbObserver?.disconnect()
@@ -127,6 +128,7 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
     else if (b.dataset.daily) v.onDaily(b.dataset.daily as 'race' | 'endless')
     else if (b.dataset.act === 'scores') v.onScores()
     else if (b.dataset.act === 'cup') v.onCup()
+    else if (b.dataset.act === 'outfit') v.onOutfit()
     else if (b.dataset.pick) {
       const [kind, id] = b.dataset.pick.split(':')
       v.onPick(kind as 'vehicle' | 'env', id)
@@ -235,6 +237,43 @@ export function showTurn(el: HTMLElement, v: TurnView): void {
     const b = (e.target as HTMLElement).closest('button')
     if (b?.dataset.veh) v.onVehicle(b.dataset.veh)
     else if (b?.dataset.act === 'go') v.onGo()
+  }
+}
+
+export interface OutfitView {
+  coins: number
+  players: { name: string; colour: string; on: boolean }[]
+  /** Pip in the chosen player's outfit. */
+  preview: (canvas: HTMLCanvasElement) => void
+  hats: { id: string; name: string; price: number; owned: boolean; on: boolean }[]
+  patterns: { id: string; name: string; price: number; owned: boolean; on: boolean }[]
+  onPlayer(name: string): void
+  /** Wear an item, buying it first if it is not owned and affordable. */
+  onItem(kind: 'hat' | 'pattern', id: string): void
+  onBack(): void
+}
+
+/** Utstyrsel: each player's helmet pattern and hat, bought once for the family. */
+export function showOutfit(el: HTMLElement, v: OutfitView): void {
+  const item = (kind: 'hat' | 'pattern', x: OutfitView['hats'][number]) =>
+    `<button class="choice ${x.on ? 'on' : ''} ${x.owned ? '' : 'locked'}" data-item="${kind}:${x.id}" ${!x.owned && x.price > v.coins ? 'disabled' : ''}>
+      <span class="name">${x.name}</span>${x.owned ? '' : `<span class="price">Köp ● ${x.price}</span>`}</button>`
+  el.innerHTML = `
+    <div class="bar"><h2>Utstyrsel</h2><span class="coins">● ${v.coins}</span><button class="small" data-act="back">Tillbaka</button></div>
+    <div class="players">${v.players.map((p) => `<button class="player ${p.on ? 'on' : ''}" data-player="${p.name}" style="--c:${p.colour}"><span class="tick">${p.on ? '✓' : ''}</span>${p.name}</button>`).join('')}</div>
+    <canvas class="pip" width="360" height="300"></canvas>
+    <div class="label">Hatt</div><div class="choices outfit">${v.hats.map((x) => item('hat', x)).join('')}</div>
+    <div class="label">Mönster på hjälmen</div><div class="choices outfit">${v.patterns.map((x) => item('pattern', x)).join('')}</div>`
+  const c = el.querySelector<HTMLCanvasElement>('canvas.pip')
+  if (c) v.preview(c)
+  el.onclick = (e) => {
+    const b = (e.target as HTMLElement).closest('button')
+    if (!b || b.disabled) return
+    if (b.dataset.player) v.onPlayer(b.dataset.player)
+    else if (b.dataset.item) {
+      const [kind, id] = b.dataset.item.split(':')
+      v.onItem(kind as 'hat' | 'pattern', id)
+    } else if (b.dataset.act === 'back') v.onBack()
   }
 }
 

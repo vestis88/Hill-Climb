@@ -1,3 +1,4 @@
+import type { Hat, Outfit, Pattern } from '../data/outfits'
 import type { Pickup } from '../data/track'
 import type { VehicleSpec } from '../sim/types'
 
@@ -332,10 +333,20 @@ function drawMxWheel(ctx: Ctx, r: number, look: WheelLook): void {
 /** Pip's face: a grin on jumps and stunts, wide eyes when tipping over. */
 export type Mood = 'normal' | 'happy' | 'worried'
 
+/**
+ * The outfit drawn on the next heads (set by the renderer before each vehicle): helmet colour,
+ * pattern and hat (data/outfits.ts). Null is Pip's own teal helmet with a white stripe.
+ */
+let outfit: Outfit | null = null
+export function setOutfit(o: Outfit | null): void {
+  outfit = o
+}
+
 export function drawHead(ctx: Ctx, r: number, mood: Mood = 'normal'): void {
   const helmet = ctx.createLinearGradient(0, -r, 0, r)
-  helmet.addColorStop(0, '#0e7779')
-  helmet.addColorStop(1, '#2cc6c8')
+  const hc = outfit ? paintColours(outfit.colour) : { dark: '#0e7779', light: '#2cc6c8' }
+  helmet.addColorStop(0, hc.dark)
+  helmet.addColorStop(1, hc.light)
   ctx.beginPath()
   ctx.arc(0, 0, r, 0, Math.PI * 2)
   ctx.fillStyle = helmet
@@ -343,12 +354,7 @@ export function drawHead(ctx: Ctx, r: number, mood: Mood = 'normal'): void {
   ctx.lineWidth = LINE
   ctx.strokeStyle = OUTLINE
   ctx.stroke()
-  // Stripe over the top
-  ctx.beginPath()
-  ctx.arc(0, 0, r * 0.82, Math.PI * 0.35, Math.PI * 0.75)
-  ctx.lineWidth = r * 0.16
-  ctx.strokeStyle = '#ffffff'
-  ctx.stroke()
+  drawPattern(ctx, r, outfit?.pattern ?? 'stripe')
   // Visor with the face behind it
   ctx.beginPath()
   ctx.moveTo(r * 0.02, r * 0.3)
@@ -408,6 +414,98 @@ export function drawHead(ctx: Ctx, r: number, mood: Mood = 'normal'): void {
   ctx.ellipse(-r * 0.35, r * 0.5, r * 0.22, r * 0.12, -0.5, 0, Math.PI * 2)
   ctx.fillStyle = 'rgba(255,255,255,0.55)'
   ctx.fill()
+  if (outfit && outfit.hat !== 'none') drawHat(ctx, r, outfit.hat)
+}
+
+/** A helmet pattern over the top and back of the helmet (the visor side stays clear). */
+function drawPattern(ctx: Ctx, r: number, pattern: Pattern): void {
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(0, 0, r * 0.96, 0, Math.PI * 2)
+  ctx.clip()
+  if (pattern === 'stripe') {
+    ctx.beginPath()
+    ctx.arc(0, 0, r * 0.82, Math.PI * 0.35, Math.PI * 0.75)
+    ctx.lineWidth = r * 0.16
+    ctx.strokeStyle = '#ffffff'
+    ctx.stroke()
+  } else if (pattern === 'stars') {
+    ctx.fillStyle = '#fff6c8'
+    for (const [x, y, s] of [[-0.45, 0.45, 0.2], [0.05, 0.72, 0.16], [-0.7, -0.05, 0.15], [-0.25, 0.05, 0.12]] as const) star(ctx, x * r, y * r, s * r)
+  } else if (pattern === 'checks') {
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'
+    const s = r * 0.28
+    for (let i = -4; i < 4; i++) for (let j = 0; j < 4; j++) if ((i + j) % 2 === 0 && i * s < r * 0.1) ctx.fillRect(i * s, j * s, s, s)
+  } else if (pattern === 'flames') {
+    ctx.fillStyle = '#ffb020'
+    ctx.beginPath()
+    ctx.moveTo(-r, -r * 0.3)
+    for (let i = 0; i < 4; i++) {
+      const y = -r * 0.3 + i * r * 0.3
+      ctx.quadraticCurveTo(-r * 0.2, y + r * 0.05, r * (0.05 - i * 0.12), y + r * 0.22)
+      ctx.quadraticCurveTo(-r * 0.4, y + r * 0.2, -r, y + r * 0.3)
+    }
+    ctx.fill()
+  }
+  ctx.restore()
+}
+
+function star(ctx: Ctx, x: number, y: number, s: number): void {
+  ctx.beginPath()
+  for (let i = 0; i < 10; i++) {
+    const a = Math.PI / 2 + (i * Math.PI) / 5
+    const rr = i % 2 ? s * 0.45 : s
+    ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr)
+  }
+  ctx.closePath()
+  ctx.fill()
+}
+
+/** A hat on top of the helmet (head coordinates, y up). */
+function drawHat(ctx: Ctx, r: number, hat: Hat): void {
+  ctx.lineWidth = LINE
+  ctx.strokeStyle = OUTLINE
+  if (hat === 'cap') {
+    shaded(ctx, [[-r * 0.85, r * 0.55], [r * 0.6, r * 0.75], [r * 0.5, r * 1.15], [-r * 0.7, r * 1.1]], '#ff6b6b', '#e5383b', '#a8261f')
+    poly(ctx, [[r * 0.45, r * 0.72], [r * 1.25, r * 0.66], [r * 1.2, r * 0.78], [r * 0.45, r * 0.86]], '#a8261f')
+  } else if (hat === 'cowboy') {
+    poly(ctx, [[-r * 1.3, r * 0.7], [r * 1.3, r * 0.82], [r * 1.25, r * 0.95], [-r * 1.35, r * 0.85]], '#8a5a33')
+    shaded(ctx, [[-r * 0.7, r * 0.8], [r * 0.7, r * 0.88], [r * 0.6, r * 1.55], [-r * 0.65, r * 1.5]], '#c99a64', '#a5672f', '#6e4325')
+    poly(ctx, [[-r * 0.68, r * 0.95], [r * 0.68, r * 1.02], [r * 0.67, r * 1.12], [-r * 0.68, r * 1.06]], '#3d2a1a', false)
+  } else if (hat === 'santa') {
+    poly(ctx, [[-r * 0.85, r * 0.6], [r * 0.75, r * 0.7], [r * 0.1, r * 1.6], [-r * 0.9, r * 1.45]], '#e5383b')
+    rrect(ctx, -r * 0.95, r * 0.5, r * 1.8, r * 0.28, r * 0.12, '#ffffff')
+    ctx.beginPath()
+    ctx.arc(-r * 0.95, r * 1.45, r * 0.18, 0, Math.PI * 2)
+    ctx.fillStyle = '#ffffff'
+    ctx.fill()
+    ctx.stroke()
+  } else if (hat === 'viking') {
+    for (const side of [-1, 1]) {
+      ctx.beginPath()
+      ctx.moveTo(side * r * 0.55, r * 0.7)
+      ctx.quadraticCurveTo(side * r * 1.35, r * 0.9, side * r * 1.25, r * 1.6)
+      ctx.quadraticCurveTo(side * r * 1.05, r * 1.05, side * r * 0.4, r * 0.95)
+      ctx.closePath()
+      ctx.fillStyle = '#f2ead8'
+      ctx.fill()
+      ctx.stroke()
+    }
+    ctx.beginPath()
+    ctx.arc(0, r * 0.45, r * 0.62, Math.PI * 0.1, Math.PI * 0.9)
+    ctx.lineWidth = r * 0.22
+    ctx.strokeStyle = '#b8bfca'
+    ctx.stroke()
+  } else if (hat === 'crown') {
+    const pts: Pt[] = [[-r * 0.65, r * 0.7], [r * 0.65, r * 0.7], [r * 0.75, r * 1.4], [r * 0.38, r * 1.1], [0, r * 1.5], [-r * 0.38, r * 1.1], [-r * 0.75, r * 1.4]]
+    shaded(ctx, pts, '#ffe680', '#ffcf33', '#c98a00')
+    for (const x of [-0.38, 0, 0.38]) {
+      ctx.beginPath()
+      ctx.arc(x * r, r * 0.85, r * 0.08, 0, Math.PI * 2)
+      ctx.fillStyle = x === 0 ? '#e5383b' : '#4c97f5'
+      ctx.fill()
+    }
+  }
 }
 
 /** Pip's body from the seat (origin) up the y axis, with the head on top. */

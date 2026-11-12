@@ -154,6 +154,10 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
   after the round); the countdown also shows whose turn it is ("Willes tur").
   After each run their results show with a big "Frans tur" button to hand the iPad over; after the
   last turn come the round's standings (with each player's vehicle), then back to the garage.
+- **Utstyrsel (outfit):** every player's Pip wears a helmet in their colour, with a pattern
+  (Rand free; Stjärnor 600, Rutor 900, Flammor 1,200) and a hat (Keps 800, Cowboyhatt and
+  Tomteluva 1,500, Vikingahorn 2,500, Krona 5,000). Items are bought once for the family and each
+  player picks theirs on the Utstyrsel screen; ghosts wear their player's outfit too.
 - **Uppdrag (missions):** every player has three missions, shown in the garage, each done within
   a single run (backflips, frontflips, air time, a long wheelie, distance on a given map, coins in
   one run, a combo of so many tricks), each paying 100 to 500 coins. A finished one shows in the
