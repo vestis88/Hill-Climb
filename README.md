@@ -120,7 +120,8 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
 - **Who plays:** tick Wille, Frans, Johan and/or Bim in the garage. Pressing Kör (Drive) starts a
   round: each ticked player drives once, in turn, on the vehicle and track picked in the garage.
   With several players, a "Ny omgång" screen first shows who starts ("Wille börjar!") and the turn
-  order, with a "Kör, Wille!" button; the countdown also shows whose turn it is ("Willes tur").
+  order, with a green "Kör, Wille!" button (green buttons always drive; Garaget is offered only
+  after the round); the countdown also shows whose turn it is ("Willes tur").
   After each run their results show with a big "Frans tur" button to hand the iPad over; after the
   last turn come the round's standings (with each player's vehicle), then back to the garage.
 - **Own vehicle each:** in a round with several players, the screen before each turn shows the

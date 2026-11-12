@@ -143,15 +143,16 @@ export interface ResultsView {
   onStandings(): void
 }
 
+/** Green buttons always drive; blue ones go elsewhere (garage, results, back). */
 const TITLES = { crashed: 'Krasch!', outOfFuel: 'Slut på bränsle', ended: 'Åket avslutat', running: 'Åket avslutat', finished: 'I mål!' }
 
 export function showResults(el: HTMLElement, v: ResultsView): void {
   const row = (label: string, value: number) => (value ? `<div><span>${label}</span><span><b class="coin">●</b> ${value}</span></div>` : '')
   const actions = v.next
-    ? `<button class="big blue" data-act="next">${genitive(v.next)} tur</button>`
+    ? `<button class="big" data-act="next">${genitive(v.next)} tur</button>`
     : v.roundOver
       ? '<button class="big blue" data-act="standings">Omgångens resultat</button>'
-      : '<button class="big" data-act="garage">Garaget</button><button class="big blue" data-act="again">Kör igen</button>'
+      : '<button class="big blue" data-act="garage">Garaget</button><button class="big" data-act="again">Kör igen</button>'
   el.innerHTML = `
     <div class="who" style="--c:${v.player.colour}">${v.player.name}</div>
     <h2>${TITLES[v.status]}</h2>
@@ -192,7 +193,6 @@ export interface TurnView {
   vehicles: { id: string; name: string; selected: boolean; preview: (c: HTMLCanvasElement) => void }[]
   onVehicle(id: string): void
   onGo(): void
-  onBack(): void
 }
 
 /** Before each turn of a round with several players: whose turn, the order, and their vehicle. */
@@ -206,8 +206,7 @@ export function showTurn(el: HTMLElement, v: TurnView): void {
     <div class="order">${v.players.map((q, i) => `${i ? '<span class="arrow">→</span>' : ''}<span class="pchip ${i === v.turn ? 'on' : ''} ${i < v.turn ? 'done' : ''}" style="--c:${q.colour}"><b>${i + 1}</b> ${q.name}</span>`).join('')}</div>
     <div class="turn-vehicles" style="--c:${p.colour}">${v.vehicles.map((x) => `<button class="tveh ${x.selected ? 'on' : ''}" data-veh="${x.id}"><canvas data-tthumb="${x.id}"></canvas><span>${x.name}</span></button>`).join('')}</div>
     <div class="actions">
-      <button class="big" data-act="back">Garaget</button>
-      <button class="big blue" data-act="go">Kör, ${p.name}!</button>
+      <button class="big" data-act="go">Kör, ${p.name}!</button>
     </div>`
   for (const x of v.vehicles) {
     const c = el.querySelector<HTMLCanvasElement>(`canvas[data-tthumb="${x.id}"]`)
@@ -217,7 +216,6 @@ export function showTurn(el: HTMLElement, v: TurnView): void {
     const b = (e.target as HTMLElement).closest('button')
     if (b?.dataset.veh) v.onVehicle(b.dataset.veh)
     else if (b?.dataset.act === 'go') v.onGo()
-    else if (b?.dataset.act === 'back') v.onBack()
   }
 }
 
@@ -237,8 +235,8 @@ export function showStandings(el: HTMLElement, v: StandingsView): void {
     <div class="best">${v.track}</div>
     <div class="rows standings">${v.rows.map((r, i) => `<div style="--c:${r.colour}"><span>${medal[i] ?? ''} <b class="pname">${r.name}</b> <small class="veh">${r.vehicle}</small></span><span>${r.result} ${r.newBest ? '<span class="newbest">Nytt rekord!</span>' : ''}</span></div>`).join('')}</div>
     <div class="actions">
-      <button class="big" data-act="home">Garaget</button>
-      <button class="big blue" data-act="again">Spela igen</button>
+      <button class="big blue" data-act="home">Garaget</button>
+      <button class="big" data-act="again">Spela igen</button>
     </div>`
   el.onclick = (e) => {
     const b = (e.target as HTMLElement).closest('button')
@@ -271,7 +269,7 @@ export function showScores(el: HTMLElement, v: ScoresView): void {
       ${v.rows.length ? v.rows.map((r, i) => `<div style="--c:${r.colour}"><span class="rank">${i + 1}</span><b class="pname">${r.name}</b><span class="veh">${r.vehicle}</span><span class="dist">${r.result}</span></div>`).join('') : '<div class="empty">Inga åk på den här banan än.</div>'}
     </div>
     <div class="bests">${v.bests.map((b) => `<span style="--c:${b.colour}"><b class="pname">${b.name}</b> bäst ${b.result}</span>`).join('')}</div>
-    <div class="actions"><button class="big" data-act="back">Tillbaka</button></div>`
+    <div class="actions"><button class="big blue" data-act="back">Tillbaka</button></div>`
   el.onclick = (e) => {
     const b = (e.target as HTMLElement).closest('button')
     if (b?.dataset.track) v.onTrack(b.dataset.track)

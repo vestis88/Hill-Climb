@@ -320,7 +320,6 @@ function openTurn(): void {
       openTurn()
     },
     onGo: () => startRun(),
-    onBack: () => openGarage(),
   })
   show('results')
 }
