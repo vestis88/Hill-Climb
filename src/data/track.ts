@@ -2,7 +2,7 @@ import { rng } from '../sim/rng'
 import type { HeightFn } from '../sim/types'
 
 export interface Pickup {
-  kind: 'coin' | 'fuel'
+  kind: 'coin' | 'fuel' | 'turbo'
   x: number
   y: number
   /** Coins for a coin; unused for fuel. */
@@ -61,6 +61,11 @@ export class PickupField implements PickupSource {
         const x = this.nextCoinX
         this.nextCoinX = x + 45 + this.random() * 35
         if (x - this.lastFuelX < 12 || this.nextFuelX - x < 12) continue
+        // Now and then a turbo canister in place of a coin row (not in the first 100 m).
+        if (x > 100 && this.random() < 0.12) {
+          this.items.push({ kind: 'turbo', x: x + 2.6, y: this.height(x + 2.6) + 1, value: 0 })
+          continue
+        }
         for (let i = 0; i < 5; i++) {
           const cx = x + i * 1.3
           this.items.push({ kind: 'coin', x: cx, y: this.height(cx) + 0.9, value: coinValue(cx) })

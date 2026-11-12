@@ -53,6 +53,8 @@ export interface View {
   driver: { lean: number; ragdoll: { torso: Pose; head: Pose } | null }
   /** Whose turn it is, shown by the distance. */
   player?: { name: string; colour: string }
+  /** Turbo left, 0..1 (from a turbo canister). */
+  turbo?: number
   /** A trick chain of two or more, for the live combo counter. */
   combo?: { tricks: number; multiplier: number } | null
   /** The wheelie in progress, for the live counter. */
@@ -1045,6 +1047,21 @@ export class GameRenderer {
     }
     if (low && Math.floor(this.time / 0.3) % 2 === 0) this.outlinedText(view.fuel <= 0 ? 'SLUT PÅ BRÄNSLE' : 'LITE BRÄNSLE', warnX, gy + 22, 15, '#ff6b6b')
     if (view.spec.engine.gearbox) this.drawRevGauge(view, gx + gw + 50, gy + 14)
+    // Turbo: a blue bar under the fuel line while it lasts.
+    if (view.turbo && view.turbo > 0) {
+      const ty = gy + 44
+      const bx = x0 + 64
+      const bw = gx + gw - bx
+      ctx.beginPath()
+      ctx.roundRect(bx, ty, bw, 12, 6)
+      ctx.fillStyle = 'rgba(16, 21, 28, 0.45)'
+      ctx.fill()
+      ctx.beginPath()
+      ctx.roundRect(bx + 2, ty + 2, (bw - 4) * view.turbo, 8, 4)
+      ctx.fillStyle = '#5aaaff'
+      ctx.fill()
+      this.outlinedText('TURBO', x0, ty - 2, 13, '#7fc4ff')
+    }
 
     // Coins this run, in a pill at the top centre; it pops when a coin lands in it.
     ctx.save()

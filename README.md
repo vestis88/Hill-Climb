@@ -154,6 +154,10 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
   after the round); the countdown also shows whose turn it is ("Willes tur").
   After each run their results show with a big "Frans tur" button to hand the iPad over; after the
   last turn come the round's standings (with each player's vehicle), then back to the garage.
+- **Turbo:** now and then a blue turbo canister sits on the track in place of a coin row (fixed
+  places per map, not in the first 100 m): 3 seconds of extra push while the gas is held, with a
+  bar under the fuel gauge.
+- **Horn:** the TUT button (or H) honks; every vehicle has its own horn. It changes nothing.
 - **Utstyrsel (outfit):** every player's Pip wears a helmet in their colour, with a pattern
   (Rand free; Stjärnor 600, Rutor 900, Flammor 1,200) and a hat (Keps 800, Cowboyhatt and
   Tomteluva 1,500, Vikingahorn 2,500, Krona 5,000). Items are bought once for the family and each
