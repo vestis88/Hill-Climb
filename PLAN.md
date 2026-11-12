@@ -210,8 +210,7 @@ is confirmed. New vehicles get their own handling tests (as V1, V2) and a stage-
 
 | ID | Task | Done when |
 |---|---|---|
-| E1 | Coin balance check: rerun the economy simulation with the newer income (fuel-on-empty 1000, wheelie multiplier, daily challenge, combos) and retune prices so a new upgrade still takes 2 to 4 runs early on | `npm run economy` prints a sane curve; prices updated |
-| E2 | Combo multiplier: tricks chained without a bad landing (flip, wheelie, air time) multiply each other; a live combo counter like the wheelie one | Run tests: a chain pays more than the same tricks apart; a crash or bad landing breaks it |
+| E2 (done) | Combo multiplier: tricks chained without a bad landing (flip, wheelie, air time) multiply each other; a live combo counter like the wheelie one | Run tests: a chain pays more than the same tricks apart; a crash or bad landing breaks it |
 | E3 | Missions (Uppdrag): three at a time per player, e.g. "3 bakåtvolter i ett åk", "200 m stegring", "nå 1 km i Frostpasset"; coins when done, a new one replaces it | Missions listed in the garage, progress saved per player, tests for counting |
 | E4 | Hidden stars: three per map, some only reachable with a big jump or a certain vehicle; finding all of a map's stars unlocks a paint pattern | Stars placed by seed, found ones saved and synced, shown per map in the garage |
 | E5 | Second upgrade layer: one part per vehicle chosen before a run (bigger tank, softer landings, extra wheelie coins, ...) to spend coins on once upgrades are maxed | Parts bought and equipped per vehicle; economy check |
@@ -244,14 +243,13 @@ is confirmed. New vehicles get their own handling tests (as V1, V2) and a stage-
 | F3 | Tournament (Tävling): a cup of three tracks (or three daily challenges), points per placing, an overall winner with a trophy | Played as rounds; standings after each track and a final podium |
 | F4 | Two players at once on the iPad: split screen, each with their own pedals at the screen edge, racing live | Both sims step together; fits iPad landscape; frame time within budget |
 
-**E. Show off and delivery**
+**E. Show off**
 
 | ID | Task | Done when |
 |---|---|---|
 | R1 | Replay of a record: watch any highscore run from the highscore list, the camera following its ghost | Plays from the stored ghost; pause and back |
-| D1 | App Store build via a Capacitor wrapper (needs an Apple developer account and a Mac to submit) | Owner decision first |
 
-Suggested order: E1 with E2, then N1 and N2, F3, then E3 and E6, then the rest.
+Owner: no coin balance check needed (still balanced) and no App Store version. Order: E2, N1, N2, F3, E3, E6, then the rest.
 
 ## 6. How to run these tasks in the Claude app
 

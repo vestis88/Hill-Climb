@@ -15,7 +15,7 @@ import { clearGhosts, roundGhosts, GhostRecorder, GhostTrack, loadGhost, storeGh
 import { CloudSync } from './save/cloud'
 import { PLAYERS, playerColour } from './data/players'
 import { formatTime, gameMode, MODES, recordKey } from './data/modes'
-import { Run } from './sim/run'
+import { Run, RULES } from './sim/run'
 import type { SimState } from './sim/types'
 import { STEP } from './sim/world'
 import { showGarage, showResults, showScores, showStandings, showTurn } from './ui/screens'
@@ -513,6 +513,8 @@ function startRun(): void {
 
 function finishRun(): void {
   if (mode !== 'driving' && mode !== 'ending') return
+  // Ending a run by hand pays a combo in progress.
+  if (run.status === 'running') run.endCombo()
   const total = run.totalCoins
   const distance = run.endDistance ?? next.distance
   const envId = recordEnvId()
@@ -615,7 +617,7 @@ function handleEvents(): void {
   for (const e of run.events) {
     if (e.kind === 'coin') sound.coin()
     else if (e.kind === 'fuel') sound.fuel()
-    else if (e.kind === 'flip' || e.kind === 'milestone' || e.kind === 'air' || e.kind === 'wheelie') {
+    else if (e.kind === 'flip' || e.kind === 'milestone' || e.kind === 'air' || e.kind === 'wheelie' || e.kind === 'combo') {
       sound.fanfare()
       renderer.cheer()
     }
@@ -642,6 +644,8 @@ function handleEvents(): void {
       popups.push({ text: `${name}${e.direction === 'back' ? 'bakåtvolt' : 'framåtvolt'}!  +${e.value}`, age: 0 })
     }
     else if (e.kind === 'milestone') popups.push({ text: `${e.distance} m  +${e.value}`, age: 0 })
+    else if (e.kind === 'combo') popups.push({ text: `Kombo ${e.tricks} trick ×${String(e.multiplier).replace('.', ',')}  +${e.value}`, age: 0 })
+    else if (e.kind === 'comboLost' && e.tricks >= 2) popups.push({ text: 'Kombon tappad!', age: 0 })
   }
 }
 
@@ -716,6 +720,7 @@ function frame(now: number): void {
     input: controls.input,
     pickups: run.options.pickups.items,
     wheelie: mode === 'driving' ? run.wheelieNow : null,
+    combo: mode === 'driving' && run.combo && run.combo.tricks >= 2 ? { tricks: run.combo.tricks, multiplier: RULES.comboMultiplier(run.combo.tricks) } : null,
     atmosphere: mode === 'driving' || mode === 'ending' || mode === 'results' ? atmosphere : undefined,
     nextFuel: (() => {
       const at = run.options.pickups.nextFuel(next.chassis.x)

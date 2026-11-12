@@ -52,6 +52,8 @@ export interface View {
   driver: { lean: number; ragdoll: { torso: Pose; head: Pose } | null }
   /** Whose turn it is, shown by the distance. */
   player?: { name: string; colour: string }
+  /** A trick chain of two or more, for the live combo counter. */
+  combo?: { tricks: number; multiplier: number } | null
   /** The wheelie in progress, for the live counter. */
   wheelie?: { metres: number; coins: number; multiplier: number } | null
   /** Time of day and weather: today's challenge only; none in the garage.  */
@@ -934,6 +936,19 @@ export class GameRenderer {
   /** A live wheelie counter under the coins: metres, the multiplier (it pops when it rises) and coins so far. */
   private drawWheelie(view: View): void {
     const w = view.wheelie
+    // The combo counter sits on the right of the top, clear of the wheelie counter.
+    if (view.combo) {
+      const { ctx: c, width: cw, safe: cs } = this
+      c.save()
+      c.textAlign = 'right'
+      c.textBaseline = 'top'
+      const pulse = 1 + 0.06 * Math.sin(this.time * 8)
+      c.translate(cw - Math.max(16, cs.right) - 10, Math.max(12, cs.top) + 64)
+      c.scale(pulse, pulse)
+      this.outlinedText(`Kombo ×${String(view.combo.multiplier).replace('.', ',')}`, 0, 0, 22, '#ff9a3c')
+      this.outlinedText(`${view.combo.tricks} trick`, 0, 28, 15, '#ffffff')
+      c.restore()
+    }
     if (!w || w.metres < 3) {
       this.wheelieMult = 1
       return

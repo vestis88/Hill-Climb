@@ -35,6 +35,12 @@ export const RULES = {
    * driven forward with a back wheel on the ground count. Distance, not time (owner).
    */
   wheelieCoinsPerMetre: 2,
+  /** Combos: seconds on the ground (not on the back wheel) before a chain ends and pays. */
+  comboGap: 2.5,
+  /** Combo multiplier for n tricks in a chain: ×1.5 for two, +0.5 per trick, up to ×4. */
+  comboMultiplier: (tricks: number) => Math.min(4, 1 + 0.5 * (tricks - 1)),
+  /** A landing within this angle of the ground (radians, about 40 degrees) keeps a combo going. */
+  cleanLanding: 0.7,
   minWheelie: 10,
   /**
    * Long wheelies pay more: each metre is paid at the multiplier for how far the wheelie has
@@ -55,6 +61,8 @@ export type RunEvent =
   | { kind: 'air'; value: number; seconds: number }
   | { kind: 'flip'; value: number; flips: number; direction: 'back' | 'front' }
   | { kind: 'wheelie'; value: number; metres: number; multiplier: number }
+  | { kind: 'combo'; value: number; tricks: number; multiplier: number }
+  | { kind: 'comboLost'; tricks: number }
   | { kind: 'milestone'; value: number; distance: number }
 
 export interface RunOptions {
@@ -82,7 +90,14 @@ export class Run {
   /** The start judged at GO, and seconds of its boost (or bog) left. */
   launchKind: LaunchKind = 'normal'
   private launchLeft = 0
-  coins = { track: 0, air: 0, flips: 0, wheelies: 0, milestones: 0, rescue: 0 }
+  coins = { track: 0, air: 0, flips: 0, wheelies: 0, milestones: 0, rescue: 0, combos: 0 }
+  /**
+   * The trick chain in progress (read by the HUD): tricks so far and their coins. Tricks done one
+   * after another, each within a few seconds of the last on the ground, build a combo; when the
+   * chain ends it pays a bonus on top of the tricks. A messy landing or a crash loses it.
+   */
+  combo: { tricks: number; coins: number } | null = null
+  private comboGround = 0
   /** Events from the last step only, for pop-ups and sounds. */
   events: RunEvent[] = []
   /** The driver's sway while driving, and the ragdoll after a crash. */
@@ -118,7 +133,7 @@ export class Run {
 
   get totalCoins(): number {
     const c = this.coins
-    return c.track + c.air + c.flips + c.wheelies + c.milestones + c.rescue
+    return c.track + c.air + c.flips + c.wheelies + c.milestones + c.rescue + c.combos
   }
 
   /** GO: the revs at that moment decide the start (sim/launch.ts). */
@@ -131,6 +146,11 @@ export class Run {
   step(rawInput: Input): void {
     this.events = []
     if (this.status !== 'running') {
+      // The run is over: a crash loses a combo in progress, any other end pays it.
+      if (this.combo && this.status === 'crashed') {
+        this.events.push({ kind: 'comboLost', tricks: this.combo.tricks })
+        this.combo = null
+      } else if (this.combo) this.endCombo()
       // Keep the physics going briefly so the crash or the final roll can be seen.
       this.sim.step({ gas: false, brake: false })
       return
@@ -168,6 +188,7 @@ export class Run {
       return
     }
     this.stunts(s)
+    this.comboClock(s)
     this.milestones(s)
     if (this.options.finish !== undefined && s.distance >= this.options.finish) {
       this.status = 'finished'
@@ -249,6 +270,11 @@ export class Run {
       return
     }
     const seconds = this.airSteps * STEP
+    // A messy landing (well off level with the ground) loses a combo in progress.
+    if (Math.abs(wrapAngle(rel)) > RULES.cleanLanding && this.combo) {
+      this.events.push({ kind: 'comboLost', tricks: this.combo.tricks })
+      this.combo = null
+    }
     const signedTurn = rel - this.takeoffAngle
     const turned = Math.abs(signedTurn)
     this.airSteps = 0
@@ -257,6 +283,7 @@ export class Run {
       const value = Math.floor(seconds * RULES.airCoinsPerSecond)
       this.coins.air += value
       this.events.push({ kind: 'air', value, seconds })
+      this.addTrick(value)
     }
     // Upright at both ends, so a real flip turns close to a whole number of turns; anything
     // from about 245 degrees per turn counts, which no non-flip landing can reach.
@@ -266,7 +293,37 @@ export class Run {
       this.coins.flips += value
       // Nose-up rotation (counter-clockwise, the car faces right) is a backflip.
       this.events.push({ kind: 'flip', value, flips, direction: signedTurn > 0 ? 'back' : 'front' })
+      this.addTrick(value)
     }
+  }
+
+  private addTrick(value: number): void {
+    this.combo ??= { tricks: 0, coins: 0 }
+    this.combo.tricks++
+    this.combo.coins += value
+    this.comboGround = 0
+  }
+
+  /** Time on the ground ends a combo: two or more tricks pay their bonus. */
+  private comboClock(s: SimState): void {
+    if (!this.combo) return
+    if (s.airborne || this.wheelieNow) {
+      this.comboGround = 0
+      return
+    }
+    this.comboGround += STEP
+    if (this.comboGround >= RULES.comboGap) this.endCombo()
+  }
+
+  /** Pay a combo of two or more tricks (also called when the run ends). */
+  endCombo(): void {
+    const c = this.combo
+    this.combo = null
+    if (!c || c.tricks < 2) return
+    const multiplier = RULES.comboMultiplier(c.tricks)
+    const value = Math.floor(c.coins * (multiplier - 1))
+    this.coins.combos += value
+    this.events.push({ kind: 'combo', value, tricks: c.tricks, multiplier })
   }
 
   /** Angle of the ground at x, radians (positive uphill). */
@@ -309,6 +366,7 @@ export class Run {
       const value = Math.floor(w.coins)
       this.coins.wheelies += value
       this.events.push({ kind: 'wheelie', value, metres: w.metres, multiplier: w.multiplier })
+      this.addTrick(value)
     }
   }
 
