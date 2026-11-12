@@ -13,7 +13,7 @@ buy: every coin is earned by driving.
 The game is in Swedish: every screen, button and in-game text (the code and this README stay
 in English). Vehicle and track names are Swedish too: Buggyn (code id `runabout`), Crossen
 (`scrambler`), Bjässen (`hauler`) and Träskkryparen (`rover`); Gröna ängar, Kraterfälten,
-Frostpasset, Dynhavet, Röda kanjonen and Månskensskogen. The README uses the English code names.
+Frostpasset, Dynhavet, Röda kanjonen, Månskensskogen and Stuntbanan. The README uses the English code names.
 
 ### Vehicles
 
@@ -51,6 +51,7 @@ Five more (phase 6):
 | Dune Sea | 7,000 coins | Long rolling sand dunes, loose sand (less grip), big dune jumps; fast. Cacti and blowing sand |
 | Red Canyon | 14,000 coins | Steep rocky climbs with good grip; rare, gentle jumps (kickers on steep ground were unsurvivable). Red cliffs at late afternoon |
 | Moonlit Woods | 20,000 coins | Night forest: muddy and slippery, bumpy with roots. Moon, stars, fireflies, glowing mushrooms |
+| Stuntbanan | 16,000 coins | A stunt arena where timing decides everything (below). Sunset, tyre stacks and pennants |
 
 **Puddles** lie on gentle stretches of three maps: rain puddles on Green Meadows, slush on
 Frost Pass and deep mud in Moonlit Woods. A wheel in one drags the vehicle back (mud most)
@@ -66,6 +67,26 @@ and steeper with distance, up to a limit, so there is always further to go.
 Kicker ramps (a ramp that steepens to a lip, then a drop) throw the car into
 the air regularly, so holding full gas all the way does not work: you have
 to ease off and balance the car in the air. Green Meadows has the most.
+
+**Stuntbanan** (`sim/stunt.ts`) is built differently: a gentle roll between stunt features,
+one every 78 m or so, in a fixed pattern picked by the seed and growing harder with distance:
+
+- **Loop** (r 3 to 3.8 m): a downhill run-up into a full loop. Too slow and you drop off at the
+  top. The ring is real physics: only the part of it the car should be on is solid at a time
+  (in at the bottom, up the right side, over the top, down the left), so you can drive in and
+  out. Each loop pays 200 coins and counts as a trick in a combo.
+- **Pit** (3.5 to 10 m wide): a lip and a deep pit. Too slow or too early off the gas and you
+  fall in, which ends the run; clearing it pays 50 coins plus 15 per metre and is a trick too.
+- **Seesaw**: an 8 m plank on a pivot that rests on its near end and tips as you cross;
+  too fast and it throws you.
+- **Cliff**: a ramp up to a flat top, then an edge with a drop of 2.5 to 4.5 m and a climb back.
+- **Whoops**: quick rollers; full gas over them flips you.
+
+Lying still upside down for a second and a half also ends a run here (a loop can drop a car on
+its roof without its head touching). Fuel cans and coins are never placed in pits, loops or on
+seesaws, the three stars sit at the top of the second to fourth loops, and it is not one of the
+daily challenge's base maps. `tests/stunt.test.ts` covers loops (fast and too slow), pits,
+seesaws and that most vehicles get through the first 400 m.
 
 ### The run
 

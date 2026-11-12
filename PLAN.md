@@ -251,6 +251,8 @@ is confirmed. New vehicles get their own handling tests (as V1, V2) and a stage-
 
 Owner: no coin balance check needed (still balanced) and no App Store version. All of phase 6 is done.
 
+After phase 6: Stuntbanan, a timing track with loops, pits, seesaws, cliffs and whoops (done).
+
 ## 6. How to run these tasks in the Claude app
 
 Everything here runs inside the Claude app on the subscription; nothing needs

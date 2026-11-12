@@ -180,6 +180,25 @@ THEMES.woods = {
   dust: '#6b5340',
 }
 
+THEMES.stunt = {
+  // A stunt arena at sunset: violet sky, an orange glow, rocky bluffs and packed dirt.
+  sky: ['#2b2d6e', '#8a4f8f', '#f08a5d'],
+  sun: { colour: '#ffe2b8', glow: 'rgba(255, 170, 120, 0.6)', x: 0.3, y: 0.46, r: 0.07 },
+  clouds: { light: '#f6b9a0', shade: '#b97a95' },
+  stars: false,
+  birds: false,
+  foreground: { colour: '#3a2a3e', kind: 'rocks' },
+  layers: [
+    { speed: 3, base: 0.6, height: 0.36, shape: 'mountain', scale: 120, colour: '#5a4a7a', shade: '#4a3c68' },
+    { speed: 9, base: 0.7, height: 0.18, shape: 'mountain', scale: 160, colour: '#6e5584', shade: '#5f4874', trees: { kind: 'rock', colour: '#57436a', light: '#866c9c', density: 0.3, size: 10 } },
+    { speed: 20, base: 0.8, height: 0.13, shape: 'hill', scale: 150, colour: '#7a5a8a', shade: '#6a4d79', trees: { kind: 'rock', colour: '#5d4468', light: '#93729f', density: 0.4, size: 14 } },
+  ],
+  haze: 'rgba(240, 150, 120, 0.25)',
+  ground: { top: '#7a5a48', deep: '#3a2a26', specks: ['#8a6a54', '#5a4034', '#9a7a62'], stone: '#8a7060', stoneDark: '#4a3830' },
+  surface: { kind: 'dust', main: '#c9a27a', dark: '#a8835e', light: '#e2c39c' },
+  dust: '#c9a27a',
+}
+
 export const themeFor = (env: Environment) => THEMES[env.id] ?? THEMES.meadow
 
 // ---------------------------------------------------------------------------------------
@@ -777,6 +796,12 @@ export function drawProps(ctx: Ctx, env: Environment, height: HeightFn, left: nu
       else if (kind < 0.7) mushrooms(ctx, i)
       else if (kind < 0.88) log(ctx)
       else boulder(ctx, '#4a4440', '#6a625a')
+    } else if (env.id === 'stunt') {
+      if (kind < 0.3) tyreStack(ctx)
+      else if (kind < 0.5) hayBale(ctx)
+      else if (kind < 0.7) cone(ctx)
+      else if (kind < 0.85) pennant(ctx, i)
+      else boulder(ctx, '#6a5060', '#8a7080')
     } else {
       if (kind < 0.5) pineTree(ctx, '#3d5f78', '#4f7590', true)
       else if (kind < 0.7) boulder(ctx, '#8ea2b6', '#ffffff')
@@ -785,6 +810,54 @@ export function drawProps(ctx: Ctx, env: Environment, height: HeightFn, left: nu
     }
     ctx.restore()
   }
+}
+
+/** Stuntbanan's props: stacked tyres, straw bales, traffic cones and pennant flags. */
+function tyreStack(ctx: Ctx): void {
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath()
+    ctx.roundRect(-0.5, i * 0.32, 1, 0.3, 0.12)
+    outlineFill(ctx, '#2a2a30')
+    ctx.fillStyle = i === 1 ? '#e5383b' : '#f4f4f4'
+    ctx.fillRect(-0.5, i * 0.32 + 0.12, 1, 0.06)
+  }
+}
+
+function hayBale(ctx: Ctx): void {
+  ctx.beginPath()
+  ctx.roundRect(-0.6, 0, 1.2, 0.6, 0.1)
+  outlineFill(ctx, '#e0b84f')
+  ctx.strokeStyle = 'rgba(120, 80, 20, 0.6)'
+  ctx.lineWidth = 0.04
+  ctx.beginPath()
+  for (const x of [-0.3, 0.3]) {
+    ctx.moveTo(x, 0.04)
+    ctx.lineTo(x, 0.56)
+  }
+  ctx.stroke()
+}
+
+function cone(ctx: Ctx): void {
+  ctx.beginPath()
+  ctx.moveTo(-0.3, 0)
+  ctx.lineTo(0.3, 0)
+  ctx.lineTo(0.06, 0.8)
+  ctx.lineTo(-0.06, 0.8)
+  ctx.closePath()
+  outlineFill(ctx, '#ff7a1a')
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(-0.17, 0.3, 0.34, 0.12)
+}
+
+function pennant(ctx: Ctx, seed: number): void {
+  ctx.fillStyle = '#d7dce4'
+  ctx.fillRect(-0.04, 0, 0.08, 2.6)
+  ctx.beginPath()
+  ctx.moveTo(0.04, 2.6)
+  ctx.lineTo(0.95, 2.35)
+  ctx.lineTo(0.04, 2.1)
+  ctx.closePath()
+  outlineFill(ctx, ['#e5383b', '#ffd23f', '#3a86ff', '#2ec4b6'][seed & 3])
 }
 
 function cactus(ctx: Ctx): void {

@@ -5,6 +5,7 @@ import type { Pickup, PickupSource } from '../data/track'
 import { DriverSway, Ragdoll } from './driver'
 import type { HeightFn, Input, SimState, VehicleSpec } from './types'
 import { Sim, STEP } from './world'
+import { featureNear, stuntFallLine, stuntObstacles } from './stunt'
 
 /** Run rules, from README "The run". */
 export const RULES = {
@@ -44,6 +45,10 @@ export const RULES = {
   /** Turbo canister: seconds of extra push forward while the gas is held, and how strong (m/s²). */
   turboSeconds: 3,
   turboPush: 4.5,
+  /** Stuntbanan: coins for a loop, and for a pit jumped (base plus per metre of pit). */
+  loopCoins: 200,
+  gapCoins: 50,
+  gapCoinsPerMetre: 15,
   /** Combo multiplier for n tricks in a chain: ×1.5 for two, +0.5 per trick, up to ×4. */
   comboMultiplier: (tricks: number) => Math.min(4, 1 + 0.5 * (tricks - 1)),
   /** A landing within this angle of the ground (radians, about 40 degrees) keeps a combo going. */
@@ -73,6 +78,8 @@ export type RunEvent =
   | { kind: 'turbo'; x: number; y: number }
   | { kind: 'star'; id: string; x: number; y: number }
   | { kind: 'milestone'; value: number; distance: number }
+  /** Stuntbanan: a loop driven all the way round, or a pit jumped. */
+  | { kind: 'stunt'; what: 'loop' | 'gap'; value: number; x: number; y: number }
 
 export interface RunOptions {
   vehicle: VehicleSpec
@@ -95,6 +102,8 @@ export interface RunOptions {
   part?: PartId
   /** Hidden stars not yet found on this map (game/stars.ts). */
   stars?: { id: string; x: number; y: number }[]
+  /** Stuntbanan's seed: its loops and seesaws are built, and falling into a pit ends the run. */
+  stunt?: number
 }
 
 const TAU = Math.PI * 2
@@ -108,7 +117,7 @@ export class Run {
   /** The start judged at GO, and seconds of its boost (or bog) left. */
   launchKind: LaunchKind = 'normal'
   private launchLeft = 0
-  coins = { track: 0, air: 0, flips: 0, wheelies: 0, milestones: 0, rescue: 0, combos: 0 }
+  coins = { track: 0, air: 0, flips: 0, wheelies: 0, milestones: 0, rescue: 0, combos: 0, stunts: 0 }
   /** Stars found in this run (their ids). */
   starsFound: string[] = []
   /**
@@ -148,11 +157,18 @@ export class Run {
   private emptyBestX = -Infinity
   private stuckSteps = 0
   private nextMilestone: number
+  private loopsPaid = 0
+  /** Stuntbanan: steps spent stopped on the roof (a loop can drop a car on it without the head touching). */
+  private roofSteps = 0
+  private nextGap = 0
+  private readonly fallLine: ((x: number) => number | null) | null
 
   constructor(readonly options: RunOptions) {
     this.thrustLeft = options.vehicle.thrusters?.seconds ?? 0
     const { vehicle, height, gravity, groundFriction, puddles } = options
-    this.sim = new Sim({ vehicle, height, gravity, groundFriction, puddles })
+    const stunt = options.stunt
+    this.sim = new Sim({ vehicle, height, gravity, groundFriction, puddles, obstacles: stunt === undefined ? undefined : stuntObstacles(stunt) })
+    this.fallLine = stunt === undefined ? null : stuntFallLine(stunt)
     options.pickups.ensure(60)
     const every = RULES.milestoneEvery
     this.nextMilestone = Math.floor(options.bestDistance / every) * every + every
@@ -160,7 +176,7 @@ export class Run {
 
   get totalCoins(): number {
     const c = this.coins
-    return c.track + c.air + c.flips + c.wheelies + c.milestones + c.rescue + c.combos
+    return c.track + c.air + c.flips + c.wheelies + c.milestones + c.rescue + c.combos + c.stunts
   }
 
   /** GO: the revs at that moment decide the start (sim/launch.ts). */
@@ -215,7 +231,7 @@ export class Run {
       } else if (this.sim.vehicle.wheelContacts().some(Boolean)) this.thrustLeft = Math.min(th.seconds, this.thrustLeft + STEP * th.refill)
     }
     // Hjälp: on the ground, a torque against tipping too far from the slope, growing with the tilt.
-    if (this.options.assist && this.sim.vehicle.wheelContacts().some(Boolean)) {
+    if (this.options.assist && !this.sim.inLoop && this.sim.vehicle.wheelContacts().some(Boolean)) {
       const x = v.chassis.getPosition().x
       const tilt = wrapAngle(v.chassis.getAngle() - this.slopeAngle(x))
       const over = Math.abs(tilt) - RULES.assistTilt
@@ -237,13 +253,14 @@ export class Run {
     const s = this.sim.state()
     this.sway.update(this.sim.vehicle.chassis, STEP)
     this.collect(s)
-    if (this.headOnGround()) {
+    if (this.headOnGround() || this.fellIn(s) || this.stuckOnRoof(s)) {
       this.status = 'crashed'
       this.endDistance = s.distance
       this.ragdoll = new Ragdoll(this.sim.world, this.sim.vehicle, this.sway.lean)
       return
     }
     this.stunts(s)
+    this.stuntTrack(s)
     this.comboClock(s)
     this.milestones(s)
     if (this.options.finish !== undefined && s.distance >= this.options.finish) {
@@ -268,6 +285,39 @@ export class Run {
       this.stoppedSteps = 0
       this.stuckSteps = 0
       this.emptyBestX = -Infinity
+    }
+  }
+
+  /** Stuntbanan: fallen into a pit (below the line a jump can still make it out from). */
+  private fellIn(s: SimState): boolean {
+    const line = this.fallLine?.(s.chassis.x)
+    return line !== null && line !== undefined && s.chassis.y < line
+  }
+
+  /** Stuntbanan: lying still upside down for a second and a half ends the run. */
+  private stuckOnRoof(s: SimState): boolean {
+    if (this.options.stunt === undefined) return false
+    const upside = Math.abs(wrapAngle(s.chassis.angle - this.slopeAngle(s.chassis.x))) > 2.2
+    this.roofSteps = upside && Math.abs(s.speed) < 1 ? this.roofSteps + 1 : 0
+    return this.roofSteps * STEP > 1.5
+  }
+
+  /** Stuntbanan: pays for each loop driven round and each pit jumped; both count as tricks. */
+  private stuntTrack(s: SimState): void {
+    if (this.options.stunt === undefined) return
+    while (this.loopsPaid < this.sim.loopsDone) {
+      this.loopsPaid++
+      this.coins.stunts += RULES.loopCoins
+      this.events.push({ kind: 'stunt', what: 'loop', value: RULES.loopCoins, x: s.chassis.x, y: s.chassis.y })
+      this.addTrick(RULES.loopCoins)
+    }
+    const f = featureNear(s.chassis.x, this.options.stunt)
+    if (f?.kind === 'gap' && f.index >= this.nextGap && !s.airborne && s.chassis.x > f.start + 7 + f.size) {
+      this.nextGap = f.index + 1
+      const value = Math.round(RULES.gapCoins + RULES.gapCoinsPerMetre * f.size)
+      this.coins.stunts += value
+      this.events.push({ kind: 'stunt', what: 'gap', value, x: s.chassis.x, y: s.chassis.y })
+      this.addTrick(value)
     }
   }
 

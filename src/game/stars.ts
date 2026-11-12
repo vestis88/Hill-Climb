@@ -1,5 +1,6 @@
 import { heightFor, type Environment } from '../data/environments'
 import { setPiecesBetween } from '../sim/terrain'
+import { stuntObstacles } from '../sim/stunt'
 
 /**
  * Hidden stars: three per map, high above the first three jumps and table-tops (set pieces) along
@@ -23,6 +24,13 @@ export function starsFor(env: Environment): Star[] {
   if (env.variant) return []
   const hit = cache.get(env.id)
   if (hit) return hit
+  // Stuntbanan: at the top of the second to fourth loops, for going all the way round.
+  if (env.stunt) {
+    const loops = stuntObstacles(env.seed)(0, 3000).flatMap((o) => (o.kind === 'loop' ? [o] : []))
+    const stars = loops.slice(1, 4).map((o, i) => ({ id: `star:${env.id}:${i}`, x: o.cx, y: o.cy + o.r - 0.9 }))
+    cache.set(env.id, stars)
+    return stars
+  }
   const h = heightFor(env)
   const flat = env.terrain.flatStart
   const pieces = setPiecesBetween(env.seed, 0, 6000).filter((p) => p.kind !== 'whoops').slice(0, 3)
