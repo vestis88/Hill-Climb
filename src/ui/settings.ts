@@ -4,12 +4,14 @@ export interface Settings {
   volume: number
   /** Gas on the left, brake on the right. */
   swapPedals: boolean
+  /** Which ghost riders to race: all of them, only records, or none. */
+  ghosts: 'all' | 'records' | 'off'
 }
 
 const KEY = 'ridgeline.settings'
 
 export function loadSettings(): Settings {
-  const defaults: Settings = { sound: true, volume: 0.7, swapPedals: false }
+  const defaults: Settings = { sound: true, volume: 0.7, swapPedals: false, ghosts: 'all' }
   try {
     const raw = localStorage.getItem(KEY)
     return raw ? { ...defaults, ...JSON.parse(raw) } : defaults
@@ -28,6 +30,7 @@ export function saveSettings(s: Settings): void {
 
 import { setTestMode, tuningEnabled } from './tuning'
 import { showCode, type CloudSync } from '../save/cloud'
+import { screenInfo } from './viewport'
 
 const when = (t: number | null) => (t ? new Date(t).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }) : '')
 
@@ -61,8 +64,10 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
         <div><span>Volym</span><input type="range" min="0" max="1" step="0.05" value="${s.volume}" data-act="volume" style="width:55%"></div>
         <div><span>Testläge<br><small style="opacity:.7">Allt upplåst, inget köpt</small></span><span class="seg"><button data-test="off" class="${tuningEnabled() ? '' : 'on'}">Av</button><button data-test="on" class="${tuningEnabled() ? 'on' : ''}">På</button></span></div>
         ${syncRows(cloud, joining, joinError)}
+        <div><span>Spöken</span><span class="seg"><button data-ghosts="all" class="${s.ghosts === 'all' ? 'on' : ''}">Alla</button><button data-ghosts="records" class="${s.ghosts === 'records' ? 'on' : ''}">Bara rekord</button><button data-ghosts="off" class="${s.ghosts === 'off' ? 'on' : ''}">Av</button></span></div>
         <div><span>Pedaler</span><span class="seg"><button data-pedals="normal" class="${s.swapPedals ? '' : 'on'}">Broms vänster</button><button data-pedals="swap" class="${s.swapPedals ? 'on' : ''}">Gas vänster</button></span></div>
       </div>
+      <div class="screeninfo">${screenInfo()}</div>
       <div class="actions">
         ${confirming
           ? `<span>Radera alla mynt, uppgraderingar och upplåsningar${cloud?.code ? ' på den här enheten (synkningen stoppas också)' : ''}?</span><button class="small" data-act="reset-yes" style="background:#e5383b">Ja, nollställ</button><button class="small" data-act="reset-no">Avbryt</button>`
@@ -84,6 +89,7 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
     if (!b) return
     if (b.dataset.sound) s.sound = b.dataset.sound === 'on'
     else if (b.dataset.pedals) s.swapPedals = b.dataset.pedals === 'swap'
+    else if (b.dataset.ghosts) s.ghosts = b.dataset.ghosts as Settings['ghosts']
     else if (b.dataset.test) setTestMode(b.dataset.test === 'on')
     else if (b.dataset.act === 'back') return onBack()
     else if (b.dataset.act === 'reset') confirming = true
