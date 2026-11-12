@@ -169,6 +169,12 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
   a single run (backflips, frontflips, air time, a long wheelie, distance on a given map, coins in
   one run, a combo of so many tricks), each paying 100 to 500 coins. A finished one shows in the
   results and is replaced by a new kind; test-mode runs do not count (code: `src/game/missions.ts`).
+- **Hjälp (settings, per player):** for a young player: fuel lasts 1.6 times longer, too many revs
+  at the start just gives a normal start, and on the ground a gentle hand stops the vehicle tipping
+  over backwards or onto its nose.
+- **Familjen (in Topplista):** every round with several players has a winner, and every cup too;
+  the table shows each player's round wins, cups and wins this week, and Veckans vinnare (most
+  round wins in the last seven days).
 - **Tävling (tournament):** with two or more players ticked, the garage's "🏆 Tävling: 3 banor"
   starts a cup on three of the family's maps (different ones when three are owned) in the chosen
   mode. Each track is a round; placings give 5, 3, 2 and 1 points (ties share), the table shows

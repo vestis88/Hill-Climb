@@ -39,6 +39,9 @@ export interface SaveData {
   missions?: Record<string, Mission[]>
   /** Each player's pattern and hat (this device; the items bought are in unlocked). */
   outfits?: Record<string, { pattern: Pattern; hat: Hat }>
+  /** The family table: who won each round (and each cup) with several players, and when (this device). */
+  roundWins?: { at: number; winner: string }[]
+  cupWins?: { at: number; winner: string }[]
 }
 
 export interface Score {
