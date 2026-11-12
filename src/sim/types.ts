@@ -87,6 +87,8 @@ export interface VehicleSpec {
    * studded paddle tyres never grip less than `minGrip` (ice, snow, sand).
    */
   amphibious?: { minGrip: number }
+  /** Fuel burnt relative to the others (1 when absent): the Monster Truck drinks more. */
+  fuelUse?: number
   /** The driver's head, for crash detection. The run ends if it touches the ground. */
   driver: { head: Vec2; headRadius: number }
   airControl: {

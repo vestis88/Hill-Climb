@@ -226,6 +226,98 @@ export const roverFull: VehicleSpec = {
   amphibious: { minGrip: 0.95 },
 }
 
+/**
+ * Tractor: huge rear wheels and a tiny front pair, a low and forward weight. Very slow, but it
+ * climbs almost anything and hardly ever tips over backwards; a good first vehicle for a young
+ * driver. The drivetrain upgrade adds front-wheel drive. Base spec.
+ */
+export const tractor: VehicleSpec = {
+  id: 'tractor',
+  chassis: {
+    polygon: [
+      { x: -1.15, y: -0.3 },
+      { x: 1.55, y: -0.3 },
+      { x: 1.6, y: 0.35 },
+      { x: 0.2, y: 0.45 },
+      { x: -1.1, y: 0.4 },
+    ],
+    mass: 13,
+    centerOfMass: { x: 0.35, y: -0.2 },
+  },
+  wheels: [
+    { anchor: { x: -0.85, y: -0.3 }, radius: 0.8, mass: 2.4, friction: 0.55, springHz: 3.2, damping: 0.75, axle: 'rear' },
+    { anchor: { x: 1.25, y: -0.62 }, radius: 0.42, mass: 0.8, friction: 0.55, springHz: 3.6, damping: 0.75, axle: 'front' },
+  ],
+  engine: {
+    maxTorque: 62,
+    frontShare: 0,
+    torqueFalloff: 0.35,
+    maxWheelSpeed: 12,
+    brakeTorque: 70,
+    revTime: 0.95,
+    reverseWheelSpeed: 5,
+    idleDragTorque: 3,
+    gearbox: { gears: 3, shiftTime: 0.3, cut: 0.5 },
+  },
+  driver: { head: { x: -0.45, y: 1.35 }, headRadius: 0.21 },
+  airControl: { spinRate: 1.4, spinResponse: 8, groundTorque: 0 },
+}
+
+export const tractorFull: VehicleSpec = {
+  ...tractor,
+  wheels: tractor.wheels.map((w) => ({ ...w, friction: 1.1, damping: 0.95 })),
+  engine: { ...tractor.engine, maxTorque: 88, torqueFalloff: 0.2, maxWheelSpeed: 19, frontShare: 0.6 },
+}
+
+/**
+ * Monster Truck: giant soft wheels on long, bouncy suspension; big air and easy backflips. Heavy
+ * and thirsty: it burns fuel 40 % faster than the others. Base spec.
+ */
+export const monster: VehicleSpec = {
+  id: 'monster',
+  chassis: {
+    polygon: [
+      { x: -1.7, y: -0.15 },
+      { x: 1.7, y: -0.15 },
+      { x: 1.75, y: 0.35 },
+      { x: 0.8, y: 0.45 },
+      { x: 0.5, y: 1.05 },
+      { x: -0.6, y: 1.05 },
+      { x: -0.7, y: 0.45 },
+      { x: -1.75, y: 0.4 },
+    ],
+    mass: 14,
+    centerOfMass: { x: 0.05, y: -0.25 },
+  },
+  wheels: [
+    { anchor: { x: -1.3, y: -0.85 }, radius: 0.95, mass: 2.6, friction: 0.35, springHz: 2.3, damping: 0.38, axle: 'rear' },
+    { anchor: { x: 1.3, y: -0.85 }, radius: 0.95, mass: 2.6, friction: 0.35, springHz: 2.3, damping: 0.38, axle: 'front' },
+  ],
+  engine: {
+    maxTorque: 60,
+    frontShare: 0.5,
+    torqueFalloff: 0.5,
+    maxWheelSpeed: 16,
+    brakeTorque: 90,
+    revTime: 1.0,
+    reverseWheelSpeed: 7,
+    idleDragTorque: 4,
+    gearbox: { gears: 4, shiftTime: 0.22, cut: 0.55 },
+  },
+  fuelUse: 1.4,
+  driver: { head: { x: -0.05, y: 0.95 }, headRadius: 0.22 },
+  airControl: { spinRate: 2.6, spinResponse: 12, groundTorque: 0 },
+}
+
+export const monsterFull: VehicleSpec = {
+  ...monster,
+  // A lower centre of mass when fully built: full power must not flip it at the start.
+  chassis: { ...monster.chassis, centerOfMass: { x: 0.1, y: -0.4 } },
+  wheels: monster.wheels.map((w) => ({ ...w, friction: 1.0, damping: 0.55 })),
+  engine: { ...monster.engine, maxTorque: 90, torqueFalloff: 0.25, maxWheelSpeed: 25 },
+  airControl: { ...monster.airControl, spinRate: 3.6, spinResponse: 15 },
+}
+
 export const VEHICLES: VehicleEntry[] = [
   {
     id: 'runabout', name: 'Buggyn', blurb: 'Liten, lätt och lättkörd', price: 0, base: runabout, full: runaboutFull,
@@ -245,6 +337,16 @@ export const VEHICLES: VehicleEntry[] = [
   {
     id: 'rover', name: 'Träskkryparen', blurb: 'Amfibie: flyter genom pölar, greppar på snö och is', price: 10000, base: rover, full: roverFull,
     upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'weight', name: 'Lättare skrov', blurb: 'Mindre vikt: snabbare från start och uppför backar' }],
+    launchSafe: true,
+  },
+  {
+    id: 'tractor', name: 'Traktorn', blurb: 'Långsam men klättrar överallt och välter nästan aldrig', price: 8000, base: tractor, full: tractorFull,
+    upgrades: [ENGINE, TYRES, SUSPENSION, { ...DRIVETRAIN, blurb: 'Fyrhjulsdrift: kraft till framhjulen också' }],
+    launchSafe: true,
+  },
+  {
+    id: 'monster', name: 'Monstertrucken', blurb: 'Jättehjul, studsar högt, lätta bakåtvolter; törstig', price: 18000, base: monster, full: monsterFull,
+    upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'flip', name: 'Voltkontroll', blurb: 'Snurrar snabbare i luften: lättare volter' }],
     launchSafe: true,
   },
 ]

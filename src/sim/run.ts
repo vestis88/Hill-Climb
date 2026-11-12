@@ -175,7 +175,7 @@ export class Run {
       v.chassis.applyForceToCenter(Vec2(Math.cos(a) * mass * push, Math.sin(a) * mass * push), true)
     } else if (!input.gas) this.launchLeft = 0
     this.sim.step(input)
-    this.fuel -= STEP / (input.gas ? RULES.fuelSecondsOnGas : RULES.fuelSecondsIdle)
+    this.fuel -= (STEP / (input.gas ? RULES.fuelSecondsOnGas : RULES.fuelSecondsIdle)) * (this.options.vehicle.fuelUse ?? 1)
     this.fuel = Math.max(0, this.fuel)
 
     const s = this.sim.state()

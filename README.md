@@ -31,6 +31,13 @@ or with any single upgrade maxed, full gas from a standstill on flat ground
 does not flip them (on Green Meadows and Frost Pass). Mixed in-between setups
 can, and the Scrambler can at any time.
 
+Two more (phase 6):
+
+| Vehicle | Price | Character |
+|---|---|---|
+| Traktorn (tractor) | 8,000 coins | Huge rear wheels, tiny front, low and forward weight: very slow but climbs almost anything and hardly ever tips backwards; good for young drivers. Its fourth upgrade adds front-wheel drive |
+| Monstertrucken (monster truck) | 18,000 coins | Giant soft wheels on long bouncy suspension, big air and easy backflips (Voltkontroll upgrade); heavy and thirsty, it burns fuel 40 % faster (`fuelUse`) |
+
 ### Environments
 
 | Environment | Unlock | What is different |

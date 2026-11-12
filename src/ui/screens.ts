@@ -86,7 +86,7 @@ export function showGarage(el: HTMLElement, v: GarageView): void {
     <div class="bar"><h1>Ridgeline${v.testMode ? ' <span class="badge">TESTLÄGE</span>' : ''}</h1>
       <div class="players" role="group" aria-label="Vem spelar">${v.players.map((p) => `<button class="player ${p.on ? 'on' : ''}" data-player="${p.name}" style="--c:${p.colour}" aria-pressed="${p.on}"><span class="tick">${p.on ? '✓' : ''}</span>${p.name}</button>`).join('')}</div>
       <span class="coins">● ${v.coins}</span><button class="big" data-act="drive" ${v.players.some((p) => p.on) ? '' : 'disabled'}>Kör</button></div>
-    <div class="choices">${v.vehicles.map((c) => choice('vehicle', c)).join('')}</div>
+    <div class="choices vehicles">${v.vehicles.map((c) => choice('vehicle', c)).join('')}</div>
     <div class="label">Uppgraderingar för ${v.vehicleName}</div>
     <div class="cards">${v.upgrades.map(card).join('')}</div>
     <div class="modebar"><span class="label">Läge</span><div class="seg">${v.modes.map((m) => `<button class="${m.on ? 'on' : ''}" data-mode="${m.id}">${m.name}</button>`).join('')}</div></div>
