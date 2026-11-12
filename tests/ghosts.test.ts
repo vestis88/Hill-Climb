@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { environment, heightFor } from '../src/data/environments'
 import { runabout } from '../src/data/vehicles'
-import { GHOST_EVERY, GhostRecorder, GhostTrack, loadGhost, storeGhost } from '../src/save/ghosts'
+import { bestOf, GHOST_EVERY, GhostRecorder, GhostTrack, loadGhost, storeGhost, type Ghost } from '../src/save/ghosts'
 import type { SimState } from '../src/sim/types'
 import { Sim, STEP } from '../src/sim/world'
 
@@ -91,5 +91,15 @@ describe('ghosts', () => {
     storeGhost({ ...ghost, player: 'Frans', distance: 10 })
     storeGhost({ ...ghost, player: 'Wille', distance: 20 })
     expect(loadGhost('Wille', 'meadow', 'best')!.distance).toBe(20)
+  })
+})
+
+describe('the record ghost for a round with several players', () => {
+  const g = (player: string, distance: number, time?: number): Ghost => ({ v: 1, player, vehicle: 'runabout', env: 'meadow', distance, time, wheels: 2, data: [1] })
+
+  it('is the furthest endless run, or the fastest race, across everyone', () => {
+    expect(bestOf([g('Wille', 300), null, g('Frans', 450), g('Bim', 200)])!.player).toBe('Frans')
+    expect(bestOf([g('Wille', 500, 70), g('Frans', 500, 64), g('Bim', 320)])!.player).toBe('Frans')
+    expect(bestOf([null, undefined])).toBeNull()
   })
 })
