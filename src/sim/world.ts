@@ -64,7 +64,9 @@ export class Sim {
         const b = contact.getFixtureB().getBody()
         const wheel = wheels.has(a) ? a : wheels.has(b) ? b : null
         if (!wheel || (a !== ground && b !== ground)) return
-        let f = contact.getFriction()
+        // Start from the tyre and ground's own friction every step: the contact keeps the value
+        // set last step, so scaling that would compound towards zero grip.
+        let f = Math.sqrt(contact.getFixtureA().getFriction() * contact.getFixtureB().getFriction())
         // Studs bite only on slippery ground (snow, ice, mud, sand); on grass and rock the
         // soft balloon tyres are all it has.
         if (amphibious && (options.groundFriction ?? TERRAIN_FRICTION) < 0.7) f = Math.max(f, amphibious.minGrip)
