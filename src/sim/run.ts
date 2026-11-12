@@ -37,6 +37,9 @@ export const RULES = {
   wheelieCoinsPerMetre: 2,
   /** Combos: seconds on the ground (not on the back wheel) before a chain ends and pays. */
   comboGap: 2.5,
+  /** Turbo canister: seconds of extra push forward while the gas is held, and how strong (m/s²). */
+  turboSeconds: 3,
+  turboPush: 4.5,
   /** Combo multiplier for n tricks in a chain: ×1.5 for two, +0.5 per trick, up to ×4. */
   comboMultiplier: (tricks: number) => Math.min(4, 1 + 0.5 * (tricks - 1)),
   /** A landing within this angle of the ground (radians, about 40 degrees) keeps a combo going. */
@@ -63,6 +66,7 @@ export type RunEvent =
   | { kind: 'wheelie'; value: number; metres: number; multiplier: number }
   | { kind: 'combo'; value: number; tricks: number; multiplier: number }
   | { kind: 'comboLost'; tricks: number }
+  | { kind: 'turbo'; x: number; y: number }
   | { kind: 'milestone'; value: number; distance: number }
 
 export interface RunOptions {
@@ -97,6 +101,8 @@ export class Run {
    * chain ends it pays a bonus on top of the tricks. A messy landing or a crash loses it.
    */
   combo: { tricks: number; coins: number } | null = null
+  /** Seconds of turbo left (from a turbo canister); read by the HUD. */
+  turboLeft = 0
   /** What this run did, for missions (game/missions.ts). */
   stats = { backflips: 0, frontflips: 0, airSeconds: 0, longestWheelie: 0, maxCombo: 0 }
   private comboGround = 0
@@ -176,6 +182,15 @@ export class Run {
       const push = effect.push * fade
       v.chassis.applyForceToCenter(Vec2(Math.cos(a) * mass * push, Math.sin(a) * mass * push), true)
     } else if (!input.gas) this.launchLeft = 0
+    // Turbo: a push along the vehicle while the gas is held, through the centre of mass.
+    if (this.turboLeft > 0) {
+      this.turboLeft = Math.max(0, this.turboLeft - STEP)
+      if (input.gas) {
+        const mass = [v.chassis, ...v.wheels].reduce((m, b) => m + b.getMass(), 0)
+        const a = v.chassis.getAngle()
+        v.chassis.applyForceToCenter(Vec2(Math.cos(a) * mass * RULES.turboPush, Math.sin(a) * mass * RULES.turboPush), true)
+      }
+    }
     this.sim.step(input)
     this.fuel -= (STEP / (input.gas ? RULES.fuelSecondsOnGas : RULES.fuelSecondsIdle)) * (this.options.vehicle.fuelUse ?? 1)
     this.fuel = Math.max(0, this.fuel)
@@ -238,6 +253,9 @@ export class Run {
       if (p.kind === 'coin') {
         this.coins.track += p.value
         this.events.push({ kind: 'coin', value: p.value, x: p.x, y: p.y })
+      } else if (p.kind === 'turbo') {
+        this.turboLeft = RULES.turboSeconds
+        this.events.push({ kind: 'turbo', x: p.x, y: p.y })
       } else {
         const bonus = this.fuel <= 0 ? RULES.emptyRescueBonus : 0
         this.coins.rescue += bonus

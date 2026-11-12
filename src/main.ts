@@ -39,6 +39,7 @@ const endRunBtn = $('endRun')
 const pauseBtn = $('pauseBtn')
 const pausedEl = $('paused')
 const updateBtn = $('update')
+const hornBtn = $('horn')
 
 const settings = loadSettings()
 const sound = new Sound()
@@ -188,6 +189,7 @@ function show(m: Mode): void {
   settingsEl.classList.toggle('hidden', m !== 'settings')
   endRunBtn.classList.toggle('hidden', m !== 'driving')
   pauseBtn.classList.toggle('hidden', m !== 'driving')
+  hornBtn.classList.toggle('hidden', m !== 'driving')
   pausedEl.classList.add('hidden')
   paused = false
   document.body.classList.toggle('playing', m === 'driving' || m === 'ending')
@@ -203,6 +205,7 @@ function pause(): void {
   pausedEl.classList.remove('hidden')
   pauseBtn.classList.add('hidden')
   endRunBtn.classList.add('hidden')
+  hornBtn.classList.add('hidden')
   controls.reset()
 }
 function resume(): void {
@@ -211,9 +214,15 @@ function resume(): void {
   pausedEl.classList.add('hidden')
   pauseBtn.classList.remove('hidden')
   endRunBtn.classList.remove('hidden')
+  hornBtn.classList.remove('hidden')
   controls.reset()
 }
 pauseBtn.addEventListener('click', pause)
+// The horn: just for fun, it changes nothing.
+hornBtn.addEventListener('pointerdown', (e) => {
+  e.stopPropagation()
+  sound.horn(driveVehicle().id)
+})
 pausedEl.addEventListener('click', (e) => {
   const act = (e.target as HTMLElement).closest('button')?.dataset.act
   if (act === 'resume') resume()
@@ -698,6 +707,7 @@ function cupView() {
 endRunBtn.addEventListener('click', finishRun)
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyR' && mode === 'driving') startRun()
+  if (e.code === 'KeyH' && mode === 'driving') sound.horn(driveVehicle().id)
   if ((e.code === 'Enter' || e.code === 'Space') && mode === 'garage') startRound()
 })
 // Bank the run's coins if the page is closed or hidden mid-run.
@@ -723,6 +733,11 @@ function handleEvents(): void {
   for (const e of run.events) {
     if (e.kind === 'coin') sound.coin()
     else if (e.kind === 'fuel') sound.fuel()
+    else if (e.kind === 'turbo') {
+      sound.turbo()
+      popups.push({ text: 'Turbo!', at: { x: e.x, y: e.y }, age: 0 })
+      renderer.sparkle(e.x, e.y, '#7fc4ff')
+    }
     else if (e.kind === 'flip' || e.kind === 'milestone' || e.kind === 'air' || e.kind === 'wheelie' || e.kind === 'combo') {
       sound.fanfare()
       renderer.cheer()
@@ -826,6 +841,7 @@ function frame(now: number): void {
     input: controls.input,
     pickups: run.options.pickups.items,
     wheelie: mode === 'driving' ? run.wheelieNow : null,
+    turbo: mode === 'driving' ? run.turboLeft / RULES.turboSeconds : 0,
     combo: mode === 'driving' && run.combo && run.combo.tricks >= 2 ? { tricks: run.combo.tricks, multiplier: RULES.comboMultiplier(run.combo.tricks) } : null,
     atmosphere: mode === 'driving' || mode === 'ending' || mode === 'results' ? atmosphere : undefined,
     nextFuel: (() => {

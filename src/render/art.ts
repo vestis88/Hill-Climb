@@ -945,6 +945,14 @@ export function drawPickup(ctx: Ctx, p: Pickup, t: number): void {
       ctx.closePath()
       ctx.fill()
     }
+  } else if (p.kind === 'turbo') {
+    // A blue turbo canister with a lightning flash, glowing.
+    const bob = Math.sin(t * 3 + p.x) * 0.07
+    ctx.translate(0, bob)
+    glow(ctx, 0, 0, 0.9, 'rgba(90, 170, 255, 0.45)')
+    rrect(ctx, -0.26, -0.5, 0.52, 0.95, 0.16, '#2f7fe0')
+    rrect(ctx, -0.12, 0.45, 0.24, 0.12, 0.04, '#b8bfca')
+    poly(ctx, [[0.06, 0.3], [-0.14, -0.02], [0.02, -0.02], [-0.06, -0.32], [0.16, 0.04], [0.0, 0.04]], '#ffd23f')
   } else {
     const bob = Math.sin(t * 2.5 + p.x) * 0.06
     ctx.translate(0, bob)

@@ -600,6 +600,29 @@ export class Sound {
     this.tone(900, 0, 1, 'sawtooth', 0.035, 1300)
   }
 
+  /** A turbo canister: a rising whoosh. */
+  turbo(): void {
+    this.noise(0, 0.6, 0.5, 3000)
+    this.tone(220, 0, 0.6, 'sawtooth', 0.08, 880)
+  }
+
+  /** The horn: each vehicle has its own. */
+  horn(vehicle: string): void {
+    const notes: Record<string, [number[], number, OscillatorType, number]> = {
+      runabout: [[520, 660], 0.14, 'square', 0.1],
+      scrambler: [[880, 990], 0.12, 'square', 0.08],
+      hauler: [[220, 277], 0.45, 'sawtooth', 0.12],
+      rover: [[330], 0.25, 'triangle', 0.2],
+      tractor: [[175, 233], 0.5, 'square', 0.09],
+      monster: [[185, 233, 277], 0.7, 'sawtooth', 0.1],
+    }
+    const [freqs, length, wave, gain] = notes[vehicle] ?? notes.runabout
+    if (vehicle === 'runabout' || vehicle === 'scrambler') {
+      // Beep-beep.
+      for (const at of [0, length + 0.06]) freqs.forEach((f) => this.tone(f, at, length, wave, gain))
+    } else freqs.forEach((f) => this.tone(f, 0, length, wave, gain, vehicle === 'rover' ? f * 0.8 : undefined))
+  }
+
   tap(): void {
     this.tone(880, 0, 0.06, 'triangle', 0.12)
   }
