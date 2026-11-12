@@ -186,37 +186,45 @@ export interface TurnView {
   /** The round's players in turn order, and whose turn it is now. */
   players: { name: string; colour: string }[]
   turn: number
-  /** Track, vehicle and mode, for the round. */
+  /** Track and mode, for the round. */
   info: string
+  /** The vehicles this player can pick (the ones the family owns), with theirs selected. */
+  vehicles: { id: string; name: string; selected: boolean; preview: (c: HTMLCanvasElement) => void }[]
+  onVehicle(id: string): void
   onGo(): void
   onBack(): void
 }
 
-/** Before the first turn of a round with several players: who starts, and the order after. */
+/** Before each turn of a round with several players: whose turn, the order, and their vehicle. */
 export function showTurn(el: HTMLElement, v: TurnView): void {
   const p = v.players[v.turn]
+  const first = v.turn === 0
   el.innerHTML = `
-    <h2>Ny omgång</h2>
+    <h2>${first ? 'Ny omgång' : 'Nästa tur'}</h2>
     <div class="best">${v.info}</div>
-    <div class="who big-who" style="--c:${p.colour}">${p.name} börjar!</div>
-    <div class="order">${v.players.map((q, i) => `${i ? '<span class="arrow">→</span>' : ''}<span class="pchip ${i === v.turn ? 'on' : ''}" style="--c:${q.colour}"><b>${i + 1}</b> ${q.name}</span>`).join('')}</div>
+    <div class="who big-who" style="--c:${p.colour}">${first ? `${p.name} börjar!` : `${genitive(p.name)} tur!`}</div>
+    <div class="order">${v.players.map((q, i) => `${i ? '<span class="arrow">→</span>' : ''}<span class="pchip ${i === v.turn ? 'on' : ''} ${i < v.turn ? 'done' : ''}" style="--c:${q.colour}"><b>${i + 1}</b> ${q.name}</span>`).join('')}</div>
+    <div class="turn-vehicles" style="--c:${p.colour}">${v.vehicles.map((x) => `<button class="tveh ${x.selected ? 'on' : ''}" data-veh="${x.id}"><canvas data-tthumb="${x.id}"></canvas><span>${x.name}</span></button>`).join('')}</div>
     <div class="actions">
       <button class="big" data-act="back">Garaget</button>
       <button class="big blue" data-act="go">Kör, ${p.name}!</button>
     </div>`
+  for (const x of v.vehicles) {
+    const c = el.querySelector<HTMLCanvasElement>(`canvas[data-tthumb="${x.id}"]`)
+    if (c) requestAnimationFrame(() => c.clientWidth && x.preview(c))
+  }
   el.onclick = (e) => {
     const b = (e.target as HTMLElement).closest('button')
-    if (b?.dataset.act === 'go') v.onGo()
+    if (b?.dataset.veh) v.onVehicle(b.dataset.veh)
+    else if (b?.dataset.act === 'go') v.onGo()
     else if (b?.dataset.act === 'back') v.onBack()
   }
 }
 
 export interface StandingsView {
   track: string
-  vehicle: string
-  /** This round's runs, furthest first. */
   /** Furthest (endless) or fastest (race) first, with the result already written out. */
-  rows: { name: string; colour: string; result: string; newBest: boolean }[]
+  rows: { name: string; colour: string; vehicle: string; result: string; newBest: boolean }[]
   onHome(): void
   onAgain(): void
 }
@@ -226,8 +234,8 @@ export function showStandings(el: HTMLElement, v: StandingsView): void {
   const medal = ['🥇', '🥈', '🥉']
   el.innerHTML = `
     <h2>Omgångens resultat</h2>
-    <div class="best">${v.track} · ${v.vehicle}</div>
-    <div class="rows standings">${v.rows.map((r, i) => `<div style="--c:${r.colour}"><span>${medal[i] ?? ''} <b class="pname">${r.name}</b></span><span>${r.result} ${r.newBest ? '<span class="newbest">Nytt rekord!</span>' : ''}</span></div>`).join('')}</div>
+    <div class="best">${v.track}</div>
+    <div class="rows standings">${v.rows.map((r, i) => `<div style="--c:${r.colour}"><span>${medal[i] ?? ''} <b class="pname">${r.name}</b> <small class="veh">${r.vehicle}</small></span><span>${r.result} ${r.newBest ? '<span class="newbest">Nytt rekord!</span>' : ''}</span></div>`).join('')}</div>
     <div class="actions">
       <button class="big" data-act="home">Garaget</button>
       <button class="big blue" data-act="again">Spela igen</button>
