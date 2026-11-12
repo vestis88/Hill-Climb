@@ -128,11 +128,11 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
 - **Ghost riders:** every run is recorded (the vehicle's pose 15 times a second, about 50 KB
   for two minutes) and stored on the device as that player's *last* run on that track, and as
   their *best* when it went further. Each turn you race see-through ghosts with name tags. Playing
-  alone: your own best and your own last. In a round with several players: every run driven so
-  far this round (tagged with the player's name), plus the overall record on the track and mode
-  as it stood when the round began ("Rekord · Frans"). A new round on the same track and mode
-  as the one before also brings back everyone's latest run from it ("Frans (förra)") until that
-  player drives again; the record shows once even when it is one of those runs. Overlapping
+  alone: your own best and your own last. In a round with several players: for every player in the round, their
+  latest run ("Frans senaste": this round's run, else from the round before, else their saved
+  last run) and their record ("Frans rekord"), plus the overall record on the track and mode
+  ("Rekord · Johan"), also when its holder is not playing. A run that is both someone's latest and
+  a record shows once, as the record. Overlapping
   name tags stack. Ghosts replay poses,
   not inputs, so they never affect the physics and still play back after a game update. If
   the device's storage is full, last-run ghosts are dropped first. Resetting progress clears
