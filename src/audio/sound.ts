@@ -113,6 +113,8 @@ const ENGINES: Record<string, EngineVoice> = {
   kart: { idle: 34, top: 210, firing: 1, pulse: 0, grit: 2.6, cutoff: [1600, 5600], sub: 0, noise: 0.16, waves: ['square', 'square'], volume: 0.85, kind: 'twoStroke' },
   // Snowmobile: a buzzy two-stroke twin.
   snowmobile: { idle: 32, top: 200, firing: 2, pulse: 0, grit: 2.4, cutoff: [1200, 4600], sub: 0, noise: 0.2, waves: ['square', 'sawtooth'], volume: 0.95, kind: 'twoStroke' },
+  // Moon lander: a smooth electric-sounding whine.
+  lander: { idle: 40, top: 260, firing: 4, pulse: 0, grit: 1.2, cutoff: [1200, 4000], sub: 0, noise: 0.08, waves: ['sine', 'triangle'], volume: 0.8, kind: 'i4' },
   // Monster truck: a huge V8, deeper and louder than the Hauler.
   monster: { idle: 40, top: 260, firing: 8, pulse: 0, grit: 2, cutoff: [320, 1500], sub: 0, noise: 0.14, waves: ['sawtooth', 'sawtooth'], volume: 1.2, kind: 'v8' },
 }
@@ -604,6 +606,11 @@ export class Sound {
     this.tone(900, 0, 1, 'sawtooth', 0.035, 1300)
   }
 
+  /** A puff of rocket roar, played over and over while the thrusters fire. */
+  thrust(): void {
+    this.noise(0, 0.16, 0.32, 1100)
+  }
+
   /** A turbo canister: a rising whoosh. */
   turbo(): void {
     this.noise(0, 0.6, 0.5, 3000)
@@ -620,6 +627,7 @@ export class Sound {
       tractor: [[175, 233], 0.5, 'square', 0.09],
       kart: [[740, 880], 0.1, 'square', 0.08],
       snowmobile: [[600], 0.3, 'triangle', 0.15],
+      lander: [[1200, 1500], 0.08, 'sine', 0.12],
       monster: [[185, 233, 277], 0.7, 'sawtooth', 0.1],
     }
     const [freqs, length, wave, gain] = notes[vehicle] ?? notes.runabout

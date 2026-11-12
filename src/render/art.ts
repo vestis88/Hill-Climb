@@ -25,6 +25,7 @@ export const VEHICLE_COLOURS: Record<string, { body: string; dark: string; light
   kart: { body: '#ff7a1a', dark: '#b8500a', light: '#ffb070' },
   snowmobile: { body: '#e8e8f0', dark: '#9aa0b0', light: '#ffffff' },
   monster: { body: '#8e44d1', dark: '#5f2a93', light: '#c08cf0' },
+  lander: { body: '#dfe5ee', dark: '#8b93a1', light: '#ffffff' },
 }
 
 type Ctx = CanvasRenderingContext2D
@@ -340,6 +341,11 @@ export type Mood = 'normal' | 'happy' | 'worried'
  * pattern and hat (data/outfits.ts). Null is Pip's own teal helmet with a white stripe.
  */
 let outfit: Outfit | null = null
+/** Whether the next vehicle's thrusters are firing (the Moon Lander), set by the renderer. */
+let thrusting = false
+export function setThrusting(on: boolean): void {
+  thrusting = on
+}
 export function setOutfit(o: Outfit | null): void {
   outfit = o
 }
@@ -740,7 +746,7 @@ export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDrive
   const { head, headRadius } = spec.driver
   const seat: Pt = [head.x, head.y - 0.75]
   // Where Pip's feet rest, relative to the seat: pedals in the cars, the footpeg on the bike.
-  const feet: Record<string, Pt> = { runabout: [0.55, -0.2], scrambler: [0.1, -0.46], hauler: [0.55, -0.25], rover: [0.5, -0.25], tractor: [0.5, -0.3], monster: [0.55, -0.25], kart: [0.7, -0.05], snowmobile: [0.35, -0.35] }
+  const feet: Record<string, Pt> = { runabout: [0.55, -0.2], scrambler: [0.1, -0.46], hauler: [0.55, -0.25], rover: [0.5, -0.25], tractor: [0.5, -0.3], monster: [0.55, -0.25], kart: [0.7, -0.05], snowmobile: [0.35, -0.35], lander: [0.5, -0.25] }
   const driver = (hands?: Pt) => {
     if (!withDriver) return
     ctx.save()
@@ -772,6 +778,34 @@ export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDrive
     tube(ctx, [[0.45, 0.38], [0.6, 0.66], [0.7, 0.66]], 0.05, '#2a2f38')
     glow(ctx, 1.42, 0.2, 0.5, 'rgba(255, 240, 170, 0.5)')
     rrect(ctx, 1.3, 0.14, 0.14, 0.12, 0.05, '#fff6c8')
+    return
+  }
+
+  if (spec.id === 'lander') {
+    // Moon lander: a white buggy with a gold foil band, an antenna dish and two thruster nozzles
+    // underneath that flame while boosting.
+    for (const nx of [-0.6, 0.6]) {
+      if (thrusting) {
+        const len = 0.7 + Math.random() * 0.35
+        poly(ctx, [[nx - 0.16, -0.32], [nx + 0.16, -0.32], [nx, -0.32 - len]], 'rgba(255, 170, 60, 0.9)', false)
+        poly(ctx, [[nx - 0.08, -0.32], [nx + 0.08, -0.32], [nx, -0.32 - len * 0.6]], 'rgba(255, 245, 190, 0.95)', false)
+      }
+      poly(ctx, [[nx - 0.14, -0.18], [nx + 0.14, -0.18], [nx + 0.2, -0.34], [nx - 0.2, -0.34]], '#5b6372')
+    }
+    tube(ctx, [[-0.95, 0.45], [-1.05, 1.2]], 0.04, '#b8bfca')
+    ctx.beginPath()
+    ctx.ellipse(-1.05, 1.25, 0.22, 0.1, -0.4, 0, Math.PI * 2)
+    ctx.fillStyle = '#dfe5ee'
+    ctx.fill()
+    ctx.lineWidth = LINE
+    ctx.strokeStyle = OUTLINE
+    ctx.stroke()
+    driver([0.6, 0.62 - seat[1]])
+    shaded(ctx, [[-1.2, -0.2], [1.2, -0.2], [1.3, 0.25], [0.3, 0.5], [-1.0, 0.45], [-1.3, 0.2]], c.light, c.body, c.dark)
+    poly(ctx, [[-1.22, -0.05], [1.24, -0.05], [1.27, 0.08], [-1.27, 0.08]], '#e8b33c', false)
+    tube(ctx, [[0.3, 0.48], [0.5, 0.7], [0.62, 0.68]], 0.05, '#2a2f38')
+    glow(ctx, 1.3, 0.15, 0.6, 'rgba(255, 240, 170, 0.55)')
+    rrect(ctx, 1.18, 0.1, 0.14, 0.12, 0.04, '#fff6c8')
     return
   }
 
@@ -940,6 +974,7 @@ export const EXHAUST: Record<string, Pt> = {
   rover: [-0.9, 1.08],
   tractor: [0.85, 1.25],
   kart: [-1.15, 0.05],
+  lander: [-1.3, 0.05],
   snowmobile: [-1.35, 0.1],
   monster: [-1.7, 0.1],
 }

@@ -5,7 +5,7 @@ import type { VehicleSpec } from '../sim/types'
  * four upgrades, chosen to suit it (see VehicleEntry.upgrades); an upgrade a vehicle does not
  * have simply stays at level 1 and changes nothing.
  */
-export type UpgradeId = 'engine' | 'tyres' | 'suspension' | 'drivetrain' | 'weight' | 'flip'
+export type UpgradeId = 'engine' | 'tyres' | 'suspension' | 'drivetrain' | 'weight' | 'flip' | 'thrust'
 export type Levels = Record<UpgradeId, number>
 
 export interface UpgradeInfo {
@@ -21,7 +21,7 @@ export const TYRES: UpgradeInfo = { id: 'tyres', name: 'Däck', blurb: 'Mindre h
 export const SUSPENSION: UpgradeInfo = { id: 'suspension', name: 'Fjädring', blurb: 'Mjukare landningar, välter inte lika lätt' }
 export const DRIVETRAIN: UpgradeInfo = { id: 'drivetrain', name: 'Drivlina', blurb: 'Kraft till framhjulen också' }
 
-const ALL: UpgradeId[] = ['engine', 'tyres', 'suspension', 'drivetrain', 'weight', 'flip']
+const ALL: UpgradeId[] = ['engine', 'tyres', 'suspension', 'drivetrain', 'weight', 'flip', 'thrust']
 const levelsAt = (n: number) => Object.fromEntries(ALL.map((id) => [id, n])) as Levels
 export const BASE_LEVELS: Levels = levelsAt(1)
 export const FULL_LEVELS: Levels = levelsAt(MAX_LEVEL)
@@ -47,6 +47,7 @@ export function applyUpgrades(base: VehicleSpec, full: VehicleSpec, levels: Leve
   const d = t('drivetrain')
   const w = t('weight')
   const f = t('flip')
+  const th = t('thrust')
   return {
     ...base,
     chassis: {
@@ -72,6 +73,8 @@ export function applyUpgrades(base: VehicleSpec, full: VehicleSpec, levels: Leve
     },
     // Studded tyres (Marsh Rover): the Tyres upgrade raises the grip they never drop below.
     ...(base.amphibious ? { amphibious: { minGrip: lerp(base.amphibious.minGrip, full.amphibious?.minGrip ?? base.amphibious.minGrip, g) } } : {}),
+    // Thrusters (Moon Lander): the Thrust upgrade makes the tank last longer and refill faster.
+    ...(base.thrusters && full.thrusters ? { thrusters: { push: base.thrusters.push, seconds: lerp(base.thrusters.seconds, full.thrusters.seconds, th), refill: lerp(base.thrusters.refill, full.thrusters.refill, th) } } : {}),
     airControl: {
       ...base.airControl,
       spinRate: lerp(base.airControl.spinRate, full.airControl.spinRate, f),

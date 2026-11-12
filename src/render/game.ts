@@ -7,7 +7,7 @@ import type { HeightFn, Input, Pose, SimState, VehicleSpec } from '../sim/types'
 import { ghostNearFade, type GhostPose } from '../save/ghosts'
 import type { Puddle, PuddleFn } from '../sim/types'
 import { formatTime } from '../data/modes'
-import { drawHead, drawnHubs, drawPickup, drawVehicle, drawWheel, EXHAUST, OUTLINE, setOutfit, type Mood } from './art'
+import { drawHead, drawnHubs, drawPickup, drawVehicle, drawWheel, EXHAUST, OUTLINE, setOutfit, setThrusting, type Mood } from './art'
 import type { Outfit } from '../data/outfits'
 import { Particles } from './particles'
 import { drawAtmosphere, drawBackdrop, drawForeground, drawGround, drawProps, drawWeather, themeFor } from './scenery'
@@ -53,6 +53,8 @@ export interface View {
   driver: { lean: number; ragdoll: { torso: Pose; head: Pose } | null }
   /** Whose turn it is, shown by the distance. */
   player?: { name: string; colour: string }
+  /** Thrusters (Moon Lander): tank left 0..1 and whether they are firing. */
+  thrust?: { left: number; on: boolean }
   /** Turbo left, 0..1 (from a turbo canister). */
   turbo?: number
   /** A trick chain of two or more, for the live combo counter. */
@@ -755,6 +757,7 @@ export class GameRenderer {
     const k = Math.min(1, this.shiftT / 0.35)
     const rock = this.shiftUp && k < 1 ? 0.13 * Math.sin(k * Math.PI) * (1 - k * 0.5) : 0
     setOutfit(view.outfit ?? null)
+    setThrusting(view.thrust?.on ?? false)
     drawVehicle(ctx, spec, view.driver.lean + rock, !rag, this.mood(view, chassis), hubs, view.player?.colour)
     ctx.restore()
     if (rag) {
@@ -765,6 +768,7 @@ export class GameRenderer {
       ctx.restore()
     }
     setOutfit(null)
+    setThrusting(false)
   }
 
   /** Grin after stunts and in long jumps; worried when the car tips too far. */
@@ -1047,6 +1051,23 @@ export class GameRenderer {
     }
     if (low && Math.floor(this.time / 0.3) % 2 === 0) this.outlinedText(view.fuel <= 0 ? 'SLUT PÅ BRÄNSLE' : 'LITE BRÄNSLE', warnX, gy + 22, 15, '#ff6b6b')
     if (view.spec.engine.gearbox) this.drawRevGauge(view, gx + gw + 50, gy + 14)
+    // Thrusters: an orange tank bar under the fuel line.
+    if (view.thrust) {
+      const ty = gy + 44 + (view.turbo && view.turbo > 0 ? 18 : 0)
+      const bx = x0 + 64
+      const bw = gx + gw - bx
+      ctx.beginPath()
+      ctx.roundRect(bx, ty, bw, 12, 6)
+      ctx.fillStyle = 'rgba(16, 21, 28, 0.45)'
+      ctx.fill()
+      if (view.thrust.left > 0) {
+        ctx.beginPath()
+        ctx.roundRect(bx + 2, ty + 2, (bw - 4) * view.thrust.left, 8, 4)
+        ctx.fillStyle = '#ff9a3c'
+        ctx.fill()
+      }
+      this.outlinedText('RAKET', x0, ty - 2, 13, '#ffb070')
+    }
     // Turbo: a blue bar under the fuel line while it lasts.
     if (view.turbo && view.turbo > 0) {
       const ty = gy + 44

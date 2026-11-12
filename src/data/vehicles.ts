@@ -409,6 +409,53 @@ export const snowmobileFull: VehicleSpec = {
   amphibious: { minGrip: 1.0 },
 }
 
+/**
+ * Moon Lander: a light buggy with small thrusters. The BOOST button fires them, pushing along the
+ * buggy's up direction (so in the air it can climb, hover or, tilted, push forward) from a small
+ * tank that refills on the ground. Made for Kraterfälten's low gravity. Base spec.
+ */
+export const lander: VehicleSpec = {
+  id: 'lander',
+  chassis: {
+    polygon: [
+      { x: -1.2, y: -0.2 },
+      { x: 1.2, y: -0.2 },
+      { x: 1.3, y: 0.25 },
+      { x: 0.3, y: 0.5 },
+      { x: -1.0, y: 0.45 },
+      { x: -1.3, y: 0.2 },
+    ],
+    mass: 7,
+    centerOfMass: { x: 0, y: -0.1 },
+  },
+  wheels: [
+    { anchor: { x: -0.95, y: -0.5 }, radius: 0.45, mass: 0.8, friction: 0.45, springHz: 2.8, damping: 0.6, axle: 'rear' },
+    { anchor: { x: 0.95, y: -0.5 }, radius: 0.45, mass: 0.8, friction: 0.45, springHz: 2.8, damping: 0.6, axle: 'front' },
+  ],
+  engine: {
+    maxTorque: 18,
+    frontShare: 0.3,
+    torqueFalloff: 0.5,
+    maxWheelSpeed: 26,
+    brakeTorque: 35,
+    revTime: 0.5,
+    reverseWheelSpeed: 12,
+    idleDragTorque: 1,
+    gearbox: { gears: 3, shiftTime: 0.12, cut: 0.6 },
+  },
+  thrusters: { push: 13, seconds: 1.2, refill: 0.5 },
+  driver: { head: { x: -0.2, y: 1.1 }, headRadius: 0.2 },
+  airControl: { spinRate: 2.2, spinResponse: 11, groundTorque: 0 },
+}
+
+export const landerFull: VehicleSpec = {
+  ...lander,
+  chassis: { ...lander.chassis, centerOfMass: { x: 0, y: -0.3 } },
+  wheels: lander.wheels.map((w) => ({ ...w, friction: 1.0, damping: 0.85 })),
+  engine: { ...lander.engine, maxTorque: 28, torqueFalloff: 0.25, maxWheelSpeed: 40 },
+  thrusters: { push: 13, seconds: 2.6, refill: 1 },
+}
+
 export const VEHICLES: VehicleEntry[] = [
   {
     id: 'runabout', name: 'Buggyn', blurb: 'Liten, lätt och lättkörd', price: 0, base: runabout, full: runaboutFull,
@@ -443,6 +490,11 @@ export const VEHICLES: VehicleEntry[] = [
   {
     id: 'snowmobile', name: 'Snöskotern', blurb: 'Larvband och skida: bäst av alla på snö och is', price: 12000, base: snowmobile, full: snowmobileFull,
     upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'weight', name: 'Lättare ram', blurb: 'Mindre vikt: snabbare från start och uppför backar' }],
+    launchSafe: true,
+  },
+  {
+    id: 'lander', name: 'Månlandaren', blurb: 'Raketmotorer: tryck på BOOST för att lyfta; bäst på månen', price: 14000, base: lander, full: landerFull,
+    upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'thrust', name: 'Större tankar', blurb: 'Raketerna räcker längre och laddas snabbare' }],
     launchSafe: true,
   },
   {
