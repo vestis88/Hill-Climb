@@ -168,6 +168,37 @@ export function bestOf(ghosts: (Ghost | null | undefined)[]): Ghost | null {
   return best
 }
 
+const sameRun = (a: Ghost, b: Ghost) => a.player === b.player && a.distance === b.distance && a.time === b.time && a.data.length === b.data.length
+
+/**
+ * The ghosts for a turn in a round with several players: for every player in the round, their
+ * latest run (this round's, else from the round before, else their saved last run) and their
+ * record; and the overall record, also when its holder is not playing. Each run shows once.
+ */
+export function roundGhosts(
+  players: string[],
+  everyone: string[],
+  thisRound: Ghost[],
+  previous: Ghost[],
+  stored: (player: string, kind: 'best' | 'last') => Ghost | null,
+): { ghost: Ghost; label: string }[] {
+  const overall = bestOf(everyone.map((p) => stored(p, 'best')))
+  const out: { ghost: Ghost; label: string }[] = []
+  const add = (g: Ghost | null | undefined, label: string) => {
+    if (g && g.data.length && !out.some((o) => sameRun(o.ghost, g))) out.push({ ghost: g, label })
+  }
+  const recordLabel = (g: Ghost) => (overall && sameRun(g, overall) ? `Rekord · ${g.player}` : `${g.player} rekord`)
+  for (const p of players) {
+    const best = stored(p, 'best')
+    const last = thisRound.find((g) => g.player === p) ?? previous.find((g) => g.player === p) ?? stored(p, 'last')
+    if (best) add(best, recordLabel(best))
+    // The latest run can itself be the record: then it is labelled as the record.
+    if (last) add(last, overall && sameRun(last, overall) ? `Rekord · ${p}` : `${p} senaste`)
+  }
+  if (overall) add(overall, `Rekord · ${overall.player}`)
+  return out
+}
+
 export interface StoredGhost {
   player: string
   env: string

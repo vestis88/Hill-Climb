@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { environment, heightFor } from '../src/data/environments'
 import { runabout } from '../src/data/vehicles'
-import { bestOf, GHOST_EVERY, GhostRecorder, GhostTrack, loadGhost, storeGhost, type Ghost } from '../src/save/ghosts'
+import { bestOf, roundGhosts, GHOST_EVERY, GhostRecorder, GhostTrack, loadGhost, storeGhost, type Ghost } from '../src/save/ghosts'
 import type { SimState } from '../src/sim/types'
 import { Sim, STEP } from '../src/sim/world'
 
@@ -101,5 +101,30 @@ describe('the record ghost for a round with several players', () => {
     expect(bestOf([g('Wille', 300), null, g('Frans', 450), g('Bim', 200)])!.player).toBe('Frans')
     expect(bestOf([g('Wille', 500, 70), g('Frans', 500, 64), g('Bim', 320)])!.player).toBe('Frans')
     expect(bestOf([null, undefined])).toBeNull()
+  })
+})
+
+describe('ghosts in a round with several players (owner: last and record for everyone)', () => {
+  const g = (player: string, distance: number, len = 1): Ghost => ({ v: 1, player, vehicle: 'runabout', env: 'meadow', distance, wheels: 2, data: Array(len).fill(1) })
+  const everyone = ['Wille', 'Frans', 'Johan', 'Bim']
+
+  it("shows each player's latest run and record, the overall record once, and no run twice", () => {
+    const saved: Record<string, { best?: Ghost; last?: Ghost }> = {
+      Wille: { best: g('Wille', 500), last: g('Wille', 120) },
+      Frans: { best: g('Frans', 300), last: g('Frans', 300) }, // last run was the record
+      Johan: { best: g('Johan', 900), last: g('Johan', 50) }, // not playing, but holds the record
+    }
+    const stored = (p: string, kind: 'best' | 'last') => saved[p]?.[kind] ?? null
+    // Wille already drove this round; Frans has a run from the round before.
+    const out = roundGhosts(['Wille', 'Frans', 'Bim'], everyone, [g('Wille', 200, 2)], [g('Frans', 250, 3)], stored)
+    expect(out.map((o) => o.label)).toEqual(['Wille rekord', 'Wille senaste', 'Frans rekord', 'Frans senaste', 'Rekord · Johan'])
+    expect(out.find((o) => o.label === 'Wille senaste')!.ghost.distance).toBe(200)
+    expect(out.find((o) => o.label === 'Frans senaste')!.ghost.distance).toBe(250)
+  })
+
+  it('labels the overall record by its holder, and shows a latest run that is the record once', () => {
+    const rec = g('Wille', 800)
+    const out = roundGhosts(['Wille', 'Frans'], everyone, [], [], (p, kind) => (p === 'Wille' ? rec : kind === 'last' ? g('Frans', 100) : null))
+    expect(out.map((o) => o.label)).toEqual(['Rekord · Wille', 'Frans senaste'])
   })
 })
