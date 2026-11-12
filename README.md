@@ -134,6 +134,8 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
 
 ### Players, rounds and ghosts
 
+- **Code:** the round rules (turns, results, standings, ghosts carried between rounds) live in
+  `src/game/round.ts` as plain functions with their own tests (`tests/round.test.ts`).
 - **Who plays:** tick Wille, Frans, Johan and/or Bim in the garage. Pressing Kör (Drive) starts a
   round: each ticked player drives once, in turn, on the vehicle and track picked in the garage.
   With several players, a "Ny omgång" screen first shows who starts ("Wille börjar!") and the turn
@@ -158,7 +160,8 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
   a record shows once, as the record. Overlapping
   name tags stack. Ghosts replay poses,
   not inputs, so they never affect the physics and still play back after a game update. If
-  the device's storage is full, last-run ghosts are dropped first. Resetting progress clears
+  the device's storage is full, last-run ghosts are dropped first. Ghosts are stored packed
+  (`packGhost` in `src/save/ghosts.ts`): under half the size of plain JSON, so more than twice as many fit; older ghosts still load. Resetting progress clears
   ghosts too.
 - **Always recorded:** every run is saved as the player's last ghost (and best when it
   went further or faster) and goes on the highscore board; unfinished races are listed as
