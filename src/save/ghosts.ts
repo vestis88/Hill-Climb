@@ -155,6 +155,23 @@ export function storeGhost(ghost: Ghost): void {
   }
 }
 
+/**
+ * Record key for a player's record in one vehicle: "meadow@scrambler", "meadow.race500@hauler".
+ * Stored alongside the overall record, so players can race their best in the vehicle they picked.
+ */
+export const vehicleKey = (key: string, vehicle: string) => `${key}@${vehicle}`
+
+/** Keep a finished run as the player's record in its vehicle when it beats the one stored. */
+export function storeVehicleBest(ghost: Ghost): void {
+  const env = vehicleKey(ghost.env, ghost.vehicle)
+  const current = loadGhost(ghost.player, env, 'best')
+  if (current && !betterGhost(ghost, current)) return
+  if (!putGhost('best', { ...ghost, env })) {
+    clearGhosts('last')
+    putGhost('best', { ...ghost, env })
+  }
+}
+
 /** True when ghost `a` should be kept over `b` as a best: the faster race, else the further run. */
 export function betterGhost(a: { time?: number; distance: number }, b: { time?: number; distance: number }): boolean {
   if (a.time !== undefined || b.time !== undefined) return (a.time ?? Infinity) < (b.time ?? Infinity)
@@ -181,6 +198,8 @@ export function roundGhosts(
   thisRound: Ghost[],
   previous: Ghost[],
   stored: (player: string, kind: 'best' | 'last') => Ghost | null,
+  /** The driver's record in the vehicle they are driving, shown too when it is a different run. */
+  driver?: { player: string; vehicleBest: Ghost | null; vehicleName: string },
 ): { ghost: Ghost; label: string }[] {
   const overall = bestOf(everyone.map((p) => stored(p, 'best')))
   const out: { ghost: Ghost; label: string }[] = []
@@ -192,6 +211,7 @@ export function roundGhosts(
     const best = stored(p, 'best')
     const last = thisRound.find((g) => g.player === p) ?? previous.find((g) => g.player === p) ?? stored(p, 'last')
     if (best) add(best, recordLabel(best))
+    if (driver && driver.player === p) add(driver.vehicleBest, `${p} rekord · ${driver.vehicleName}`)
     // The latest run can itself be the record: then it is labelled as the record.
     if (last) add(last, overall && sameRun(last, overall) ? `Rekord · ${p}` : `${p} senaste`)
   }

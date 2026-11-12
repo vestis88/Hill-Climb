@@ -8,7 +8,7 @@ import { createInput } from './input/input'
 import { GameRenderer, type Popup } from './render/game'
 import { drawEnvironmentPreview, drawVehiclePreview } from './render/preview'
 import { addScore, earn, emptySave, levelsFor, loadSave, playerBest, playerTime, spend, writeSave } from './save/save'
-import { clearGhosts, roundGhosts, GhostRecorder, GhostTrack, loadGhost, storeGhost, type Ghost } from './save/ghosts'
+import { clearGhosts, roundGhosts, GhostRecorder, GhostTrack, loadGhost, storeGhost, storeVehicleBest, vehicleKey, type Ghost } from './save/ghosts'
 import { CloudSync } from './save/cloud'
 import { PLAYERS, playerColour } from './data/players'
 import { formatTime, gameMode, MODES, recordKey } from './data/modes'
@@ -333,19 +333,25 @@ function pickGhosts(): void {
   const env = currentKey()
   const me = currentPlayer()
   ghosts = []
+  // Each run shows once, under the first label it gets.
   const add = (g: ReturnType<typeof loadGhost>, label: string) => {
-    if (g && g.data.length) ghosts.push({ label, colour: playerColour(g.player), track: new GhostTrack(g) })
+    const dup = (x: Ghost) => !!g && x.player === g.player && x.distance === g.distance && x.time === g.time && x.data.length === g.data.length
+    if (g && g.data.length && !ghosts.some((x) => dup(x.track.ghost))) ghosts.push({ label, colour: playerColour(g.player), track: new GhostTrack(g) })
   }
   // A round with several players: everyone's latest run and record, and the overall record.
   if (round.players.length > 1) {
-    for (const g of roundGhosts(round.players, PLAYERS.map((p) => p.name), round.ghosts, round.previous, (p, kind) => loadGhost(p, env, kind))) add(g.ghost, g.label)
+    const vehicleBest = loadGhost(me, vehicleKey(env, driveVehicle().id), 'best')
+    const driver = { player: me, vehicleBest, vehicleName: driveVehicle().name }
+    for (const g of roundGhosts(round.players, PLAYERS.map((p) => p.name), round.ghosts, round.previous, (p, kind) => loadGhost(p, env, kind), driver)) add(g.ghost, g.label)
     return
   }
   const best = loadGhost(me, env, 'best')
   const last = loadGhost(me, env, 'last')
   add(best, `${me} rekord`)
-  // The last run is often the best one too; show it once.
-  if (last && !(best && last.distance === best.distance && last.data.length === best.data.length)) add(last, `${me} senaste`)
+  // Your record in the vehicle you are driving, when it is not your overall record.
+  const vbest = loadGhost(me, vehicleKey(env, driveVehicle().id), 'best')
+  add(vbest, `${me} rekord · ${driveVehicle().name}`)
+  add(last, `${me} senaste`)
   const others = round.players.filter((p) => p !== me).map((p) => loadGhost(p, env, 'best')).filter((g) => g !== null)
   const rank = (g: { time?: number; distance: number }) => (currentMode().length ? (g.time ?? Infinity) : -g.distance)
   const top = others.sort((a, b) => rank(a) - rank(b) || b.distance - a.distance)[0]
@@ -394,7 +400,10 @@ function finishRun(): void {
   // Every counting run is kept as the player's last ghost (and best, if it went further or faster).
   if (distance > 0) {
     const ghost = recorder.finish({ player: me, vehicle: driveVehicle().id, env: key, distance, time })
-    if (counts) storeGhost(ghost)
+    if (counts) {
+      storeGhost(ghost)
+      storeVehicleBest(ghost)
+    }
     // Raced by the players after this one in the round (a retake replaces the earlier run).
     round.ghosts = [...round.ghosts.filter((g) => g.player !== me), ghost]
   }

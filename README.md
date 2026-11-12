@@ -130,8 +130,10 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
   highscore board are per name, and distance bonuses count from each player's own best.
 - **Ghost riders:** every run is recorded (the vehicle's pose 15 times a second, about 50 KB
   for two minutes) and stored on the device as that player's *last* run on that track, and as
-  their *best* when it went further. Each turn you race see-through ghosts with name tags. Playing
-  alone: your own best and your own last. In a round with several players: for every player in the round, their
+  their *best* when it went further. Each turn you race see-through ghosts with name tags. Records are kept
+  per player and track, and also per vehicle ("Wille rekord · Crossen"): the driver always races
+  their overall record, their record in the vehicle they are driving when that is a different
+  run, and their latest run. Playing alone: those three. In a round with several players: for every player in the round, their
   latest run ("Frans senaste": this round's run, else from the round before, else their saved
   last run) and their record ("Frans rekord"), plus the overall record on the track and mode
   ("Rekord · Johan"), also when its holder is not playing. A run that is both someone's latest and
