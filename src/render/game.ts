@@ -558,6 +558,9 @@ export class GameRenderer {
    */
   private drawGhosts(view: View): void {
     const { ctx } = this
+    // Name tags already placed (in pixels, y up), so overlapping tags stack instead of piling up.
+    const placed: { x: number; y: number; w: number }[] = []
+    const k = this.width / this.viewWidth
     for (const g of view.ghosts) {
       const { chassis: c, hubs, wheelAngles, fade } = g.pose
       const cos = Math.cos(c.angle)
@@ -580,15 +583,18 @@ export class GameRenderer {
       // Name tag above the ghost, upright whatever its angle.
       const head = g.spec.driver.head
       const tx = c.x + head.x * cos - (head.y + 0.55) * sin
-      const ty = c.y + head.x * sin + (head.y + 0.55) * cos
+      let ty = c.y + head.x * sin + (head.y + 0.55) * cos
+      ctx.font = `800 13px ${FONT}`
+      const w = ctx.measureText(g.label).width + 14
+      for (let tries = 0; tries < 8 && placed.some((p) => Math.abs(p.x - tx * k) < (p.w + w) / 2 + 4 && Math.abs(p.y - ty * k) < 23); tries++) ty += 23 / k
+      placed.push({ x: tx * k, y: ty * k, w })
       ctx.save()
       ctx.translate(tx, ty)
-      ctx.scale(1 / (this.width / this.viewWidth), -1 / (this.width / this.viewWidth))
+      ctx.scale(1 / k, -1 / k)
       ctx.globalAlpha = 0.9 * fade
       ctx.font = `800 13px ${FONT}`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      const w = ctx.measureText(g.label).width + 14
       ctx.beginPath()
       ctx.roundRect(-w / 2, -10, w, 20, 10)
       ctx.fillStyle = 'rgba(16, 21, 28, 0.55)'

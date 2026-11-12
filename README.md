@@ -130,7 +130,10 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
   their *best* when it went further. Each turn you race see-through ghosts with name tags. Playing
   alone: your own best and your own last. In a round with several players: every run driven so
   far this round (tagged with the player's name), plus the overall record on the track and mode
-  as it stood when the round began ("Rekord · Frans"). Ghosts replay poses,
+  as it stood when the round began ("Rekord · Frans"). A new round on the same track and mode
+  as the one before also brings back everyone's latest run from it ("Frans (förra)") until that
+  player drives again; the record shows once even when it is one of those runs. Overlapping
+  name tags stack. Ghosts replay poses,
   not inputs, so they never affect the physics and still play back after a game update. If
   the device's storage is full, last-run ghosts are dropped first. Resetting progress clears
   ghosts too.
