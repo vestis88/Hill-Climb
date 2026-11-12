@@ -169,6 +169,10 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
   a single run (backflips, frontflips, air time, a long wheelie, distance on a given map, coins in
   one run, a combo of so many tricks), each paying 100 to 500 coins. A finished one shows in the
   results and is replaced by a new kind; test-mode runs do not count (code: `src/game/missions.ts`).
+- **Hidden stars:** three gold stars per map float high above its first jumps and table-tops,
+  so they take a good jump (or the Moon Lander's thrusters). Each pays 250 coins once; all three
+  on a map pay 1,000 more and unlock the Guldstjärnor helmet pattern. The garage shows ★ n/3 per
+  map; found stars sync (code: `src/game/stars.ts`).
 - **Hjälp (settings, per player):** for a young player: fuel lasts 1.6 times longer, too many revs
   at the start just gives a normal start, and on the ground a gentle hand stops the vehicle tipping
   over backwards or onto its nose.

@@ -212,7 +212,7 @@ is confirmed. New vehicles get their own handling tests (as V1, V2) and a stage-
 |---|---|---|
 | E2 (done) | Combo multiplier: tricks chained without a bad landing (flip, wheelie, air time) multiply each other; a live combo counter like the wheelie one | Run tests: a chain pays more than the same tricks apart; a crash or bad landing breaks it |
 | E3 (done) | Missions (Uppdrag): three at a time per player, e.g. "3 bakåtvolter i ett åk", "200 m stegring", "nå 1 km i Frostpasset"; coins when done, a new one replaces it | Missions listed in the garage, progress saved per player, tests for counting |
-| E4 | Hidden stars: three per map, some only reachable with a big jump or a certain vehicle; finding all of a map's stars unlocks a paint pattern | Stars placed by seed, found ones saved and synced, shown per map in the garage |
+| E4 (done) | Hidden stars: three per map, some only reachable with a big jump or a certain vehicle; finding all of a map's stars unlocks a paint pattern | Stars placed by seed, found ones saved and synced, shown per map in the garage |
 | E5 | Second upgrade layer: one part per vehicle chosen before a run (bigger tank, softer landings, extra wheelie coins, ...) to spend coins on once upgrades are maxed | Parts bought and equipped per vehicle; economy check |
 | E6 (done) | Pip's outfit: each player buys and picks a helmet or hat and a pattern | Drawn on Pip and ghosts; bought with coins; saved per player |
 

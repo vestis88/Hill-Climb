@@ -70,6 +70,7 @@ export type RunEvent =
   | { kind: 'combo'; value: number; tricks: number; multiplier: number }
   | { kind: 'comboLost'; tricks: number }
   | { kind: 'turbo'; x: number; y: number }
+  | { kind: 'star'; id: string; x: number; y: number }
   | { kind: 'milestone'; value: number; distance: number }
 
 export interface RunOptions {
@@ -89,6 +90,8 @@ export interface RunOptions {
    * the ground a gentle hand keeps the vehicle from tipping over backwards (or onto its nose).
    */
   assist?: boolean
+  /** Hidden stars not yet found on this map (game/stars.ts). */
+  stars?: { id: string; x: number; y: number }[]
 }
 
 const TAU = Math.PI * 2
@@ -103,6 +106,8 @@ export class Run {
   launchKind: LaunchKind = 'normal'
   private launchLeft = 0
   coins = { track: 0, air: 0, flips: 0, wheelies: 0, milestones: 0, rescue: 0, combos: 0 }
+  /** Stars found in this run (their ids). */
+  starsFound: string[] = []
   /**
    * The trick chain in progress (read by the HUD): tricks so far and their coins. Tricks done one
    * after another, each within a few seconds of the last on the ground, build a combo; when the
@@ -275,6 +280,14 @@ export class Run {
     const r2 = RULES.pickupRadius * RULES.pickupRadius
     const near = (p: Pickup, q: { x: number; y: number }) => (p.x - q.x) ** 2 + (p.y - q.y) ** 2 < r2
     const points = [s.chassis, head, ...s.wheels]
+    // Hidden stars: a little easier to touch than a coin.
+    for (const st of this.options.stars ?? []) {
+      if (this.starsFound.includes(st.id) || Math.abs(st.x - s.chassis.x) > 5) continue
+      if (points.some((q) => (st.x - q.x) ** 2 + (st.y - q.y) ** 2 < 1.6 * 1.6)) {
+        this.starsFound.push(st.id)
+        this.events.push({ kind: 'star', id: st.id, x: st.x, y: st.y })
+      }
+    }
     for (let i = 0; i < pickups.length; i++) {
       const p = pickups[i]
       if (p.taken || p.x < s.chassis.x - 4) continue
