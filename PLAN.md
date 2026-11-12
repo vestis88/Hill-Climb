@@ -232,7 +232,7 @@ is confirmed. New vehicles get their own handling tests (as V1, V2) and a stage-
 |---|---|---|
 | G15 (done) | Turbo pickups: rare blue canisters that give a few seconds of boost | Placed by seed, boost tested in the sim, shown on the HUD |
 | G16 (done) | Horn: a small tap button, a different sound per vehicle | Plays on tap without affecting driving |
-| G17 | Music: an optional light background track made in code, with its own volume | Setting on and off, quiet under the engine |
+| G17 (done) | Music: an optional light background track made in code, with its own volume | Setting on and off, quiet under the engine |
 
 **D. Family**
 

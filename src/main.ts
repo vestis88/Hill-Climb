@@ -64,7 +64,7 @@ const sound = new Sound()
 sound.setVolume(settings.volume, settings.sound)
 const controls = createInput(canvas, () => settings.swapPedals)
 // Safari only allows sound after a tap; any first touch or click unlocks it.
-for (const type of ['pointerdown', 'keydown']) window.addEventListener(type, () => sound.unlock(), { capture: true })
+for (const type of ['pointerdown', 'keydown']) window.addEventListener(type, () => { sound.unlock(); applyMusic() }, { capture: true })
 const renderer = new GameRenderer(canvas)
 const save = loadSave()
 pruneOldDailies()
@@ -233,6 +233,12 @@ function show(m: Mode): void {
   document.body.classList.toggle('playing', m === 'driving' || m === 'ending')
   controls.reset()
   showUpdateIfReady()
+  applyMusic()
+}
+
+/** Music: normal in the menus, quiet during a run, off when turned off (or with all sound off). */
+function applyMusic(): void {
+  sound.setMusic(!settings.music || !settings.sound ? 0 : mode === 'driving' || mode === 'ending' ? 0.35 : 1)
 }
 
 /** Pause a run: the world stops, the engine goes quiet, and a menu offers to go on or end it. */
@@ -459,6 +465,7 @@ function openSettings(): void {
     () => {
       saveSettings(settings)
       sound.setVolume(settings.volume, settings.sound)
+      applyMusic()
     },
     () => {
       cloud.leave()

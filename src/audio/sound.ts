@@ -168,6 +168,9 @@ export class Sound {
     this.master = ctx.createGain()
     this.master.connect(comp)
     this.applyVolume()
+    this.musicGain = ctx.createGain()
+    this.musicGain.gain.value = 0
+    this.musicGain.connect(this.master)
     this.buildEngine()
     for (const kind of ['twoStroke', 'v8', 'i4'] as const) this.pulses[kind] = this.buildPulseEngine(PULSE[kind])
     this.applyVoice()
@@ -341,6 +344,66 @@ export class Sound {
     this.vehicleId = id
     this.voice = ENGINES[id] ?? ENGINES.runabout
     this.applyVoice()
+  }
+
+  /**
+   * Music: a light, original loop made in code (a four-chord progression with a soft bass and
+   * an arpeggio, about 104 bpm), scheduled a little ahead. `level` 0 stops it; it plays quieter
+   * during runs so the engine stays on top.
+   */
+  private musicGain: GainNode | null = null
+  private musicTimer: ReturnType<typeof setInterval> | null = null
+  private musicNext = 0
+  private musicStep = 0
+  setMusic(level: number): void {
+    if (!this.ctx || !this.musicGain) return
+    const t = this.ctx.currentTime
+    this.musicGain.gain.cancelScheduledValues(t)
+    this.musicGain.gain.setTargetAtTime(level, t, 0.4)
+    if (level > 0 && !this.musicTimer) {
+      this.musicNext = t + 0.1
+      this.musicTimer = setInterval(() => this.scheduleMusic(), 100)
+    } else if (level === 0 && this.musicTimer) {
+      clearInterval(this.musicTimer)
+      this.musicTimer = null
+    }
+  }
+
+  private scheduleMusic(): void {
+    const ctx = this.ctx
+    if (!ctx || !this.musicGain) return
+    const eighth = 60 / 104 / 2
+    // C, G, A minor, F: roots (MIDI) and chord notes.
+    const chords = [[48, 60, 64, 67], [43, 59, 62, 67], [45, 60, 64, 69], [41, 60, 65, 69]]
+    const arp = [1, 2, 3, 2, 1, 2, 3, 2]
+    const hz = (m: number) => 440 * Math.pow(2, (m - 69) / 12)
+    while (this.musicNext < ctx.currentTime + 0.4) {
+      const bar = Math.floor(this.musicStep / 8) % chords.length
+      const i = this.musicStep % 8
+      const chord = chords[bar]
+      const at = this.musicNext - ctx.currentTime
+      this.musicTone(hz(chord[arp[i]] + 12), at, eighth * 0.9, 'triangle', 0.07)
+      if (i === 0 || i === 4) this.musicTone(hz(chord[0]), at, eighth * 3.5, 'sine', 0.16)
+      // A little melody every other bar.
+      if (bar % 2 === 1 && (i === 0 || i === 3 || i === 6)) this.musicTone(hz(chord[3] + 12 + (i === 3 ? 2 : 0)), at, eighth * 1.6, 'square', 0.025)
+      this.musicNext += eighth
+      this.musicStep++
+    }
+  }
+
+  private musicTone(freq: number, start: number, length: number, type: OscillatorType, gain: number): void {
+    if (!this.ctx || !this.musicGain) return
+    const t = this.ctx.currentTime + Math.max(0, start)
+    const osc = this.ctx.createOscillator()
+    const g = this.ctx.createGain()
+    osc.type = type
+    osc.frequency.setValueAtTime(freq, t)
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(gain, t + 0.02)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + length)
+    osc.connect(g).connect(this.musicGain)
+    osc.start(t)
+    osc.stop(t + length + 0.05)
   }
 
   setVolume(volume: number, enabled: boolean): void {
