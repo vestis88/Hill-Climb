@@ -1142,3 +1142,103 @@ function drawBlowingSand(ctx: Ctx, w: number, h: number, camX: number, time: num
     ctx.stroke()
   }
 }
+
+/**
+ * A run's mood, picked at random for each run on every map (owner: time of day and weather on all
+ * tracks, at random). Visual only: the physics, the track and the ghosts are the same in any weather.
+ */
+export interface Atmosphere {
+  time: 'day' | 'dusk' | 'night'
+  weather: 'clear' | 'rain' | 'snow' | 'fog'
+}
+
+/** Pick a mood for a run on this map. Maps that are already night (woods, crater) stay dark. */
+export function randomAtmosphere(env: Environment, r: () => number = Math.random): Atmosphere {
+  const darkAlready = env.id === 'woods' || env.id === 'crater'
+  const t = r()
+  const time: Atmosphere['time'] = darkAlready ? 'day' : t < 0.6 ? 'day' : t < 0.85 ? 'dusk' : 'night'
+  // Weather that fits the map: no rain or fog on the moon, no snow in the desert or canyon.
+  const options: Atmosphere['weather'][] = []
+  if (env.id !== 'crater' && env.id !== 'dunes' && env.id !== 'frost') options.push('rain')
+  if (env.id === 'meadow' || env.id === 'woods') options.push('snow')
+  if (env.id !== 'crater') options.push('fog')
+  const weather = options.length && r() < 0.4 ? options[Math.floor(r() * options.length)] : 'clear'
+  return { time, weather }
+}
+
+/**
+ * Draw the mood over the scene (screen space): a dusk or night tint with a pool of headlight
+ * light around the vehicle, and rain, snow or drifting fog.
+ */
+export function drawAtmosphere(ctx: Ctx, a: Atmosphere, w: number, h: number, camX: number, time: number, light: { x: number; y: number; r: number } | null): void {
+  if (a.time !== 'day') {
+    ctx.save()
+    const g = ctx.createLinearGradient(0, 0, 0, h)
+    if (a.time === 'dusk') {
+      g.addColorStop(0, 'rgba(255, 110, 70, 0.28)')
+      g.addColorStop(0.55, 'rgba(200, 80, 120, 0.16)')
+      g.addColorStop(1, 'rgba(60, 30, 80, 0.22)')
+    } else {
+      g.addColorStop(0, 'rgba(8, 14, 48, 0.62)')
+      g.addColorStop(1, 'rgba(6, 10, 30, 0.5)')
+    }
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, w, h)
+    if (a.time === 'night') {
+      // A few stars in the sky, and the headlights lighting up the track around the vehicle.
+      for (let i = 0; i < 40; i++) {
+        const x = (((hash01(i, 71) * w * 1.5 - camX * 2) % w) + w) % w
+        const y = hash01(i, 72) * h * 0.4
+        ctx.fillStyle = `rgba(255, 255, 240, ${0.4 + 0.5 * Math.abs(Math.sin(time * 1.3 + i))})`
+        ctx.fillRect(x, y, 2, 2)
+      }
+      if (light) {
+        ctx.globalCompositeOperation = 'lighter'
+        const l = ctx.createRadialGradient(light.x, light.y, 0, light.x, light.y, light.r)
+        l.addColorStop(0, 'rgba(255, 235, 170, 0.32)')
+        l.addColorStop(1, 'rgba(255, 235, 170, 0)')
+        ctx.fillStyle = l
+        ctx.fillRect(light.x - light.r, light.y - light.r, light.r * 2, light.r * 2)
+      }
+    }
+    ctx.restore()
+  }
+  if (a.weather === 'rain') {
+    ctx.save()
+    ctx.strokeStyle = 'rgba(190, 215, 255, 0.55)'
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    for (let i = 0; i < 140; i++) {
+      const near = hash01(i, 81) > 0.6
+      const x = (((hash01(i, 82) * w * 1.3 - camX * (near ? 40 : 20) - time * 80) % w) + w) % w
+      const y = (hash01(i, 83) * h + time * (near ? 900 : 600)) % h
+      ctx.moveTo(x, y)
+      ctx.lineTo(x - 4, y + (near ? 22 : 14))
+    }
+    ctx.stroke()
+    ctx.fillStyle = 'rgba(90, 110, 140, 0.12)'
+    ctx.fillRect(0, 0, w, h)
+    ctx.restore()
+  } else if (a.weather === 'snow') {
+    for (let i = 0; i < 90; i++) {
+      const near = hash01(i, 91) > 0.7
+      const x = (((hash01(i, 92) * w * 1.3 - camX * (near ? 30 : 15) + Math.sin(time + i) * 14) % w) + w) % w
+      const y = (hash01(i, 93) * h + time * (near ? 70 : 30 + 20 * hash01(i, 94))) % h
+      ctx.fillStyle = near ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.7)'
+      ctx.beginPath()
+      ctx.arc(x, y, near ? 2.8 : 1.5 + hash01(i, 95), 0, Math.PI * 2)
+      ctx.fill()
+    }
+  } else if (a.weather === 'fog') {
+    // Bands of mist across the whole screen, thickest low down, slowly rising and falling.
+    for (let i = 0; i < 4; i++) {
+      const y = h * (0.35 + i * 0.17) + Math.sin(time * 0.4 + i * 1.7 - camX * 0.02) * 18
+      const g = ctx.createLinearGradient(0, y - 70, 0, y + 70)
+      g.addColorStop(0, 'rgba(230, 236, 242, 0)')
+      g.addColorStop(0.5, `rgba(230, 236, 242, ${0.16 + i * 0.05})`)
+      g.addColorStop(1, 'rgba(230, 236, 242, 0)')
+      ctx.fillStyle = g
+      ctx.fillRect(0, y - 70, w, 140)
+    }
+  }
+}

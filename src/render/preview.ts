@@ -17,7 +17,7 @@ function prepare(canvas: HTMLCanvasElement): { ctx: CanvasRenderingContext2D; w:
   return { ctx, w, h }
 }
 
-export function drawVehiclePreview(canvas: HTMLCanvasElement, spec: VehicleSpec): void {
+export function drawVehiclePreview(canvas: HTMLCanvasElement, spec: VehicleSpec, paint?: string): void {
   const p = prepare(canvas)
   if (!p) return
   const { ctx, w, h } = p
@@ -36,7 +36,7 @@ export function drawVehiclePreview(canvas: HTMLCanvasElement, spec: VehicleSpec)
     drawWheel(ctx, wh.radius, { mx: spec.id === 'scrambler', paddle: spec.id === 'rover' })
     ctx.restore()
   }
-  drawVehicle(ctx, spec, 0, true)
+  drawVehicle(ctx, spec, 0, true, 'normal', undefined, paint)
   ctx.restore()
 }
 

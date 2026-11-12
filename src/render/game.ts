@@ -8,7 +8,7 @@ import type { Puddle, PuddleFn } from '../sim/types'
 import { formatTime } from '../data/modes'
 import { drawHead, drawnHubs, drawPickup, drawVehicle, drawWheel, EXHAUST, OUTLINE, type Mood } from './art'
 import { Particles } from './particles'
-import { drawBackdrop, drawForeground, drawGround, drawProps, drawWeather, themeFor } from './scenery'
+import { drawAtmosphere, drawBackdrop, drawForeground, drawGround, drawProps, drawWeather, themeFor, type Atmosphere } from './scenery'
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const lerpPose = (a: Pose, b: Pose, t: number): Pose => ({
@@ -52,6 +52,8 @@ export interface View {
   player?: { name: string; colour: string }
   /** The wheelie in progress, for the live counter. */
   wheelie?: { metres: number; coins: number; multiplier: number } | null
+  /** Time of day and weather for this run (visual only); none in the garage. */
+  atmosphere?: Atmosphere
   /** Metres to the next fuel can, if there is one ahead. */
   nextFuel?: number | null
   /** Puddles on the track, to draw and splash through. */
@@ -326,6 +328,10 @@ export class GameRenderer {
 
     drawForeground(ctx, env, width, h, this.camX, this.time)
     drawWeather(ctx, env, width, h, this.camX, this.time)
+    if (view.atmosphere) {
+      const p = this.toScreen(chassis.x + 1.2 * Math.cos(chassis.angle), chassis.y + 1.2 * Math.sin(chassis.angle))
+      drawAtmosphere(ctx, view.atmosphere, width, h, this.camX, this.time, { x: p.x, y: p.y, r: Math.min(width, h) * 0.45 })
+    }
     this.drawSpeedLines(view)
     this.drawVignette()
     this.drawRescue(view.dt)
@@ -578,7 +584,7 @@ export class GameRenderer {
       })
       ctx.translate(c.x, c.y)
       ctx.rotate(c.angle)
-      drawVehicle(ctx, g.spec, 0, true, 'normal', drawn)
+      drawVehicle(ctx, g.spec, 0, true, 'normal', drawn, g.colour)
       ctx.restore()
       // Name tag above the ghost, upright whatever its angle.
       const head = g.spec.driver.head
@@ -682,7 +688,7 @@ export class GameRenderer {
     // Upshift: the rider rocks back with the surge, then settles.
     const k = Math.min(1, this.shiftT / 0.35)
     const rock = this.shiftUp && k < 1 ? 0.13 * Math.sin(k * Math.PI) * (1 - k * 0.5) : 0
-    drawVehicle(ctx, spec, view.driver.lean + rock, !rag, this.mood(view, chassis), hubs)
+    drawVehicle(ctx, spec, view.driver.lean + rock, !rag, this.mood(view, chassis), hubs, view.player?.colour)
     ctx.restore()
     if (rag) {
       ctx.save()

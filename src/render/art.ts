@@ -5,6 +5,16 @@ import type { VehicleSpec } from '../sim/types'
 export const OUTLINE = '#1d2433'
 const LINE = 0.05
 
+/** Mix a #rrggbb colour towards black (amount < 0) or white (amount > 0). */
+function shade(hex: string, amount: number): string {
+  const n = parseInt(hex.slice(1), 16)
+  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.round(amount < 0 ? v * (1 + amount) : v + (255 - v) * amount))
+  return `#${ch.map((v) => v.toString(16).padStart(2, '0')).join('')}`
+}
+
+/** Body, shadow and highlight shades for a player's paint colour. */
+export const paintColours = (paint: string) => ({ body: paint, dark: shade(paint, -0.32), light: shade(paint, 0.38) })
+
 export const VEHICLE_COLOURS: Record<string, { body: string; dark: string; light: string }> = {
   runabout: { body: '#e2542f', dark: '#a8371b', light: '#f58a62' },
   scrambler: { body: '#2fae5f', dark: '#1d7a40', light: '#6fd391' },
@@ -622,8 +632,9 @@ function number(ctx: Ctx, x: number, y: number, size: number): void {
  * unless the driver has been thrown out (ragdoll). `hubs` are the wheel centres in chassis
  * coordinates, for parts that follow the suspension; they default to the wheel anchors.
  */
-export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDriver: boolean, mood: Mood = 'normal', hubs?: Pt[]): void {
-  const c = VEHICLE_COLOURS[spec.id] ?? VEHICLE_COLOURS.runabout
+export function drawVehicle(ctx: Ctx, spec: VehicleSpec, lean: number, withDriver: boolean, mood: Mood = 'normal', hubs?: Pt[], paint?: string): void {
+  // A player's own paint colour (their name colour), else the vehicle's factory colours.
+  const c = paint ? paintColours(paint) : (VEHICLE_COLOURS[spec.id] ?? VEHICLE_COLOURS.runabout)
   const { head, headRadius } = spec.driver
   const seat: Pt = [head.x, head.y - 0.75]
   // Where Pip's feet rest, relative to the seat: pedals in the cars, the footpeg on the bike.

@@ -279,6 +279,11 @@ whole list of families cannot be read.
 
 - **Pause:** the ❚❚ button during a run (or leaving the app, e.g. a call) pauses: nothing moves,
   the engine goes quiet, and the menu offers Fortsätt (go on) or Avsluta åket (end the run).
+- **Own paint colour:** every player's vehicle is painted in their name colour while they drive,
+  on their ghosts, and in the vehicle pictures on their turn screen.
+- **Time of day and weather:** every run gets a random mood (visual only, the physics are the
+  same): day, dusk or night (with headlight glow), and sometimes rain, snow or fog, matched to the
+  map (no rain on the moon, no snow in the desert).
 - **Spöken (settings):** race all ghosts, only records, or none.
 - **Updates:** a home-screen app can stay open for days. The game checks `version.json` every few
   minutes and, outside a run, shows "Ny version finns · tryck för att uppdatera".
