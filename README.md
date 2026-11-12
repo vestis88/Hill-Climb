@@ -169,6 +169,9 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
   a single run (backflips, frontflips, air time, a long wheelie, distance on a given map, coins in
   one run, a combo of so many tricks), each paying 100 to 500 coins. A finished one shows in the
   results and is replaced by a new kind; test-mode runs do not count (code: `src/game/missions.ts`).
+- **Repris (replays):** in Topplista, ▶ next to a player's best plays that record (their stored best
+  ghost on the track and mode) with the camera following it; Tillbaka or the end of the run goes
+  back.
 - **Musik (settings):** a light, original background loop made in code (a four-chord
   progression with a soft bass, an arpeggio and a little melody, about 104 bpm). It plays in the
   menus and much quieter during runs, so the engine stays on top. On by default; turn it off in

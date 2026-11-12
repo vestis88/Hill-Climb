@@ -252,6 +252,9 @@
       button.part .price { color: #ffd23f; font-weight: 800; font-size: 12px; }
       button.part.on { border-color: #3fbf5f; background: rgba(63, 191, 95, 0.18); }
       button.part:disabled { opacity: 0.5; }
+      #replayBar { position: fixed; z-index: 7; top: max(12px, var(--safe-top)); left: 50%; transform: translateX(-50%); display: flex; gap: 12px; align-items: center;
+        background: rgba(16, 21, 28, 0.55); padding: 6px 8px 6px 16px; border-radius: 999px; font-weight: 800; }
+      .bests button.play { margin-left: 6px; padding: 2px 8px; border-radius: 999px; border: 0; background: #3fbf5f; color: #fff; font-weight: 900; }
       .screeninfo { font-size: 11px; opacity: 0.5; max-width: 600px; text-align: center; }
     </style>
   </head>
@@ -262,6 +265,7 @@
     <button id="horn" class="hidden" aria-label="Tuta">TUT</button>
     <button id="boost" class="hidden" aria-label="Raketer">BOOST</button>
     <div id="paused" class="screen hidden"><h2>Paus</h2><div class="actions"><button class="big blue" data-act="end">Avsluta åket</button><button class="big" data-act="resume">Fortsätt</button></div></div>
+    <div id="replayBar" class="hidden"><span></span><button class="small" data-act="back">Tillbaka</button></div>
     <button id="update" class="hidden">Ny version finns · tryck för att uppdatera</button>
     <div id="garage" class="screen hidden"></div>
     <div id="results" class="screen hidden"></div>

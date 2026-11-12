@@ -247,7 +247,7 @@ is confirmed. New vehicles get their own handling tests (as V1, V2) and a stage-
 
 | ID | Task | Done when |
 |---|---|---|
-| R1 | Replay of a record: watch any highscore run from the highscore list, the camera following its ghost | Plays from the stored ghost; pause and back |
+| R1 (done) | Replay of a record: watch any highscore run from the highscore list, the camera following its ghost | Plays from the stored ghost; pause and back |
 
 Owner: no coin balance check needed (still balanced) and no App Store version. Order: E2, N1, N2, F3, E3, E6, then the rest.
 
