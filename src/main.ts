@@ -1,3 +1,4 @@
+import { randomAtmosphere, type Atmosphere } from './render/scenery'
 import { EngineRevs, LAUNCH } from './sim/launch'
 import { dailyFor, dateKey, oldDaily } from './data/daily'
 import { ENVIRONMENTS, environment, heightFor, puddlesFor } from './data/environments'
@@ -80,6 +81,8 @@ type Mode = 'garage' | 'driving' | 'ending' | 'results' | 'tuning' | 'settings' 
 let mode: Mode = 'garage'
 /** Today's challenge, when one of its two events is picked in the garage (not saved). */
 let daily: 'race' | 'endless' | null = null
+/** This run's time of day and weather. */
+let atmosphere: Atmosphere | undefined
 /** Seconds left of the start countdown, and the engine revs it shows (sim/launch.ts). */
 let countdown = 0
 let revs = new EngineRevs(0.6)
@@ -445,7 +448,7 @@ function openTurn(): void {
     // Today's challenge sets the vehicle for everyone.
     vehicles: (daily ? [driveVehicle()] : VEHICLES.filter((v) => owned(v.id, v.price))).map((v) => ({
       id: v.id, name: v.name, selected: daily ? true : v.id === mine.id,
-      preview: (c: HTMLCanvasElement) => drawVehiclePreview(c, v.base),
+      preview: (c: HTMLCanvasElement) => drawVehiclePreview(c, v.base, playerColour(me)),
     })),
     onVehicle: (id) => {
       if (daily) return
@@ -499,6 +502,8 @@ function collectGhosts(): void {
 }
 
 function startRun(): void {
+  // A random time of day and weather for every run (visual only).
+  atmosphere = randomAtmosphere(currentEnv())
   sound.setVehicle(driveVehicle().id)
   run = newRun()
   pickGhosts()
@@ -721,6 +726,7 @@ function frame(now: number): void {
     input: controls.input,
     pickups: run.options.pickups.items,
     wheelie: mode === 'driving' ? run.wheelieNow : null,
+    atmosphere: mode === 'driving' || mode === 'ending' || mode === 'results' ? atmosphere : undefined,
     nextFuel: (() => {
       const at = run.options.pickups.nextFuel(next.chassis.x)
       return at === null ? null : at - next.chassis.x
@@ -763,7 +769,7 @@ document.addEventListener('visibilitychange', () => {
 })
 
 // Development only: lets screenshot scripts trigger effects without playing to them.
-if (import.meta.env.DEV) (window as unknown as { __game: unknown }).__game = { renderer, get run() { return run } }
+if (import.meta.env.DEV) (window as unknown as { __game: unknown }).__game = { renderer, get run() { return run }, set atmosphere(a: Atmosphere) { atmosphere = a } }
 
 // Offline play and home-screen install (published builds only).
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
