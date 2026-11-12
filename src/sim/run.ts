@@ -1,3 +1,4 @@
+import { partEffects, type PartId } from '../data/parts'
 import { Vec2 } from 'planck'
 import { LAUNCH, judgeLaunch, type LaunchKind } from './launch'
 import type { Pickup, PickupSource } from '../data/track'
@@ -90,6 +91,8 @@ export interface RunOptions {
    * the ground a gentle hand keeps the vehicle from tipping over backwards (or onto its nose).
    */
   assist?: boolean
+  /** The part fitted to the vehicle (data/parts.ts); its suspension change is in `vehicle` already. */
+  part?: PartId
   /** Hidden stars not yet found on this map (game/stars.ts). */
   stars?: { id: string; x: number; y: number }[]
 }
@@ -228,7 +231,7 @@ export class Run {
       }
     }
     this.sim.step(input)
-    this.fuel -= (STEP / (input.gas ? RULES.fuelSecondsOnGas : RULES.fuelSecondsIdle)) * (this.options.vehicle.fuelUse ?? 1) / (this.options.assist ? RULES.assistFuel : 1)
+    this.fuel -= (STEP / (input.gas ? RULES.fuelSecondsOnGas : RULES.fuelSecondsIdle)) * (this.options.vehicle.fuelUse ?? 1) / (this.options.assist ? RULES.assistFuel : 1) / partEffects(this.options.part).fuel
     this.fuel = Math.max(0, this.fuel)
 
     const s = this.sim.state()
@@ -277,7 +280,8 @@ export class Run {
     const pickups = this.options.pickups.items
     this.options.pickups.ensure(s.chassis.x + 60)
     const head = this.sim.vehicle.headPosition()
-    const r2 = RULES.pickupRadius * RULES.pickupRadius
+    const reach = RULES.pickupRadius * partEffects(this.options.part).pickupRadius
+    const r2 = reach * reach
     const near = (p: Pickup, q: { x: number; y: number }) => (p.x - q.x) ** 2 + (p.y - q.y) ** 2 < r2
     const points = [s.chassis, head, ...s.wheels]
     // Hidden stars: a little easier to touch than a coin.
@@ -354,7 +358,7 @@ export class Run {
     // from about 245 degrees per turn counts, which no non-flip landing can reach.
     const flips = Math.floor((turned + RULES.flipTolerance) / TAU)
     if (flips > 0) {
-      const value = RULES.flipPayout(flips)
+      const value = Math.floor(RULES.flipPayout(flips) * partEffects(this.options.part).flipCoins)
       this.coins.flips += value
       // Nose-up rotation (counter-clockwise, the car faces right) is a backflip.
       this.events.push({ kind: 'flip', value, flips, direction: signedTurn > 0 ? 'back' : 'front' })
@@ -425,7 +429,7 @@ export class Run {
       if (rearDown && dx > 0) {
         w.multiplier = RULES.wheelieMultiplier(w.metres)
         w.metres += dx
-        w.coins += dx * RULES.wheelieCoinsPerMetre * w.multiplier
+        w.coins += dx * RULES.wheelieCoinsPerMetre * w.multiplier * partEffects(this.options.part).wheelieCoins
       }
       return
     }
