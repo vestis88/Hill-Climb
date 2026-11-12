@@ -85,23 +85,23 @@ const wheel = (key: 'friction' | 'springHz' | 'damping', label: string, min: num
 })
 
 const FIELDS: Field[] = [
-  eng('maxTorque', 'Engine torque', 5, 60, 0.5),
-  eng('maxWheelSpeed', 'Top wheel speed (rad/s)', 10, 70, 0.5),
-  eng('torqueFalloff', 'Torque falloff at top speed', 0, 0.9, 0.01),
-  eng('frontShare', 'Front drive share', 0, 1, 0.01),
-  eng('brakeTorque', 'Brake torque', 5, 60, 0.5),
-  wheel('friction', 'Tyre grip', 0.1, 2, 0.01),
-  wheel('springHz', 'Spring stiffness (Hz)', 1, 10, 0.1),
-  wheel('damping', 'Spring damping', 0.05, 1.2, 0.01),
-  { label: 'Chassis mass', min: 3, max: 30, step: 0.5, get: (v) => v.chassis.mass, set: (v, x) => (v.chassis.mass = x) },
+  eng('maxTorque', 'Motorns vridmoment', 5, 60, 0.5),
+  eng('maxWheelSpeed', 'Högsta hjulvarv (rad/s)', 10, 70, 0.5),
+  eng('torqueFalloff', 'Vridmomentsfall vid toppfart', 0, 0.9, 0.01),
+  eng('frontShare', 'Andel drivning fram', 0, 1, 0.01),
+  eng('brakeTorque', 'Bromsmoment', 5, 60, 0.5),
+  wheel('friction', 'Däckgrepp', 0.1, 2, 0.01),
+  wheel('springHz', 'Fjäderstyvhet (Hz)', 1, 10, 0.1),
+  wheel('damping', 'Fjäderdämpning', 0.05, 1.2, 0.01),
+  { label: 'Chassits massa', min: 3, max: 30, step: 0.5, get: (v) => v.chassis.mass, set: (v, x) => (v.chassis.mass = x) },
   {
-    label: 'Centre of weight height', min: -0.5, max: 0.5, step: 0.01,
+    label: 'Tyngdpunktens höjd', min: -0.5, max: 0.5, step: 0.01,
     get: (v) => v.chassis.centerOfMass.y,
     set: (v, x) => (v.chassis.centerOfMass = { ...v.chassis.centerOfMass, y: x }),
   },
-  air('spinRate', 'Air spin rate (rad/s)', 0.5, 6, 0.05),
-  air('spinResponse', 'Air spin response', 1, 40, 0.5),
-  air('groundTorque', 'Pedal pitch on ground', 0, 30, 0.5),
+  air('spinRate', 'Snurrfart i luften (rad/s)', 0.5, 6, 0.05),
+  air('spinResponse', 'Snurrsvar i luften', 1, 40, 0.5),
+  air('groundTorque', 'Pedaltippning på marken', 0, 30, 0.5),
 ]
 
 /** Build the tuning panel into el. onDrive starts a run with the chosen car. */
@@ -112,10 +112,10 @@ export function showTuning(el: HTMLElement, tuning: Tuning, driveAs: DriveAs, on
   const render = () => {
     const spec = tuning[editing]
     el.innerHTML = `
-      <div class="bar"><h2>Tuning</h2><button class="small" data-act="back">Back</button></div>
+      <div class="bar"><h2>Trimning</h2><button class="small" data-act="back">Tillbaka</button></div>
       <div class="bar">
-        <span>Edit: <span class="seg"><button data-edit="base" class="${editing === 'base' ? 'on' : ''}">Base car</button><button data-edit="full" class="${editing === 'full' ? 'on' : ''}">Fully upgraded</button></span></span>
-        <span>Drive as: <span class="seg"><button data-drive="mine" class="${drive === 'mine' ? 'on' : ''}">My upgrades</button><button data-drive="base" class="${drive === 'base' ? 'on' : ''}">Base</button><button data-drive="full" class="${drive === 'full' ? 'on' : ''}">Full</button></span></span>
+        <span>Redigera: <span class="seg"><button data-edit="base" class="${editing === 'base' ? 'on' : ''}">Grundbil</button><button data-edit="full" class="${editing === 'full' ? 'on' : ''}">Fullt uppgraderad</button></span></span>
+        <span>Kör som: <span class="seg"><button data-drive="mine" class="${drive === 'mine' ? 'on' : ''}">Mina uppgraderingar</button><button data-drive="base" class="${drive === 'base' ? 'on' : ''}">Grund</button><button data-drive="full" class="${drive === 'full' ? 'on' : ''}">Full</button></span></span>
       </div>
       <div class="sliders">${FIELDS.map((f, i) => `
         <label>${f.label}<output id="out${i}">${f.get(spec)}</output>
@@ -123,9 +123,9 @@ export function showTuning(el: HTMLElement, tuning: Tuning, driveAs: DriveAs, on
         </label>`).join('')}
       </div>
       <div class="actions">
-        <button class="big" data-act="drive">Drive</button>
-        <button class="small" data-act="copy">Copy values</button>
-        <button class="small" data-act="reset">Reset to defaults</button>
+        <button class="big" data-act="drive">Kör</button>
+        <button class="small" data-act="copy">Kopiera värden</button>
+        <button class="small" data-act="reset">Återställ standard</button>
       </div>
       <textarea class="hidden" readonly></textarea>`
   }

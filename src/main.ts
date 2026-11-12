@@ -15,7 +15,7 @@ import { formatTime, gameMode, MODES, recordKey } from './data/modes'
 import { Run } from './sim/run'
 import type { SimState } from './sim/types'
 import { STEP } from './sim/world'
-import { showGarage, showResults, showScores, showStandings } from './ui/screens'
+import { showGarage, showResults, showScores, showStandings, showTurn } from './ui/screens'
 import { loadSettings, saveSettings, showSettings } from './ui/settings'
 import { trackViewport, updateViewport } from './ui/viewport'
 import { loadTuning, showTuning, tuningEnabled, type DriveAs } from './ui/tuning'
@@ -149,7 +149,7 @@ function openGarage(justBought?: UpgradeId): void {
     environments: ENVIRONMENTS.map((e) => ({
       id: e.id, name: e.name, blurb: e.blurb, price: e.price,
       owned: owned(e.id, e.price), selected: e.id === currentEnv().id,
-      note: `Best ${Math.floor(save.best[e.id] ?? 0)} m`,
+      note: `Rekord ${Math.floor(save.best[e.id] ?? 0)} m`,
       preview: (c: HTMLCanvasElement) => drawEnvironmentPreview(c, e, heightFor(e)),
     })),
     onPick: pick,
@@ -194,7 +194,7 @@ function openScores(envId: string, modeId: string): void {
     mode: m.id,
     rows: save.scores
       .filter((s) => s.env === env.id && (s.mode ?? 'endless') === m.id)
-      .map((s) => ({ name: s.name, colour: playerColour(s.name), vehicle: vehicleEntry(s.vehicle).name, result: s.time !== undefined ? formatTime(s.time) : m.length ? `DNF · ${Math.floor(s.distance)} m` : `${Math.floor(s.distance)} m` })),
+      .map((s) => ({ name: s.name, colour: playerColour(s.name), vehicle: vehicleEntry(s.vehicle).name, result: s.time !== undefined ? formatTime(s.time) : m.length ? `Ej i mål · ${Math.floor(s.distance)} m` : `${Math.floor(s.distance)} m` })),
     bests: PLAYERS.map((p) => {
       const t = playerTime(save, p.name, key)
       return { name: p.name, colour: p.colour, result: m.length ? (t < Infinity ? formatTime(t) : '–') : `${Math.floor(playerBest(save, p.name, env.id))} m` }
@@ -281,7 +281,16 @@ function startRound(): void {
   // "Drive as" choice only applies to its own test drives.
   driveAs = 'mine'
   round = { players: [...save.players], turn: 0, results: [] }
-  startRun()
+  // With several players, first show who starts and the order (like the "X's turn" button between turns).
+  if (round.players.length < 2) return startRun()
+  showTurn(resultsEl, {
+    players: round.players.map((name) => ({ name, colour: playerColour(name) })),
+    turn: 0,
+    info: `${currentEnv().name} · ${currentVehicle().name} · ${currentMode().name}`,
+    onGo: () => startRun(),
+    onBack: () => openGarage(),
+  })
+  show('results')
 }
 
 /**
@@ -297,13 +306,13 @@ function pickGhosts(): void {
   }
   const best = loadGhost(me, env, 'best')
   const last = loadGhost(me, env, 'last')
-  add(best, `${me} best`)
+  add(best, `${me} bäst`)
   // The last run is often the best one too; show it once.
-  if (last && !(best && last.distance === best.distance && last.data.length === best.data.length)) add(last, `${me} last`)
+  if (last && !(best && last.distance === best.distance && last.data.length === best.data.length)) add(last, `${me} senaste`)
   const others = round.players.filter((p) => p !== me).map((p) => loadGhost(p, env, 'best')).filter((g) => g !== null)
   const rank = (g: { time?: number; distance: number }) => (currentMode().length ? (g.time ?? Infinity) : -g.distance)
   const top = others.sort((a, b) => rank(a) - rank(b) || b.distance - a.distance)[0]
-  if (top) add(top, `${top.player} best`)
+  if (top) add(top, `${top.player} bäst`)
 }
 
 function startRun(): void {
@@ -375,7 +384,7 @@ function finishRun(): void {
 /** The round's results, furthest first; then back to the garage or another round. */
 function openStandings(): void {
   showStandings(resultsEl, {
-    track: currentMode().length ? `${currentEnv().name} · ${currentMode().name} race` : currentEnv().name,
+    track: currentMode().length ? `${currentEnv().name} · ${currentMode().name}-lopp` : currentEnv().name,
     vehicle: currentVehicle().name,
     // Races: finishers by time, then the rest by how far they got. Endless: by distance.
     rows: [...round.results]
@@ -384,7 +393,7 @@ function openStandings(): void {
         name: r.name,
         colour: playerColour(r.name),
         newBest: r.newBest,
-        result: r.time !== undefined ? formatTime(r.time) : currentMode().length ? `DNF · ${Math.floor(r.distance)} m` : `${Math.floor(r.distance)} m`,
+        result: r.time !== undefined ? formatTime(r.time) : currentMode().length ? `Ej i mål · ${Math.floor(r.distance)} m` : `${Math.floor(r.distance)} m`,
       })),
     onHome: () => openGarage(),
     onAgain: startRound,
@@ -431,7 +440,7 @@ function handleEvents(): void {
       renderer.coinCollected(e.x, e.y)
     } else if (e.kind === 'fuel') {
       // A rescue gets its own big banner (renderer.fuelRescue); a normal can a small popup.
-      if (!e.bonus) popups.push({ text: 'Fuel!', at: { x: e.x, y: e.y }, age: 0 })
+      if (!e.bonus) popups.push({ text: 'Bränsle!', at: { x: e.x, y: e.y }, age: 0 })
       if (e.bonus) {
         sound.fanfare()
         sound.coin()
@@ -439,11 +448,11 @@ function handleEvents(): void {
         renderer.fuelRescue(e.x, e.y, e.bonus)
       } else renderer.sparkle(e.x, e.y, '#ff9a9a')
     }
-    else if (e.kind === 'air') popups.push({ text: `Air ${e.seconds.toFixed(1)} s  +${e.value}`, age: 0 })
-    else if (e.kind === 'wheelie') popups.push({ text: `Wheelie ${Math.floor(e.metres)} m${e.multiplier > 1 ? ` ×${e.multiplier}` : ''}  +${e.value}`, age: 0 })
+    else if (e.kind === 'air') popups.push({ text: `Luft ${e.seconds.toFixed(1).replace('.', ',')} s  +${e.value}`, age: 0 })
+    else if (e.kind === 'wheelie') popups.push({ text: `Stegring ${Math.floor(e.metres)} m${e.multiplier > 1 ? ` ×${e.multiplier}` : ''}  +${e.value}`, age: 0 })
     else if (e.kind === 'flip') {
-      const name = ['', '', 'Double ', 'Triple ', 'Quad '][e.flips] ?? `${e.flips}× `
-      popups.push({ text: `${name}${e.direction === 'back' ? 'backflip' : 'frontflip'}!  +${e.value}`, age: 0 })
+      const name = ['', '', 'Dubbel ', 'Trippel ', 'Fyrdubbel '][e.flips] ?? `${e.flips}× `
+      popups.push({ text: `${name}${e.direction === 'back' ? 'bakåtvolt' : 'framåtvolt'}!  +${e.value}`, age: 0 })
     }
     else if (e.kind === 'milestone') popups.push({ text: `${e.distance} m  +${e.value}`, age: 0 })
   }

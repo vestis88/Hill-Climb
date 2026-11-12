@@ -22,8 +22,8 @@ const MEADOW_GRAVITY = 9
 export const ENVIRONMENTS: Environment[] = [
   {
     id: 'meadow',
-    name: 'Green Meadows',
-    blurb: 'Rolling grassy hills',
+    name: 'Gröna ängar',
+    blurb: 'Böljande gräskullar',
     price: 0,
     // Owner playtest: 10 felt too heavy. Same gravity in the air as on the ground.
     gravity: MEADOW_GRAVITY,
@@ -36,8 +36,8 @@ export const ENVIRONMENTS: Environment[] = [
   },
   {
     id: 'crater',
-    name: 'Crater Fields',
-    blurb: 'Low gravity, huge floaty jumps',
+    name: 'Kraterfälten',
+    blurb: 'Låg gravitation, långa svävande hopp',
     price: 4000,
     gravity: 4.2,
     groundFriction: 0.8,
@@ -47,8 +47,8 @@ export const ENVIRONMENTS: Environment[] = [
   },
   {
     id: 'frost',
-    name: 'Frost Pass',
-    blurb: 'Icy, steep and bumpy',
+    name: 'Frostpasset',
+    blurb: 'Isigt, brant och guppigt',
     price: 10000,
     gravity: 10,
     groundFriction: 0.38,
@@ -60,8 +60,8 @@ export const ENVIRONMENTS: Environment[] = [
   },
   {
     id: 'dunes',
-    name: 'Dune Sea',
-    blurb: 'Long sandy dunes, loose and fast',
+    name: 'Dynhavet',
+    blurb: 'Långa sanddyner, löst och snabbt',
     price: 7000,
     gravity: 9.5,
     // Loose sand: less grip than grass, so launches spin and climbs need feathering.
@@ -72,8 +72,8 @@ export const ENVIRONMENTS: Environment[] = [
   },
   {
     id: 'canyon',
-    name: 'Red Canyon',
-    blurb: 'Steep, rocky climbs with a good grip',
+    name: 'Röda kanjonen',
+    blurb: 'Branta, steniga backar med bra grepp',
     price: 14000,
     gravity: 10,
     // Grippy rock: power and balance decide the climbs, not wheelspin.
@@ -86,8 +86,8 @@ export const ENVIRONMENTS: Environment[] = [
   },
   {
     id: 'woods',
-    name: 'Moonlit Woods',
-    blurb: 'Night forest: muddy, rooty, fireflies',
+    name: 'Månskensskogen',
+    blurb: 'Nattskog: lera, rötter och eldflugor',
     price: 20000,
     gravity: 9.5,
     // Mud: slippery, and roots make it bumpy.

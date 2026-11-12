@@ -228,23 +228,23 @@ export const roverFull: VehicleSpec = {
 
 export const VEHICLES: VehicleEntry[] = [
   {
-    id: 'runabout', name: 'Runabout', blurb: 'Small, light, easy to handle', price: 0, base: runabout, full: runaboutFull,
+    id: 'runabout', name: 'Buggyn', blurb: 'Liten, lätt och lättkörd', price: 0, base: runabout, full: runaboutFull,
     upgrades: [ENGINE, TYRES, SUSPENSION, DRIVETRAIN],
     launchSafe: true,
   },
   {
-    id: 'scrambler', name: 'Scrambler', blurb: 'Light dirt bike: fast, flips easily', price: 6000, base: scrambler, full: scramblerFull,
-    upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'flip', name: 'Flip control', blurb: 'Spins faster in the air: easier flips' }],
+    id: 'scrambler', name: 'Crossen', blurb: 'Lätt crossmotorcykel: snabb, voltar lätt', price: 6000, base: scrambler, full: scramblerFull,
+    upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'flip', name: 'Voltkontroll', blurb: 'Snurrar snabbare i luften: lättare volter' }],
     launchSafe: false,
   },
   {
-    id: 'hauler', name: 'Hauler', blurb: 'Heavy 4x4: slow, climbs anything', price: 15000, base: hauler, full: haulerFull,
-    upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'weight', name: 'Lighter body', blurb: 'Sheds weight: quicker off the line and up hills' }],
+    id: 'hauler', name: 'Bjässen', blurb: 'Tung 4x4: långsam, klättrar överallt', price: 15000, base: hauler, full: haulerFull,
+    upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'weight', name: 'Lättare kaross', blurb: 'Mindre vikt: snabbare från start och uppför backar' }],
     launchSafe: true,
   },
   {
-    id: 'rover', name: 'Marsh Rover', blurb: 'Amphibious: floats through puddles, grips on snow and ice', price: 10000, base: rover, full: roverFull,
-    upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'weight', name: 'Lighter hull', blurb: 'Less weight: quicker off the line and up hills' }],
+    id: 'rover', name: 'Träskkryparen', blurb: 'Amfibie: flyter genom pölar, greppar på snö och is', price: 10000, base: rover, full: roverFull,
+    upgrades: [ENGINE, TYRES, SUSPENSION, { id: 'weight', name: 'Lättare skrov', blurb: 'Mindre vikt: snabbare från start och uppför backar' }],
     launchSafe: true,
   },
 ]

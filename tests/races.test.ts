@@ -56,7 +56,7 @@ describe('race modes', () => {
   })
 
   it('writes times as m:ss.t', () => {
-    expect(formatTime(67.46)).toBe('1:07.4')
-    expect(formatTime(9.99)).toBe('0:09.9')
+    expect(formatTime(67.46)).toBe('1:07,4')
+    expect(formatTime(9.99)).toBe('0:09,9')
   })
 })

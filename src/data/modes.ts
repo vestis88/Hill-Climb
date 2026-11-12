@@ -10,7 +10,7 @@ export interface Mode {
 }
 
 export const MODES: Mode[] = [
-  { id: 'endless', name: 'Endless' },
+  { id: 'endless', name: 'Oändlig' },
   { id: 'race500', name: '500 m', length: 500 },
   { id: 'race1000', name: '1 km', length: 1000 },
   { id: 'race2000', name: '2 km', length: 2000 },
@@ -24,10 +24,10 @@ export const gameMode = (id: string) => MODES.find((m) => m.id === id) ?? MODES[
  */
 export const recordKey = (env: string, mode: string) => (mode === 'endless' ? env : `${env}.${mode}`)
 
-/** A race time as m:ss.t, e.g. 1:07.4. */
+/** A race time as m:ss,t (Swedish decimal comma), e.g. 1:07,4. */
 export function formatTime(seconds: number): string {
   const tenths = Math.floor(seconds * 10)
   const m = Math.floor(tenths / 600)
   const s = Math.floor((tenths % 600) / 10)
-  return `${m}:${String(s).padStart(2, '0')}.${tenths % 10}`
+  return `${m}:${String(s).padStart(2, '0')},${tenths % 10}`
 }
