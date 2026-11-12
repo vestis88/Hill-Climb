@@ -9,6 +9,8 @@ export interface Input {
   brake: boolean
   /** Out of fuel: the brake still brakes (and tips the nose down in the air) but cannot reverse. */
   empty?: boolean
+  /** Thrusters on (vehicles with thrusters only: the Moon Lander). */
+  boost?: boolean
 }
 
 export interface WheelSpec {
@@ -89,6 +91,12 @@ export interface VehicleSpec {
   amphibious?: { minGrip: number }
   /** Fuel burnt relative to the others (1 when absent): the Monster Truck drinks more. */
   fuelUse?: number
+  /**
+   * Thrusters (the Moon Lander): while the boost button is held they push along the chassis's up
+   * direction at `push` m/s², from a tank that lasts `seconds` and refills at `refill` seconds per
+   * second with a wheel on the ground.
+   */
+  thrusters?: { push: number; seconds: number; refill: number }
   /** The driver's head, for crash detection. The run ends if it touches the ground. */
   driver: { head: Vec2; headRadius: number }
   airControl: {

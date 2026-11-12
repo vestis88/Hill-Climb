@@ -217,6 +217,13 @@
         width: 64px; height: 44px; border: 0; border-radius: 22px; background: rgba(16, 21, 28, 0.35); color: #ffd23f;
         font: 900 15px ui-rounded, system-ui, sans-serif; touch-action: manipulation;
       }
+      #boost {
+        position: fixed; z-index: 5; bottom: calc(max(24px, var(--safe-bottom)) + 170px); right: max(24px, var(--safe-right));
+        width: 120px; height: 56px; border: 0; border-radius: 16px; background: rgba(255, 120, 40, 0.45); color: #fff;
+        font: 900 17px ui-rounded, system-ui, sans-serif; touch-action: none;
+      }
+      #boost.on { background: rgba(255, 150, 60, 0.85); }
+      body.swapped #boost { right: auto; left: max(24px, var(--safe-left)); }
       #horn:active { background: rgba(255, 210, 63, 0.4); }
       #paused h2 { font-size: 34px; margin: 0; }
       #update {
@@ -244,6 +251,7 @@
     <button id="pauseBtn" class="hidden" aria-label="Paus">❚❚</button>
     <button id="endRun" class="hidden">Avsluta</button>
     <button id="horn" class="hidden" aria-label="Tuta">TUT</button>
+    <button id="boost" class="hidden" aria-label="Raketer">BOOST</button>
     <div id="paused" class="screen hidden"><h2>Paus</h2><div class="actions"><button class="big blue" data-act="end">Avsluta åket</button><button class="big" data-act="resume">Fortsätt</button></div></div>
     <button id="update" class="hidden">Ny version finns · tryck för att uppdatera</button>
     <div id="garage" class="screen hidden"></div>

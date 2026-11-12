@@ -101,6 +101,8 @@ export class Run {
    * chain ends it pays a bonus on top of the tricks. A messy landing or a crash loses it.
    */
   combo: { tricks: number; coins: number } | null = null
+  /** Thruster tank, seconds left (vehicles with thrusters); read by the HUD. */
+  thrustLeft = 0
   /** Seconds of turbo left (from a turbo canister); read by the HUD. */
   turboLeft = 0
   /** What this run did, for missions (game/missions.ts). */
@@ -132,6 +134,7 @@ export class Run {
   private nextMilestone: number
 
   constructor(readonly options: RunOptions) {
+    this.thrustLeft = options.vehicle.thrusters?.seconds ?? 0
     const { vehicle, height, gravity, groundFriction, puddles } = options
     this.sim = new Sim({ vehicle, height, gravity, groundFriction, puddles })
     options.pickups.ensure(60)
@@ -182,6 +185,17 @@ export class Run {
       const push = effect.push * fade
       v.chassis.applyForceToCenter(Vec2(Math.cos(a) * mass * push, Math.sin(a) * mass * push), true)
     } else if (!input.gas) this.launchLeft = 0
+    // Thrusters: push along the chassis's up direction while boosting, from a tank that refills
+    // on the ground. They burn no fuel; with an empty tank (no fuel) they still work.
+    const th = this.options.vehicle.thrusters
+    if (th) {
+      if (rawInput.boost && this.thrustLeft > 0) {
+        this.thrustLeft = Math.max(0, this.thrustLeft - STEP)
+        const mass = [v.chassis, ...v.wheels].reduce((m, b) => m + b.getMass(), 0)
+        const a = v.chassis.getAngle()
+        v.chassis.applyForceToCenter(Vec2(-Math.sin(a) * mass * th.push, Math.cos(a) * mass * th.push), true)
+      } else if (this.sim.vehicle.wheelContacts().some(Boolean)) this.thrustLeft = Math.min(th.seconds, this.thrustLeft + STEP * th.refill)
+    }
     // Turbo: a push along the vehicle while the gas is held, through the centre of mass.
     if (this.turboLeft > 0) {
       this.turboLeft = Math.max(0, this.turboLeft - STEP)

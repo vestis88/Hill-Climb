@@ -40,6 +40,22 @@ const pauseBtn = $('pauseBtn')
 const pausedEl = $('paused')
 const updateBtn = $('update')
 const hornBtn = $('horn')
+const boostBtn = $('boost')
+/** The boost button (thrusters): held down while touched, or Space / Up on a keyboard. */
+let boosting = false
+let thrustSound = 0
+const setBoost = (on: boolean) => {
+  boosting = on
+  boostBtn.classList.toggle('on', on)
+}
+boostBtn.addEventListener('pointerdown', (e) => {
+  e.preventDefault()
+  boostBtn.setPointerCapture(e.pointerId)
+  setBoost(true)
+})
+for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) boostBtn.addEventListener(type, () => setBoost(false))
+window.addEventListener('keydown', (e) => (e.code === 'Space' || e.code === 'ArrowUp') && mode === 'driving' && setBoost(true))
+window.addEventListener('keyup', (e) => (e.code === 'Space' || e.code === 'ArrowUp') && setBoost(false))
 
 const settings = loadSettings()
 const sound = new Sound()
@@ -190,6 +206,9 @@ function show(m: Mode): void {
   endRunBtn.classList.toggle('hidden', m !== 'driving')
   pauseBtn.classList.toggle('hidden', m !== 'driving')
   hornBtn.classList.toggle('hidden', m !== 'driving')
+  boostBtn.classList.toggle('hidden', m !== 'driving' || !driveVehicle().base.thrusters)
+  document.body.classList.toggle('swapped', settings.swapPedals)
+  setBoost(false)
   pausedEl.classList.add('hidden')
   paused = false
   document.body.classList.toggle('playing', m === 'driving' || m === 'ending')
@@ -206,6 +225,8 @@ function pause(): void {
   pauseBtn.classList.add('hidden')
   endRunBtn.classList.add('hidden')
   hornBtn.classList.add('hidden')
+  boostBtn.classList.add('hidden')
+  setBoost(false)
   controls.reset()
 }
 function resume(): void {
@@ -215,6 +236,7 @@ function resume(): void {
   pauseBtn.classList.remove('hidden')
   endRunBtn.classList.remove('hidden')
   hornBtn.classList.remove('hidden')
+  boostBtn.classList.toggle('hidden', !driveVehicle().base.thrusters)
   controls.reset()
 }
 pauseBtn.addEventListener('click', pause)
@@ -795,7 +817,7 @@ function frame(now: number): void {
     accumulator += dt
     while (accumulator >= STEP) {
       prev = next
-      run.step(controls.input)
+      run.step({ ...controls.input, boost: boosting })
       next = run.sim.state()
       if (run.status === 'running') recorder.sample(next)
       handleEvents()
@@ -818,6 +840,11 @@ function frame(now: number): void {
   }
   popups = popups.filter((p) => (p.age += dt) < (p.at ? 0.9 : 1.6))
   // The engine dies with the tank; it rolls on in silence.
+  // Rocket roar while the thrusters fire.
+  if (mode === 'driving' && !paused && boosting && run.thrustLeft > 0 && (thrustSound -= dt) <= 0) {
+    sound.thrust()
+    thrustSound = 0.12
+  }
   // Shown and heard revs: free revving in the countdown, else chasing the wheels at the engine's pace.
   // A bog (revs below the green at GO): the revs sag low and chug before they pick up.
   if (bogLeft > 0 && mode === 'driving') {
@@ -842,6 +869,7 @@ function frame(now: number): void {
     pickups: run.options.pickups.items,
     wheelie: mode === 'driving' ? run.wheelieNow : null,
     turbo: mode === 'driving' ? run.turboLeft / RULES.turboSeconds : 0,
+    thrust: mode === 'driving' && run.options.vehicle.thrusters ? { left: run.thrustLeft / run.options.vehicle.thrusters.seconds, on: boosting && run.thrustLeft > 0 } : undefined,
     combo: mode === 'driving' && run.combo && run.combo.tricks >= 2 ? { tricks: run.combo.tricks, multiplier: RULES.comboMultiplier(run.combo.tricks) } : null,
     atmosphere: mode === 'driving' || mode === 'ending' || mode === 'results' ? atmosphere : undefined,
     nextFuel: (() => {

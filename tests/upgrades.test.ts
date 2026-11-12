@@ -180,7 +180,7 @@ describe.each(VEHICLES)('every vehicle: $name', (entry) => {
 
   it('an upgrade it does not offer changes nothing', () => {
     const offered = new Set(entry.upgrades.map((u) => u.id))
-    for (const id of ['drivetrain', 'weight', 'flip'] as UpgradeId[]) {
+    for (const id of ['drivetrain', 'weight', 'flip', 'thrust'] as UpgradeId[]) {
       if (!offered.has(id)) expect(at({ [id]: MAX_LEVEL })).toEqual(entry.base)
     }
   })
