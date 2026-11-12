@@ -3,6 +3,7 @@ export const PLAYERS = [
   { name: 'Wille', colour: '#4c97f5' },
   { name: 'Frans', colour: '#ff8a2a' },
   { name: 'Johan', colour: '#b46cf0' },
+  { name: 'Bim', colour: '#2ec98b' },
 ] as const
 
 export type PlayerName = (typeof PLAYERS)[number]['name']

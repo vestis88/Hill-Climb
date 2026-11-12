@@ -112,7 +112,7 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
 
 ### Players, rounds and ghosts
 
-- **Who plays:** tick Wille, Frans and/or Johan in the garage. Pressing Drive starts a round:
+- **Who plays:** tick Wille, Frans, Johan and/or Bim in the garage. Pressing Drive starts a round:
   each ticked player drives once, in turn, on the vehicle and track picked in the garage. After
   each run their results show with a big "Frans's turn" button to hand the iPad over; after the
   last turn come the round's standings, then back to the garage.
