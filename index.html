@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="sv">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
@@ -132,6 +132,13 @@
       button.big:disabled { opacity: 0.45; }
       .who { font-size: 18px; font-weight: 900; color: var(--c); }
       .pname { color: var(--c); }
+      .who.big-who { font-size: clamp(34px, 9vh, 64px); margin: 6px 0 2px; text-shadow: 0 3px 0 rgba(0,0,0,0.35); animation: whoPop 0.5s cubic-bezier(.2,1.6,.4,1); }
+      @keyframes whoPop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      .order { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; margin: 6px 0 4px; }
+      .order .arrow { opacity: 0.6; font-weight: 800; }
+      .pchip { border: 2px solid color-mix(in srgb, var(--c) 60%, transparent); border-radius: 999px; padding: 4px 12px; font-weight: 800; opacity: 0.75; }
+      .pchip b { color: var(--c); margin-right: 2px; }
+      .pchip.on { opacity: 1; border-color: var(--c); background: color-mix(in srgb, var(--c) 30%, transparent); }
       .rows.scores, .rows.standings { max-width: 460px; font-size: 17px; }
       .rows.scores div { display: grid; grid-template-columns: 28px 1fr 1fr auto; gap: 8px; padding: 6px 4px; border-bottom: 1px solid rgba(255,255,255,0.1); }
       .rows.scores .rank { opacity: 0.7; font-weight: 800; }
@@ -194,13 +201,13 @@
   </head>
   <body>
     <canvas id="game"></canvas>
-    <button id="endRun" class="hidden">End run</button>
+    <button id="endRun" class="hidden">Avsluta</button>
     <div id="garage" class="screen hidden"></div>
     <div id="results" class="screen hidden"></div>
     <div id="scores" class="screen hidden"></div>
     <div id="tune" class="screen hidden"></div>
     <div id="settings" class="screen hidden"></div>
-    <div id="rotate">Rotate your device to landscape</div>
+    <div id="rotate">Vrid enheten till liggande läge</div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

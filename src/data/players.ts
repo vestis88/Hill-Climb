@@ -9,3 +9,6 @@ export const PLAYERS = [
 export type PlayerName = (typeof PLAYERS)[number]['name']
 
 export const playerColour = (name: string) => PLAYERS.find((p) => p.name === name)?.colour ?? '#ffffff'
+
+/** Swedish genitive: "Willes", but "Frans" stays "Frans" (names ending in s, x or z). */
+export const genitive = (name: string) => (/[sxz]$/i.test(name) ? name : `${name}s`)

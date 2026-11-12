@@ -1,7 +1,7 @@
 {
   "name": "Ridgeline",
   "short_name": "Ridgeline",
-  "description": "Drive as far as you can over endless hills.",
+  "description": "Kör så långt du kan över oändliga kullar.",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",

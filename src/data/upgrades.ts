@@ -16,10 +16,10 @@ export interface UpgradeInfo {
 
 export const MAX_LEVEL = 10
 
-export const ENGINE: UpgradeInfo = { id: 'engine', name: 'Engine', blurb: 'Faster and stronger on hills' }
-export const TYRES: UpgradeInfo = { id: 'tyres', name: 'Tyres', blurb: 'Less wheelspin, better braking' }
-export const SUSPENSION: UpgradeInfo = { id: 'suspension', name: 'Suspension', blurb: 'Cleaner landings, harder to tip' }
-export const DRIVETRAIN: UpgradeInfo = { id: 'drivetrain', name: 'Drivetrain', blurb: 'Power to the front wheels too' }
+export const ENGINE: UpgradeInfo = { id: 'engine', name: 'Motor', blurb: 'Snabbare och starkare i backar' }
+export const TYRES: UpgradeInfo = { id: 'tyres', name: 'Däck', blurb: 'Mindre hjulspinn, bättre bromsar' }
+export const SUSPENSION: UpgradeInfo = { id: 'suspension', name: 'Fjädring', blurb: 'Mjukare landningar, välter inte lika lätt' }
+export const DRIVETRAIN: UpgradeInfo = { id: 'drivetrain', name: 'Drivlina', blurb: 'Kraft till framhjulen också' }
 
 const ALL: UpgradeId[] = ['engine', 'tyres', 'suspension', 'drivetrain', 'weight', 'flip']
 const levelsAt = (n: number) => Object.fromEntries(ALL.map((id) => [id, n])) as Levels

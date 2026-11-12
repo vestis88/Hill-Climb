@@ -29,23 +29,23 @@ export function saveSettings(s: Settings): void {
 import { setTestMode, tuningEnabled } from './tuning'
 import { showCode, type CloudSync } from '../save/cloud'
 
-const when = (t: number | null) => (t ? new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '')
+const when = (t: number | null) => (t ? new Date(t).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }) : '')
 
 /** The "Sync between devices" rows: off, start or join, or the family code and status. */
 function syncRows(cloud: CloudSync | undefined, joining: boolean, joinError: boolean): string {
   if (!cloud?.available) return ''
   const code = cloud.code
   if (!code) {
-    return `<div class="sync"><span>Sync between devices<br><small style="opacity:.7">Share coins, upgrades and scores with your other iPhone or iPad</small></span>
+    return `<div class="sync"><span>Synka mellan enheter<br><small style="opacity:.7">Dela mynt, uppgraderingar och resultat med din andra iPhone eller iPad</small></span>
       ${joining
         ? `<span class="join"><input data-act="code" placeholder="XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="16">
-           <button class="small" data-act="join-go">Join</button><button class="small" data-act="join-no">Cancel</button>
-           ${joinError ? '<small class="err">That code did not work</small>' : ''}</span>`
-        : '<span class="seg"><button data-act="sync-new">Start</button><button data-act="join">Join with code</button></span>'}</div>`
+           <button class="small" data-act="join-go">Gå med</button><button class="small" data-act="join-no">Avbryt</button>
+           ${joinError ? '<small class="err">Koden fungerade inte</small>' : ''}</span>`
+        : '<span class="seg"><button data-act="sync-new">Starta</button><button data-act="join">Gå med med kod</button></span>'}</div>`
   }
-  const status = { off: '', syncing: 'Syncing…', ok: `Synced ${when(cloud.lastSync)}`, error: 'Could not reach the cloud; will retry' }[cloud.state]
-  return `<div class="sync"><span>Sync between devices<br><small style="opacity:.7">Family code: <b class="code">${showCode(code)}</b><br>${status}</small></span>
-    <span class="seg"><button data-act="sync-now">Sync now</button><button data-act="sync-leave">Stop</button></span></div>`
+  const status = { off: '', syncing: 'Synkar…', ok: `Synkad ${when(cloud.lastSync)}`, error: 'Når inte molnet, försöker igen' }[cloud.state]
+  return `<div class="sync"><span>Synka mellan enheter<br><small style="opacity:.7">Familjekod: <b class="code">${showCode(code)}</b><br>${status}</small></span>
+    <span class="seg"><button data-act="sync-now">Synka nu</button><button data-act="sync-leave">Sluta</button></span></div>`
 }
 
 export function showSettings(el: HTMLElement, s: Settings, onChange: () => void, onReset: () => void, onBack: () => void, cloud?: CloudSync, onClearScores?: () => void): void {
@@ -55,20 +55,20 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
   let joinError = false
   const render = () => {
     el.innerHTML = `
-      <div class="bar"><h2>Settings</h2><button class="small" data-act="back">Back</button></div>
+      <div class="bar"><h2>Inställningar</h2><button class="small" data-act="back">Tillbaka</button></div>
       <div class="rows" style="max-width:420px">
-        <div><span>Sound</span><span class="seg"><button data-sound="on" class="${s.sound ? 'on' : ''}">On</button><button data-sound="off" class="${s.sound ? '' : 'on'}">Off</button></span></div>
-        <div><span>Volume</span><input type="range" min="0" max="1" step="0.05" value="${s.volume}" data-act="volume" style="width:55%"></div>
-        <div><span>Test mode<br><small style="opacity:.7">Everything unlocked, nothing bought</small></span><span class="seg"><button data-test="off" class="${tuningEnabled() ? '' : 'on'}">Off</button><button data-test="on" class="${tuningEnabled() ? 'on' : ''}">On</button></span></div>
+        <div><span>Ljud</span><span class="seg"><button data-sound="on" class="${s.sound ? 'on' : ''}">På</button><button data-sound="off" class="${s.sound ? '' : 'on'}">Av</button></span></div>
+        <div><span>Volym</span><input type="range" min="0" max="1" step="0.05" value="${s.volume}" data-act="volume" style="width:55%"></div>
+        <div><span>Testläge<br><small style="opacity:.7">Allt upplåst, inget köpt</small></span><span class="seg"><button data-test="off" class="${tuningEnabled() ? '' : 'on'}">Av</button><button data-test="on" class="${tuningEnabled() ? 'on' : ''}">På</button></span></div>
         ${syncRows(cloud, joining, joinError)}
-        <div><span>Pedals</span><span class="seg"><button data-pedals="normal" class="${s.swapPedals ? '' : 'on'}">Brake left</button><button data-pedals="swap" class="${s.swapPedals ? 'on' : ''}">Gas left</button></span></div>
+        <div><span>Pedaler</span><span class="seg"><button data-pedals="normal" class="${s.swapPedals ? '' : 'on'}">Broms vänster</button><button data-pedals="swap" class="${s.swapPedals ? 'on' : ''}">Gas vänster</button></span></div>
       </div>
       <div class="actions">
         ${confirming
-          ? `<span>Delete all coins, upgrades and unlocks${cloud?.code ? ' on this device (it also stops syncing)' : ''}?</span><button class="small" data-act="reset-yes" style="background:#e5383b">Yes, reset</button><button class="small" data-act="reset-no">Cancel</button>`
+          ? `<span>Radera alla mynt, uppgraderingar och upplåsningar${cloud?.code ? ' på den här enheten (synkningen stoppas också)' : ''}?</span><button class="small" data-act="reset-yes" style="background:#e5383b">Ja, nollställ</button><button class="small" data-act="reset-no">Avbryt</button>`
           : clearing
-            ? '<span>Clear all highscores, bests and ghosts? Coins and upgrades stay.</span><button class="small" data-act="clear-yes" style="background:#e5383b">Yes, clear</button><button class="small" data-act="clear-no">Cancel</button>'
-            : '<button class="small" data-act="clear">Clear highscores and ghosts…</button><button class="small" data-act="reset">Reset progress…</button>'}
+            ? '<span>Rensa alla topplistor, rekord och spöken? Mynt och uppgraderingar finns kvar.</span><button class="small" data-act="clear-yes" style="background:#e5383b">Ja, rensa</button><button class="small" data-act="clear-no">Avbryt</button>'
+            : '<button class="small" data-act="clear">Rensa topplistor och spöken…</button><button class="small" data-act="reset">Nollställ framsteg…</button>'}
       </div>`
   }
   render()

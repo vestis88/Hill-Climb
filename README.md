@@ -10,6 +10,11 @@ land on your head. Coins you pick up along the way pay for upgrades, and
 upgrades let you get further on the next run. There are no ads and nothing to
 buy: every coin is earned by driving.
 
+The game is in Swedish: every screen, button and in-game text (the code and this README stay
+in English). Vehicle and track names are Swedish too: Buggyn (code id `runabout`), Crossen
+(`scrambler`), Bjässen (`hauler`) and Träskkryparen (`rover`); Gröna ängar, Kraterfälten,
+Frostpasset, Dynhavet, Röda kanjonen and Månskensskogen. The README uses the English code names.
+
 ### Vehicles
 
 | Vehicle | Unlock | Character |
@@ -112,9 +117,11 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
 
 ### Players, rounds and ghosts
 
-- **Who plays:** tick Wille, Frans, Johan and/or Bim in the garage. Pressing Drive starts a round:
-  each ticked player drives once, in turn, on the vehicle and track picked in the garage. After
-  each run their results show with a big "Frans's turn" button to hand the iPad over; after the
+- **Who plays:** tick Wille, Frans, Johan and/or Bim in the garage. Pressing Kör (Drive) starts a
+  round: each ticked player drives once, in turn, on the vehicle and track picked in the garage.
+  With several players, a "Ny omgång" screen first shows who starts ("Wille börjar!") and the turn
+  order, with a "Kör, Wille!" button; the countdown also shows whose turn it is ("Willes tur").
+  After each run their results show with a big "Frans tur" button to hand the iPad over; after the
   last turn come the round's standings, then back to the garage.
 - **Shared garage:** coins, upgrades and unlocks are shared by everyone. Bests, ghosts and the
   highscore board are per name, and distance bonuses count from each player's own best.

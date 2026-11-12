@@ -1,4 +1,5 @@
 import { LAUNCH, type LaunchKind } from '../sim/launch'
+import { genitive } from '../data/players'
 import type { Environment } from '../data/environments'
 import type { Pickup } from '../data/track'
 import type { HeightFn, Input, Pose, SimState, VehicleSpec } from '../sim/types'
@@ -197,7 +198,7 @@ export class GameRenderer {
     ctx.scale(pop, pop)
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    this.outlinedText('MADE IT ON EMPTY!', 0, 0, Math.min(44, width / 16), '#ffffff')
+    this.outlinedText('RÄDDAD PÅ TOM TANK!', 0, 0, Math.min(44, width / 16), '#ffffff')
     this.outlinedText(this.rescueText, 0, Math.min(52, width / 14), Math.min(56, width / 12), '#ffd23f')
     ctx.restore()
   }
@@ -442,7 +443,7 @@ export class GameRenderer {
     ctx.strokeStyle = OUTLINE
     ctx.strokeText('FINISH', 0, 0)
     ctx.fillStyle = '#ffd23f'
-    ctx.fillText('FINISH', 0, 0)
+    ctx.fillText('MÅL', 0, 0)
     ctx.restore()
   }
 
@@ -839,7 +840,9 @@ export class GameRenderer {
       ctx.restore()
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      this.outlinedText('Rev into the green!', cx, cy - r * 0.95, 20, '#ffffff')
+      this.outlinedText('Varva in i det gröna!', cx, cy - r * 0.95, 20, '#ffffff')
+      // Whose turn it is, above it all.
+      if (view.player) this.outlinedText(`${genitive(view.player.name)} tur`, cx, cy - r * 0.95 - 36, 28, view.player.colour)
       return
     }
     if (this.goT > 1.4) return
@@ -853,9 +856,9 @@ export class GameRenderer {
     ctx.scale(0.6 + 0.4 * k + 0.15 * Math.sin(k * Math.PI), 0.6 + 0.4 * k + 0.15 * Math.sin(k * Math.PI))
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    this.outlinedText('GO!', 0, -10, Math.round(r * 0.75), '#7dff8a')
-    if (this.goKind === 'perfect') this.outlinedText('Perfect start!', 0, r * 0.5, 24, '#ffd23f')
-    else if (this.goKind === 'over') this.outlinedText('Too many revs!', 0, r * 0.5, 22, '#ff6b6b')
+    this.outlinedText('KÖR!', 0, -10, Math.round(r * 0.75), '#7dff8a')
+    if (this.goKind === 'perfect') this.outlinedText('Perfekt start!', 0, r * 0.5, 24, '#ffd23f')
+    else if (this.goKind === 'over') this.outlinedText('För högt varv!', 0, r * 0.5, 22, '#ff6b6b')
     ctx.restore()
   }
 
@@ -879,7 +882,7 @@ export class GameRenderer {
     ctx.save()
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
-    this.outlinedText(`Wheelie ${Math.floor(w.metres)} m  +${Math.floor(w.coins)}`, width / 2, y, 17, w.metres >= 10 ? '#ffffff' : 'rgba(255,255,255,0.75)')
+    this.outlinedText(`Stegring ${Math.floor(w.metres)} m  +${Math.floor(w.coins)}`, width / 2, y, 17, w.metres >= 10 ? '#ffffff' : 'rgba(255,255,255,0.75)')
     if (w.multiplier > 1) {
       ctx.translate(width / 2, y + 34)
       ctx.scale(pop, pop)
@@ -909,7 +912,7 @@ export class GameRenderer {
     if (view.race) {
       const left = Math.max(0, Math.ceil(view.race.length - view.next.distance))
       ctx.textAlign = 'center'
-      this.outlinedText(left > 0 ? `${left} m to go` : 'Finish!', width / 2, y0 + 36, 15, '#ffffff')
+      this.outlinedText(left > 0 ? `${left} m kvar` : 'Mål!', width / 2, y0 + 36, 15, '#ffffff')
       ctx.textAlign = 'left'
     }
     if (view.player) {
@@ -944,12 +947,12 @@ export class GameRenderer {
     // How far to the next fuel can, under the gauge; a low-fuel warning flashes after it.
     let warnX = x0
     if (view.nextFuel != null && view.nextFuel > 0) {
-      const text = `Fuel in ${Math.ceil(view.nextFuel)} m`
+      const text = `Bränsle om ${Math.ceil(view.nextFuel)} m`
       ctx.font = `800 15px ${FONT}`
       this.outlinedText(text, x0, gy + 22, 15, low ? '#ffd23f' : '#ffffff')
       warnX = x0 + ctx.measureText(text).width + 12
     }
-    if (low && Math.floor(this.time / 0.3) % 2 === 0) this.outlinedText(view.fuel <= 0 ? 'OUT OF FUEL' : 'LOW FUEL', warnX, gy + 22, 15, '#ff6b6b')
+    if (low && Math.floor(this.time / 0.3) % 2 === 0) this.outlinedText(view.fuel <= 0 ? 'SLUT PÅ BRÄNSLE' : 'LITE BRÄNSLE', warnX, gy + 22, 15, '#ff6b6b')
     if (view.spec.engine.gearbox) this.drawRevGauge(view, gx + gw + 50, gy + 14)
 
     // Coins this run, in a pill at the top centre; it pops when a coin lands in it.
@@ -1017,7 +1020,7 @@ export class GameRenderer {
     }
     const leftX = Math.max(20, safe.left)
     const rightX = width - pw - Math.max(20, safe.right)
-    pedal(swap ? rightX : leftX, input.brake, '#ff8080', 'BRAKE')
+    pedal(swap ? rightX : leftX, input.brake, '#ff8080', 'BROMS')
     pedal(swap ? leftX : rightX, input.gas, '#7dff9a', 'GAS')
     ctx.textBaseline = 'top'
   }
