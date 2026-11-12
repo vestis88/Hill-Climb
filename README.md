@@ -122,7 +122,10 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
   With several players, a "Ny omgång" screen first shows who starts ("Wille börjar!") and the turn
   order, with a "Kör, Wille!" button; the countdown also shows whose turn it is ("Willes tur").
   After each run their results show with a big "Frans tur" button to hand the iPad over; after the
-  last turn come the round's standings, then back to the garage.
+  last turn come the round's standings (with each player's vehicle), then back to the garage.
+- **Own vehicle each:** in a round with several players, the screen before each turn shows the
+  vehicles the family owns and the player picks theirs; the track and mode stay shared. Each
+  player's pick is remembered on the device (it starts as the garage's vehicle).
 - **Shared garage:** coins, upgrades and unlocks are shared by everyone. Bests, ghosts and the
   highscore board are per name, and distance bonuses count from each player's own best.
 - **Ghost riders:** every run is recorded (the vehicle's pose 15 times a second, about 50 KB

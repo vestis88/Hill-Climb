@@ -31,6 +31,8 @@ export interface SaveData {
   modeId: string
   /** Best race time per player, then per record key (data/modes.ts recordKey), seconds. */
   playerTimes: Record<string, Record<string, number>>
+  /** Each player's own vehicle for rounds with several players (this device only, not synced). */
+  playerVehicles?: Record<string, string>
 }
 
 export interface Score {
