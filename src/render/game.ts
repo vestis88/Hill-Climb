@@ -1,3 +1,4 @@
+import { setPiecesBetween } from '../sim/terrain'
 import { LAUNCH, type LaunchKind } from '../sim/launch'
 import { genitive } from '../data/players'
 import type { Environment } from '../data/environments'
@@ -313,6 +314,7 @@ export class GameRenderer {
     drawProps(ctx, env, height, left, right)
     drawGround(ctx, env, height, left, right, bottom, this.camY + this.viewWidth, this.time)
     this.drawPuddles(view, left, right)
+    this.drawSetPieces(view, height, left, right)
     this.drawSigns(height, left, right)
     if (view.race && view.race.length > left - 3 && view.race.length < right + 3) this.drawFinish(height, view.race.length)
     this.drawShadow(view, chassis)
@@ -451,6 +453,55 @@ export class GameRenderer {
     ctx.fillStyle = '#ffd23f'
     ctx.fillText('MÅL', 0, 0)
     ctx.restore()
+  }
+
+  /**
+   * Dress the set pieces (sim/terrain.ts): the table-top is a wooden bridge deck on posts, and the
+   * double jump has a log at each lip. Visual only; the ground shape is the physics.
+   */
+  private drawSetPieces(view: View, height: HeightFn, left: number, right: number): void {
+    const { ctx } = this
+    const flat = view.env.terrain.flatStart
+    for (const p of setPiecesBetween(view.env.seed, left - flat - 40, right - flat + 40)) {
+      const x0 = flat + p.start
+      if (p.kind === 'table') {
+        // Posts down from the deck, then planks along the surface.
+        ctx.fillStyle = '#6e4325'
+        for (let x = x0 + 3; x < x0 + p.length - 2; x += 3.5) ctx.fillRect(x - 0.1, height(x) - 2.2, 0.2, 2.1)
+        ctx.lineWidth = 0.05
+        ctx.strokeStyle = OUTLINE
+        for (let x = x0; x < x0 + p.length; x += 0.5) {
+          const y1 = height(x)
+          const y2 = height(x + 0.5)
+          ctx.beginPath()
+          ctx.moveTo(x + 0.03, y1 + 0.02)
+          ctx.lineTo(x + 0.47, y2 + 0.02)
+          ctx.lineTo(x + 0.47, y2 - 0.22)
+          ctx.lineTo(x + 0.03, y1 - 0.22)
+          ctx.closePath()
+          ctx.fillStyle = Math.floor((x - x0) * 2) % 2 ? '#b5763f' : '#a5672f'
+          ctx.fill()
+          ctx.stroke()
+        }
+      } else if (p.kind === 'double') {
+        // A log lying across each lip.
+        for (const lip of [7, 25]) {
+          const x = x0 + lip - 0.4
+          const y = height(x) + 0.05
+          ctx.beginPath()
+          ctx.arc(x, y, 0.32, 0, Math.PI * 2)
+          ctx.fillStyle = '#8a5a33'
+          ctx.fill()
+          ctx.lineWidth = 0.06
+          ctx.strokeStyle = OUTLINE
+          ctx.stroke()
+          ctx.beginPath()
+          ctx.arc(x, y, 0.16, 0, Math.PI * 2)
+          ctx.strokeStyle = '#c99a64'
+          ctx.stroke()
+        }
+      }
+    }
   }
 
   private drawSigns(height: HeightFn, left: number, right: number): void {

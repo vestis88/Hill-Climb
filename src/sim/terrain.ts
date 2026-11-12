@@ -137,7 +137,83 @@ export function makeTerrain(p: TerrainParams, seed: number): HeightFn {
     const rolling = p.amplitude * (noise(d / w, seed) + 0.45 * noise(d / (w * 0.42), seed + 1))
     const crest = p.crests * Math.pow(Math.max(0, noise(d / (w * 0.8), seed + 2)), 3) * smoothstep(40, 140, d)
     const bumps = p.bumps * noise(d / 2.2, seed + 3) * smoothstep(60, 220, d)
-    return ease * (grow * (rolling + crest) + bumps) + kicker(p, seed, d, grow)
+    const piece = setPieceAt(seed, d)
+    return ease * (grow * (rolling + crest) + bumps) + (piece ? pieceHeight(piece, d - piece.start, grow) : kicker(p, seed, d, grow))
+  }
+}
+
+/**
+ * Set pieces keep long runs interesting: from 250 m on, one may sit in every 300 m stretch, picked
+ * by the seed. Each is a shape added on top of the hills, and plain kickers are left out inside it.
+ * - double: two kickers in a row;
+ * - table: a wooden table-top (ramp, flat deck, ramp), drawn as a wooden bridge;
+ * - whoops: five quick rollers in a row;
+ * - wall: a steep bank up to a short plateau, then a gentle way down.
+ */
+export type SetPieceKind = 'double' | 'table' | 'whoops' | 'wall'
+export interface SetPiece {
+  kind: SetPieceKind
+  /** Start and length along the track, metres from the end of the starting flat. */
+  start: number
+  length: number
+}
+
+const PIECE_FROM = 250
+const PIECE_SPACING = 300
+const PIECE_LENGTH: Record<SetPieceKind, number> = { double: 36, table: 32, whoops: 30, wall: 28 }
+const PIECE_KINDS: SetPieceKind[] = ['double', 'table', 'whoops', 'wall']
+
+/** The set piece in the i-th 300 m stretch, if there is one. */
+function pieceIn(seed: number, i: number): SetPiece | null {
+  if ((i + 1) * PIECE_SPACING <= PIECE_FROM || (lattice(i, seed + 21) + 1) / 2 > 0.7) return null
+  const kind = PIECE_KINDS[Math.min(3, Math.floor(((lattice(i, seed + 22) + 1) / 2) * 4))]
+  const length = PIECE_LENGTH[kind]
+  const start = Math.max(PIECE_FROM, i * PIECE_SPACING + 20 + ((lattice(i, seed + 23) + 1) / 2) * (PIECE_SPACING - length - 40))
+  return { kind, start, length }
+}
+
+/** The set piece covering distance d (from the end of the starting flat), if any. */
+export function setPieceAt(seed: number, d: number): SetPiece | null {
+  if (d < PIECE_FROM) return null
+  const p = pieceIn(seed, Math.floor(d / PIECE_SPACING))
+  return p && d >= p.start && d < p.start + p.length ? p : null
+}
+
+/** Every set piece overlapping the distances from..to (for drawing). */
+export function setPiecesBetween(seed: number, from: number, to: number): SetPiece[] {
+  const out: SetPiece[] = []
+  for (let i = Math.max(0, Math.floor(from / PIECE_SPACING)); i <= Math.floor(to / PIECE_SPACING); i++) {
+    const p = pieceIn(seed, i)
+    if (p && p.start + p.length > from && p.start < to) out.push(p)
+  }
+  return out
+}
+
+const ramp = (u: number, len: number, h: number) => h * (u / len) ** 2
+const ease01 = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t))
+
+/** Height a set piece adds at u metres into it. */
+function pieceHeight(p: SetPiece, u: number, grow: number): number {
+  const g = Math.sqrt(grow)
+  switch (p.kind) {
+    case 'double': {
+      // Two kickers: 7 m up to the lip, 4 m drop, a 7 m gap, and again (the second a bit bigger).
+      const kick = (v: number, h: number) => (v <= 0 || v >= 11 ? 0 : v < 7 ? ramp(v, 7, h) : h * (1 - ease01((v - 7) / 4)))
+      return kick(u, 1.1 * g) + kick(u - 18, 1.35 * g)
+    }
+    case 'table': {
+      // 9 m up, a 14 m flat deck, 9 m down.
+      const h = 1.5 * g
+      return u < 9 ? h * ease01(u / 9) : u < 23 ? h : h * (1 - ease01((u - 23) / 9))
+    }
+    case 'whoops':
+      // Five rollers, 6 m each.
+      return 0.55 * g * Math.sin((Math.PI * u) / 6) ** 2
+    case 'wall': {
+      // A steep 8 m bank up, a 6 m plateau, then 14 m gently down.
+      const h = 2.0 * g
+      return u < 8 ? h * ease01(u / 8) : u < 14 ? h : h * (1 - ease01((u - 14) / 14))
+    }
   }
 }
 
