@@ -1,5 +1,5 @@
 import { mergeInto, syncedPart, writeSave, type SaveData, type SyncedSave } from './save'
-import { betterGhost, listGhosts, putGhost, type Ghost } from './ghosts'
+import { betterGhost, listGhosts, packGhost, putGhost, unpackGhost, type Ghost } from './ghosts'
 
 /**
  * Cloud sync: progress is shared between the family's devices through a Firebase Realtime
@@ -161,7 +161,7 @@ export class CloudSync {
       const meta = metaOf(s.ghost)
       const r = remote[id]
       if (r && !wins(s.kind, meta, r)) continue
-      const put = await this.fetchFn(`${family}/ghosts/${id}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(s.ghost) })
+      const put = await this.fetchFn(`${family}/ghosts/${id}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(packGhost(s.ghost)) })
       if (!put.ok) throw new Error(`ghost write ${put.status}`)
       updates[id] = meta
     }
@@ -175,8 +175,8 @@ export class CloudSync {
       const mine = local.get(id)
       if (mine && !wins(kind, r, metaOf(mine.ghost))) continue
       const res = await this.fetchFn(`${family}/ghosts/${id}.json`, { cache: 'no-store' })
-      const ghost = res.ok ? ((await res.json()) as Ghost | null) : null
-      if (ghost?.v === 1 && Array.isArray(ghost.data)) putGhost(kind, ghost)
+      const ghost = res.ok ? unpackGhost(await res.json()) : null
+      if (ghost) putGhost(kind, ghost)
     }
   }
 

@@ -1,3 +1,4 @@
+import { advance, emptyRound, nextPlayerOf, nextRound, playerOf, recordTurn, roundOver, standings, together, type Round } from './game/round'
 import { randomAtmosphere, type Atmosphere } from './render/scenery'
 import { EngineRevs, LAUNCH } from './sim/launch'
 import { dailyFor, dateKey, oldDaily } from './data/daily'
@@ -93,17 +94,7 @@ let bogStarted = false
  * A round: each ticked player drives once, in turn, on the same vehicle and track; then the
  * standings. One player alone is a round of one.
  */
-interface Round {
-  players: string[]
-  turn: number
-  results: { name: string; vehicle: string; distance: number; time?: number; newBest: boolean }[]
-  /** This round's runs, as ghosts for the players after them (kept in memory only). */
-  ghosts: Ghost[]
-  /** The runs from earlier rounds on this same track and mode, shown until the player drives again. */
-  previous: Ghost[]
-}
-// Declared before the first run is created below, which reads them.
-let round: Round = { players: [...save.players], turn: 0, results: [], ghosts: [], previous: [] }
+let round: Round = emptyRound(save.players)
 /** Ghosts raced this run, and the recorder for this run's own ghost. */
 let ghosts: { label: string; colour: string; track: GhostTrack }[] = []
 let recorder = new GhostRecorder(2)
@@ -143,7 +134,7 @@ function playerVehicle(name: string) {
 /** The vehicle for the turn being driven now. */
 function driveVehicle() {
   if (daily) return vehicleEntry(today()[daily].vehicle)
-  return round.players.length > 1 ? playerVehicle(currentPlayer()) : currentVehicle()
+  return together(round) ? playerVehicle(currentPlayer()) : currentVehicle()
 }
 function currentMode() {
   if (daily) return gameMode(daily === 'race' ? 'race500' : 'endless')
@@ -154,7 +145,7 @@ function currentKey(): string {
   return recordKey(recordEnvId(), currentMode().id)
 }
 function currentPlayer(): string {
-  return round.players[round.turn] ?? save.players[0] ?? PLAYERS[0].name
+  return playerOf(round, save.players[0] ?? PLAYERS[0].name)
 }
 
 function vehicleSpec() {
@@ -430,10 +421,9 @@ function startRound(): void {
   // "Drive as" choice only applies to its own test drives.
   driveAs = 'mine'
   // Same track and mode as the round before: keep everyone's latest run from it as a ghost.
-  const latest = [...round.previous.filter((p) => !round.ghosts.some((g) => g.player === p.player)), ...round.ghosts]
-  round = { players: [...save.players], turn: 0, results: [], ghosts: [], previous: latest.filter((g) => g.env === currentKey()) }
+  round = nextRound(round, save.players, currentKey())
   // With several players, first show who starts, the order, and let them pick a vehicle.
-  if (round.players.length < 2) return startRun()
+  if (!together(round)) return startRun()
   openTurn()
 }
 
@@ -482,7 +472,7 @@ function collectGhosts(): void {
     if (g && g.data.length && !ghosts.some((x) => dup(x.track.ghost))) ghosts.push({ label, colour: playerColour(g.player), track: new GhostTrack(g) })
   }
   // A round with several players: everyone's latest run and record, and the overall record.
-  if (round.players.length > 1) {
+  if (together(round)) {
     const vehicleBest = loadGhost(me, vehicleKey(env, driveVehicle().id), 'best')
     const driver = { player: me, vehicleBest, vehicleName: driveVehicle().name }
     for (const g of roundGhosts(round.players, PLAYERS.map((p) => p.name), round.ghosts, round.previous, (p, kind) => loadGhost(p, env, kind), driver)) add(g.ghost, g.label)
@@ -543,6 +533,7 @@ function finishRun(): void {
   }
   persist()
   // Every counting run is kept as the player's last ghost (and best, if it went further or faster).
+  let turnGhost: Ghost | null = null
   if (distance > 0) {
     const ghost = recorder.finish({ player: me, vehicle: driveVehicle().id, env: key, distance, time })
     if (counts) {
@@ -550,11 +541,11 @@ function finishRun(): void {
       storeVehicleBest(ghost)
     }
     // Raced by the players after this one in the round (a retake replaces the earlier run).
-    round.ghosts = [...round.ghosts.filter((g) => g.player !== me), ghost]
+    turnGhost = ghost
   }
   const newBest = counts && (race.length ? time !== undefined && time < bestTime : distance > best)
-  round.results.push({ name: me, vehicle: driveVehicle().name, distance, time, newBest })
-  const nextPlayer = round.players[round.turn + 1]
+  recordTurn(round, { name: me, vehicle: driveVehicle().name, distance, time, newBest }, turnGhost)
+  const nextPlayer = nextPlayerOf(round)
   showResults(resultsEl, {
     status: run.status === 'running' ? 'ended' : run.status,
     distance,
@@ -565,11 +556,11 @@ function finishRun(): void {
     bank: save.coins,
     player: { name: me, colour: playerColour(me) },
     next: nextPlayer,
-    roundOver: !nextPlayer && round.players.length > 1,
+    roundOver: roundOver(round),
     onGarage: openGarage,
     onAgain: startRound,
     onNext: () => {
-      round.turn++
+      advance(round)
       openTurn()
     },
     onStandings: openStandings,
@@ -582,8 +573,7 @@ function openStandings(): void {
   showStandings(resultsEl, {
     track: daily ? trackName() : currentMode().length ? `${currentEnv().name} · ${currentMode().name}-lopp` : currentEnv().name,
     // Races: finishers by time, then the rest by how far they got. Endless: by distance.
-    rows: [...round.results]
-      .sort((a, b) => (a.time ?? Infinity) - (b.time ?? Infinity) || b.distance - a.distance)
+    rows: standings(round)
       .map((r) => ({
         name: r.name,
         colour: playerColour(r.name),

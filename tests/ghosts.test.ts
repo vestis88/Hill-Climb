@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { environment, heightFor } from '../src/data/environments'
 import { runabout } from '../src/data/vehicles'
-import { bestOf, roundGhosts, storeVehicleBest, vehicleKey, GHOST_EVERY, GhostRecorder, GhostTrack, loadGhost, storeGhost, type Ghost } from '../src/save/ghosts'
+import { bestOf, packGhost, putGhost, unpackGhost, roundGhosts, storeVehicleBest, vehicleKey, GHOST_EVERY, GhostRecorder, GhostTrack, loadGhost, storeGhost, type Ghost } from '../src/save/ghosts'
 import type { SimState } from '../src/sim/types'
 import { Sim, STEP } from '../src/sim/world'
 
@@ -153,5 +153,31 @@ describe('records per vehicle (owner: race your record in the vehicle you picked
     // Driving the hauler, whose record is the overall one: shown once.
     const same = roundGhosts(['Wille', 'Frans'], ['Wille', 'Frans'], [], [], (p, kind) => (p === 'Wille' && kind === 'best' ? overall : null), { player: 'Wille', vehicleBest: { ...overall, env: 'meadow@hauler' }, vehicleName: 'Bjässen' })
     expect(same.map((o) => o.label)).toEqual(['Rekord · Wille'])
+  })
+})
+
+describe('ghost storage format (owner: room for many more ghosts)', () => {
+  beforeEach(() => {
+    ;(globalThis as { localStorage?: unknown }).localStorage = fakeStorage()
+  })
+
+  it('packs a ghost to well under half the size, and unpacks it exactly', () => {
+    const { ghost } = record(60)
+    const plain = JSON.stringify(ghost).length
+    const packed = JSON.stringify(packGhost(ghost)).length
+    expect(packed).toBeLessThan(plain / 2)
+    expect(unpackGhost(JSON.parse(JSON.stringify(packGhost(ghost))))).toEqual({ ...ghost, data: ghost.data.map((v) => v || 0) })
+    // Big and negative numbers survive too.
+    const odd = { ...ghost, data: [0, -1, 1, 63, -64, 64, 1e6, -1e6, 2 ** 31, -(2 ** 31)] }
+    expect(unpackGhost(packGhost(odd))!.data).toEqual(odd.data)
+  })
+
+  it('still loads ghosts stored in the old plain form', () => {
+    const { ghost } = record(5)
+    localStorage.setItem('ridgeline.ghost.Wille.meadow.best', JSON.stringify(ghost))
+    expect(loadGhost('Wille', 'meadow', 'best')!.data.length).toBe(ghost.data.length)
+    putGhost('last', ghost)
+    expect(localStorage.getItem('ridgeline.ghost.Wille.meadow.last')).toContain('"packed"')
+    expect(loadGhost('Wille', 'meadow', 'last')).toEqual({ ...ghost, data: ghost.data.map((v) => v || 0) })
   })
 })

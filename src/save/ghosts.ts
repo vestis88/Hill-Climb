@@ -117,12 +117,70 @@ export class GhostTrack {
 
 const key = (player: string, env: string, kind: 'best' | 'last') => `ridgeline.ghost.${player}.${env}.${kind}`
 
+/**
+ * How a ghost is stored and synced: the same fields, with the numbers packed as zigzag varints
+ * of the change from frame to frame (most fit in one byte) and base64: under half the size of a
+ * JSON number list, so more than twice as many ghosts fit in the browser's storage. Ghosts stored the old way still load.
+ */
+interface PackedGhost extends Omit<Ghost, 'v' | 'data'> {
+  v: 2
+  packed: string
+}
+
+export function packGhost(g: Ghost): PackedGhost {
+  // The data are already changes from the previous frame; motion is smooth, so the change in
+  // that change is smaller still. Store that (the first two frames as they are).
+  const n = stride(g.wheels)
+  const second = g.data.map((v, i) => (i < 2 * n ? v : v - g.data[i - n]))
+  const bytes: number[] = []
+  for (const n of second) {
+    let z = n >= 0 ? n * 2 : -n * 2 - 1
+    while (z >= 0x80) {
+      bytes.push((z % 0x80) | 0x80)
+      z = Math.floor(z / 0x80)
+    }
+    bytes.push(z)
+  }
+  let text = ''
+  for (let i = 0; i < bytes.length; i += 0x4000) text += String.fromCharCode(...bytes.slice(i, i + 0x4000))
+  const { data: _data, v: _v, ...meta } = g
+  return { ...meta, v: 2, packed: btoa(text) }
+}
+
+/** A ghost from storage or the cloud, packed or the old plain form; null if it is not one. */
+export function unpackGhost(raw: unknown): Ghost | null {
+  // Either shape: the old plain one (v 1, data) or the packed one (v 2, packed).
+  const g = raw as { v?: number; data?: unknown; packed?: unknown } | null
+  if (!g || typeof g !== 'object') return null
+  if (g.v === 1 && Array.isArray(g.data)) return g as Ghost
+  if (g.v !== 2 || typeof g.packed !== 'string') return null
+  const text = atob(g.packed)
+  const data: number[] = []
+  let z = 0
+  let scale = 1
+  for (let i = 0; i < text.length; i++) {
+    const b = text.charCodeAt(i)
+    z += (b & 0x7f) * scale
+    if (b & 0x80) scale *= 0x80
+    else {
+      const n = stride((g as PackedGhost).wheels)
+      const v = z % 2 ? -(z + 1) / 2 : z / 2
+      data.push(data.length < 2 * n ? v : v + data[data.length - n])
+      z = 0
+      scale = 1
+    }
+  }
+  const { packed: _packed, ...meta } = g as PackedGhost
+  return { ...meta, v: 1, data }
+}
+
+const serialise = (g: Ghost) => JSON.stringify(packGhost(g))
+
 export function loadGhost(player: string, env: string, kind: 'best' | 'last'): Ghost | null {
   try {
     const raw = localStorage.getItem(key(player, env, kind))
     if (!raw) return null
-    const g = JSON.parse(raw) as Ghost
-    return g?.v === 1 && Array.isArray(g.data) ? g : null
+    return unpackGhost(JSON.parse(raw))
   } catch {
     return null
   }
@@ -134,7 +192,7 @@ export function loadGhost(player: string, env: string, kind: 'best' | 'last'): G
  */
 export function storeGhost(ghost: Ghost): void {
   const put = (kind: 'best' | 'last') => {
-    const text = JSON.stringify(ghost)
+    const text = serialise(ghost)
     try {
       localStorage.setItem(key(ghost.player, ghost.env, kind), text)
       return true
@@ -234,8 +292,8 @@ export function listGhosts(): StoredGhost[] {
       const k = localStorage.key(i)
       if (!k?.startsWith('ridgeline.ghost.')) continue
       const kind = k.endsWith('.best') ? 'best' : k.endsWith('.last') ? 'last' : null
-      const g = kind ? (JSON.parse(localStorage.getItem(k) ?? 'null') as Ghost | null) : null
-      if (kind && g?.v === 1 && Array.isArray(g.data)) out.push({ player: g.player, env: g.env, kind, ghost: g })
+      const g = kind ? unpackGhost(JSON.parse(localStorage.getItem(k) ?? 'null')) : null
+      if (kind && g) out.push({ player: g.player, env: g.env, kind, ghost: g })
     }
   } catch {
     // Storage unavailable.
@@ -246,7 +304,7 @@ export function listGhosts(): StoredGhost[] {
 /** Store a ghost from another device as this device's best or last (no comparison). */
 export function putGhost(kind: 'best' | 'last', ghost: Ghost): boolean {
   try {
-    localStorage.setItem(key(ghost.player, ghost.env, kind), JSON.stringify(ghost))
+    localStorage.setItem(key(ghost.player, ghost.env, kind), serialise(ghost))
     return true
   } catch {
     return false
