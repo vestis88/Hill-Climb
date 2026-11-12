@@ -55,6 +55,17 @@ describe('daily challenge (owner: 500 m race and endless, two random vehicles at
     expect(misses.length, misses.join('\n')).toBeLessThanOrEqual(1)
   }, 120000)
 
+  it('has weather picked by the date; rain and snow make the ground slippery', () => {
+    const month = days('2027-03-01', 60).map((x) => dailyFor(x))
+    expect(new Set(month.map((d) => d.atmosphere.weather)).size).toBeGreaterThanOrEqual(3)
+    for (const d of month) {
+      const base = environment(d.env.id).groundFriction
+      if (d.atmosphere.weather === 'rain' || d.atmosphere.weather === 'snow') expect(d.env.groundFriction).toBeLessThan(base)
+      else expect(d.env.groundFriction).toBe(base)
+    }
+    expect(dailyFor('2027-03-14').atmosphere).toEqual(dailyFor(new Date(2027, 2, 14)).atmosphere)
+  })
+
   it('drops records older than two weeks', () => {
     expect(oldDaily('daily-2027-03-01', '2027-03-14')).toBe(false)
     expect(oldDaily('daily-2027-02-20.race500', '2027-03-14')).toBe(true)

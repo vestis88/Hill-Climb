@@ -290,9 +290,10 @@ whole list of families cannot be read.
   left out inside them (code: `src/sim/terrain.ts`).
 - **Own paint colour:** every player's vehicle is painted in their name colour while they drive,
   on their ghosts, and in the vehicle pictures on their turn screen.
-- **Time of day and weather:** every run gets a random mood (visual only, the physics are the
-  same): day, dusk or night (with headlight glow), and sometimes rain, snow or fog, matched to the
-  map (no rain on the moon, no snow in the desert).
+- **Time of day and weather (daily challenge only):** the date picks day, dusk or night (with
+  headlight glow) and sometimes rain, snow or fog, matched to the map (no rain on the moon, no snow
+  in the desert). Rain and snow make the ground slippery (82 % and 72 % of the map's grip), and the
+  garage shows it ("Regn, halt"). Other runs are always clear daylight (code: `src/data/weather.ts`).
 - **Spöken (settings):** race all ghosts, only records, or none.
 - **Updates:** a home-screen app can stay open for days. The game checks `version.json` every few
   minutes and, outside a run, shows "Ny version finns · tryck för att uppdatera".

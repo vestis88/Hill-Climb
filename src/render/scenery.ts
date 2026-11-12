@@ -1,3 +1,4 @@
+import type { Atmosphere } from '../data/weather'
 import type { Environment } from '../data/environments'
 import type { HeightFn } from '../sim/types'
 import { OUTLINE } from './art'
@@ -1141,29 +1142,6 @@ function drawBlowingSand(ctx: Ctx, w: number, h: number, camX: number, time: num
     ctx.lineTo(x + 18 + 22 * hash01(i, 44), y - 2)
     ctx.stroke()
   }
-}
-
-/**
- * A run's mood, picked at random for each run on every map (owner: time of day and weather on all
- * tracks, at random). Visual only: the physics, the track and the ghosts are the same in any weather.
- */
-export interface Atmosphere {
-  time: 'day' | 'dusk' | 'night'
-  weather: 'clear' | 'rain' | 'snow' | 'fog'
-}
-
-/** Pick a mood for a run on this map. Maps that are already night (woods, crater) stay dark. */
-export function randomAtmosphere(env: Environment, r: () => number = Math.random): Atmosphere {
-  const darkAlready = env.id === 'woods' || env.id === 'crater'
-  const t = r()
-  const time: Atmosphere['time'] = darkAlready ? 'day' : t < 0.6 ? 'day' : t < 0.85 ? 'dusk' : 'night'
-  // Weather that fits the map: no rain or fog on the moon, no snow in the desert or canyon.
-  const options: Atmosphere['weather'][] = []
-  if (env.id !== 'crater' && env.id !== 'dunes' && env.id !== 'frost') options.push('rain')
-  if (env.id === 'meadow' || env.id === 'woods') options.push('snow')
-  if (env.id !== 'crater') options.push('fog')
-  const weather = options.length && r() < 0.4 ? options[Math.floor(r() * options.length)] : 'clear'
-  return { time, weather }
 }
 
 /**

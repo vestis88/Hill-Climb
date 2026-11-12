@@ -9,7 +9,8 @@ import type { Puddle, PuddleFn } from '../sim/types'
 import { formatTime } from '../data/modes'
 import { drawHead, drawnHubs, drawPickup, drawVehicle, drawWheel, EXHAUST, OUTLINE, type Mood } from './art'
 import { Particles } from './particles'
-import { drawAtmosphere, drawBackdrop, drawForeground, drawGround, drawProps, drawWeather, themeFor, type Atmosphere } from './scenery'
+import { drawAtmosphere, drawBackdrop, drawForeground, drawGround, drawProps, drawWeather, themeFor } from './scenery'
+import type { Atmosphere } from '../data/weather'
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const lerpPose = (a: Pose, b: Pose, t: number): Pose => ({
@@ -53,7 +54,7 @@ export interface View {
   player?: { name: string; colour: string }
   /** The wheelie in progress, for the live counter. */
   wheelie?: { metres: number; coins: number; multiplier: number } | null
-  /** Time of day and weather for this run (visual only); none in the garage. */
+  /** Time of day and weather: today's challenge only; none in the garage.  */
   atmosphere?: Atmosphere
   /** Metres to the next fuel can, if there is one ahead. */
   nextFuel?: number | null
