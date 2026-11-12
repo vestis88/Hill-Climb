@@ -15,7 +15,12 @@ export interface PickupSource {
   readonly items: Pickup[]
   /** Make sure pickups exist up to toX. */
   ensure(toX: number): void
+  /** The x of the next fuel can not yet taken ahead of x, or null if there is none. */
+  nextFuel(x: number): number | null
 }
+
+/** The first untaken fuel can past x in a list of pickups. */
+const firstFuel = (items: Pickup[], x: number) => items.find((p) => p.kind === 'fuel' && !p.taken && p.x > x)?.x ?? null
 
 /** Coin value by distance: further out is worth more. */
 export function coinValue(x: number): number {
@@ -63,9 +68,19 @@ export class PickupField implements PickupSource {
       }
     }
   }
+
+  nextFuel(x: number): number | null {
+    // Cans are generated lazily; make sure the next one exists (they are never 2 km apart early on).
+    for (let ahead = 200; ahead < 20000; ahead *= 2) {
+      this.ensure(x + ahead)
+      const found = firstFuel(this.items, x)
+      if (found !== null) return found
+    }
+    return null
+  }
 }
 
 /** A fixed list of pickups, for tests. */
 export function fixedPickups(items: Pickup[]): PickupSource {
-  return { items, ensure: () => undefined }
+  return { items, ensure: () => undefined, nextFuel: (x) => firstFuel(items, x) }
 }

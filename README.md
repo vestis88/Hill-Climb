@@ -55,7 +55,8 @@ to ease off and balance the car in the air. Green Meadows has the most.
 ### The run
 
 - **Fuel** drains while you drive, a little faster with the gas held. Fuel cans
-  lie along the track, further apart the further you get. When the tank runs
+  lie along the track, further apart the further you get; under the fuel gauge,
+  "Fuel in 125 m" says how far the next one is. When the tank runs
   dry the engine dies but the run goes on: the car rolls on, and only the
   brake works (it slows the car and tips the nose down in the air; it cannot
   reverse). Roll into a fuel can on an empty tank and you refuel and get a

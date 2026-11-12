@@ -49,6 +49,8 @@ export interface View {
   driver: { lean: number; ragdoll: { torso: Pose; head: Pose } | null }
   /** Whose turn it is, shown by the distance. */
   player?: { name: string; colour: string }
+  /** Metres to the next fuel can, if there is one ahead. */
+  nextFuel?: number | null
   /** Puddles on the track, to draw and splash through. */
   puddles?: PuddleFn
   /** Race mode: the length (the finish line's distance from the start) and the clock, seconds. */
@@ -904,7 +906,15 @@ export class GameRenderer {
       ctx.fillStyle = low ? '#e5383b' : view.fuel < 0.5 ? '#ffb020' : '#3fbf5f'
       ctx.fill()
     }
-    if (low && Math.floor(this.time / 0.3) % 2 === 0) this.outlinedText(view.fuel <= 0 ? 'OUT OF FUEL' : 'LOW FUEL', x0, gy + 22, 15, '#ff6b6b')
+    // How far to the next fuel can, under the gauge; a low-fuel warning flashes after it.
+    let warnX = x0
+    if (view.nextFuel != null && view.nextFuel > 0) {
+      const text = `Fuel in ${Math.ceil(view.nextFuel)} m`
+      ctx.font = `800 15px ${FONT}`
+      this.outlinedText(text, x0, gy + 22, 15, low ? '#ffd23f' : '#ffffff')
+      warnX = x0 + ctx.measureText(text).width + 12
+    }
+    if (low && Math.floor(this.time / 0.3) % 2 === 0) this.outlinedText(view.fuel <= 0 ? 'OUT OF FUEL' : 'LOW FUEL', warnX, gy + 22, 15, '#ff6b6b')
     if (view.spec.engine.gearbox) this.drawRevGauge(view, gx + gw + 50, gy + 14)
 
     // Coins this run, in a pill at the top centre; it pops when a coin lands in it.

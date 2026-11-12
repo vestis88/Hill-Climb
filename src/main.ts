@@ -517,6 +517,10 @@ function frame(now: number): void {
     dt,
     input: controls.input,
     pickups: run.options.pickups.items,
+    nextFuel: (() => {
+      const at = run.options.pickups.nextFuel(next.chassis.x)
+      return at === null ? null : at - next.chassis.x
+    })(),
     fuel: run.fuel,
     runCoins: run.totalCoins,
     popups,
