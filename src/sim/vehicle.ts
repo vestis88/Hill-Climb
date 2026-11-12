@@ -118,7 +118,8 @@ export class Vehicle {
   wheelContacts(): boolean[] {
     return this.wheels.map((wheel) => {
       for (let edge = wheel.getContactList(); edge; edge = edge.next ?? null) {
-        if (edge.other === this.ground && edge.contact.isTouching()) return true
+        // The ground, or a track piece (a loop or a seesaw on Stuntbanan).
+        if ((edge.other === this.ground || (edge.other?.getUserData() as { track?: boolean } | null)?.track) && edge.contact.isTouching()) return true
       }
       return false
     })

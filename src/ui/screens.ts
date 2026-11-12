@@ -154,7 +154,7 @@ export interface ResultsView {
   newBest: boolean
   /** Races: the length, and the finish time (absent when the run did not finish). */
   race?: { length: number; time?: number; newBestTime: boolean }
-  coins: { track: number; air: number; flips: number; wheelies: number; milestones: number; rescue: number; combos: number }
+  coins: { track: number; air: number; flips: number; wheelies: number; milestones: number; rescue: number; combos: number; stunts: number }
   total: number
   bank: number
   /** Whose run it was, in a round. */
@@ -197,6 +197,7 @@ export function showResults(el: HTMLElement, v: ResultsView): void {
       ${row('Volter', v.coins.flips)}
       ${row('Stegringar', v.coins.wheelies)}
       ${row('Kombo', v.coins.combos)}
+      ${row('Loopar och gropar', v.coins.stunts)}
       ${row('Distansbonus', v.coins.milestones)}
       ${row('Bränsle på tom tank', v.coins.rescue)}
       <div class="total"><span>Det här åket</span><span><b class="coin">●</b> <span data-count="${v.total}">0</span></span></div>

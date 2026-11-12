@@ -1,4 +1,5 @@
 import { makeTerrain, type TerrainParams } from '../sim/terrain'
+import { stuntHeight } from '../sim/stunt'
 import type { HeightFn, Puddle, PuddleFn } from '../sim/types'
 
 /** A place to drive. Physics values here; colours are used by the renderer. */
@@ -15,6 +16,11 @@ export interface Environment {
   /** A variant of this map with its own terrain (the daily challenge); keeps the map's look. */
   variant?: string
   palette: { skyTop: string; skyBottom: string; ground: string; surface: string; far: string; near: string }
+  /**
+   * Stuntbanan: the ground comes from sim/stunt.ts (loops, pits, seesaws, cliffs) rather than
+   * `terrain`, which is then unused.
+   */
+  stunt?: boolean
   /** Puddles: one possible per `spacing` metres, present with `chance`, `length` metres long. */
   puddles?: { kind: Puddle['kind']; spacing: number; chance: number; length: [number, number]; drag: number; grip: number }
 }
@@ -100,6 +106,20 @@ export const ENVIRONMENTS: Environment[] = [
     // Deep mud: the slowest puddles of all.
     puddles: { kind: 'mud', spacing: 80, chance: 0.6, length: [4, 9], drag: 0.8, grip: 0.6 },
   },
+  {
+    id: 'stunt',
+    name: 'Stuntbanan',
+    blurb: 'Loopar, gropar och gungbrädor: timing är allt',
+    price: 16000,
+    gravity: 9.5,
+    // Grippy packed dirt: the challenge is speed and timing, not wheelspin.
+    groundFriction: 0.95,
+    seed: 71,
+    stunt: true,
+    // Unused (the ground is sim/stunt.ts's); kept for the type.
+    terrain: { flatStart: 20, amplitude: 1, wavelength: 30, crests: 1, bumps: 0, growPerKm: 0, maxGrow: 1 },
+    palette: { skyTop: '#2b2d6e', skyBottom: '#f08a5d', ground: '#4a3a52', surface: '#c9a27a', far: '#5a4a7a', near: '#7a5a8a' },
+  },
 ]
 
 export const environment = (id: string) => ENVIRONMENTS.find((e) => e.id === id) ?? ENVIRONMENTS[0]
@@ -163,6 +183,6 @@ const heights = new Map<string, HeightFn>()
 /** The terrain height function for an environment (cached). */
 export function heightFor(env: Environment): HeightFn {
   let h = heights.get(cacheKey(env))
-  if (!h) heights.set(cacheKey(env), (h = makeTerrain(env.terrain, env.seed)))
+  if (!h) heights.set(cacheKey(env), (h = env.stunt ? stuntHeight(env.seed) : makeTerrain(env.terrain, env.seed)))
   return h
 }

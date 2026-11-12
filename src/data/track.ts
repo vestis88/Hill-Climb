@@ -45,6 +45,8 @@ export class PickupField implements PickupSource {
   constructor(
     private readonly height: HeightFn,
     seed = 1,
+    /** Stretches where nothing is placed (Stuntbanan's pits, loops and seesaws). */
+    private readonly avoid?: (x: number) => boolean,
   ) {
     this.random = rng(seed)
   }
@@ -52,7 +54,9 @@ export class PickupField implements PickupSource {
   ensure(toX: number): void {
     while (Math.min(this.nextCoinX, this.nextFuelX) < toX) {
       if (this.nextFuelX <= this.nextCoinX) {
-        const x = this.nextFuelX
+        let x = this.nextFuelX
+        // Never in a pit or a loop: on to the first clear ground after it.
+        while (this.avoid?.(x)) x += 1
         this.items.push({ kind: 'fuel', x, y: this.height(x) + 0.9, value: 0 })
         this.lastFuelX = x
         this.fuelCount++
@@ -61,6 +65,7 @@ export class PickupField implements PickupSource {
         const x = this.nextCoinX
         this.nextCoinX = x + 45 + this.random() * 35
         if (x - this.lastFuelX < 12 || this.nextFuelX - x < 12) continue
+        if (this.avoid && (this.avoid(x) || this.avoid(x + 6))) continue
         // Now and then a turbo canister in place of a coin row (not in the first 100 m).
         if (x > 100 && this.random() < 0.12) {
           this.items.push({ kind: 'turbo', x: x + 2.6, y: this.height(x + 2.6) + 1, value: 0 })

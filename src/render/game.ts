@@ -1,4 +1,5 @@
 import { setPiecesBetween } from '../sim/terrain'
+import { featuresBetween, stuntObstacles } from '../sim/stunt'
 import { LAUNCH, type LaunchKind } from '../sim/launch'
 import { genitive } from '../data/players'
 import type { Environment } from '../data/environments'
@@ -67,6 +68,8 @@ export interface View {
   atmosphere?: Atmosphere
   /** Metres to the next fuel can, if there is one ahead. */
   nextFuel?: number | null
+  /** Stuntbanan: each seesaw's plank angle by id (from the sim; at rest when missing). */
+  seesaws?: Map<string, number>
   /** Puddles on the track, to draw and splash through. */
   puddles?: PuddleFn
   /** Race mode: the length (the finish line's distance from the start) and the clock, seconds. */
@@ -87,6 +90,7 @@ const FONT = "ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif
 const GRIME: Record<string, string> = {
   meadow: 'rgba(110, 76, 44, 0.9)', crater: 'rgba(190, 190, 200, 0.85)', frost: 'rgba(255, 255, 255, 0.95)',
   dunes: 'rgba(232, 200, 143, 0.9)', canyon: 'rgba(190, 100, 60, 0.9)', woods: 'rgba(70, 48, 30, 0.95)',
+  stunt: 'rgba(150, 110, 80, 0.9)',
 }
 
 /** Draws the game. Visual only: it reads simulation state and never changes it. */
@@ -326,7 +330,8 @@ export class GameRenderer {
     drawProps(ctx, env, height, left, right)
     drawGround(ctx, env, height, left, right, bottom, this.camY + this.viewWidth, this.time)
     this.drawPuddles(view, left, right)
-    this.drawSetPieces(view, height, left, right)
+    if (env.stunt) this.drawStunts(view, height, left, right)
+    else this.drawSetPieces(view, height, left, right)
     this.drawSigns(height, left, right)
     if (view.race && view.race.length > left - 3 && view.race.length < right + 3) this.drawFinish(height, view.race.length)
     this.drawShadow(view, chassis)
@@ -424,6 +429,99 @@ export class GameRenderer {
         ctx.lineTo(x, yAt(i) + 0.09)
       }
       ctx.stroke()
+    }
+  }
+
+  /**
+   * Stuntbanan's pieces: loops (a steel ring track on legs), seesaws (a plank on a trestle) and
+   * hazard posts at each pit's edges. The car is drawn after, so it rides on the inside of a loop.
+   */
+  private drawStunts(view: View, height: HeightFn, left: number, right: number): void {
+    const { ctx } = this
+    const seed = view.env.seed
+    for (const f of featuresBetween(seed, left - 10, right + 10)) {
+      if (f.kind !== 'gap') continue
+      // Striped posts at the take-off lip and the landing edge.
+      for (const px of [f.start + 6.9, f.start + 7 + f.size + 0.1]) {
+        const y = height(px)
+        for (let i = 0; i < 4; i++) {
+          ctx.fillStyle = i % 2 ? '#1d2433' : '#ffd23f'
+          ctx.fillRect(px - 0.09, y + i * 0.3, 0.18, 0.3)
+        }
+        ctx.lineWidth = 0.04
+        ctx.strokeStyle = OUTLINE
+        ctx.strokeRect(px - 0.09, y, 0.18, 1.2)
+        ctx.fillStyle = '#e5383b'
+        ctx.beginPath()
+        ctx.arc(px, y + 1.32, 0.13, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+    for (const o of stuntObstacles(seed)(left - 10, right + 10)) {
+      if (o.kind === 'loop') {
+        const { cx, cy, r } = o
+        // Legs from the sides of the ring down to the ground.
+        ctx.strokeStyle = '#59627a'
+        ctx.lineWidth = 0.16
+        for (const side of [-1, 1]) {
+          const lx = cx + side * (r + 0.15)
+          ctx.beginPath()
+          ctx.moveTo(lx, cy)
+          ctx.lineTo(cx + side * (r * 0.75), height(cx + side * r * 0.75))
+          ctx.stroke()
+        }
+        // The track band (outside the radius the car drives on), with a lit inner edge.
+        ctx.lineWidth = 0.42
+        ctx.strokeStyle = OUTLINE
+        ctx.beginPath()
+        ctx.arc(cx, cy, r + 0.22, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.lineWidth = 0.3
+        ctx.strokeStyle = '#8d97b0'
+        ctx.beginPath()
+        ctx.arc(cx, cy, r + 0.22, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.lineWidth = 0.08
+        ctx.strokeStyle = '#ffd23f'
+        ctx.setLineDash([0.5, 0.5])
+        ctx.beginPath()
+        ctx.arc(cx, cy, r + 0.12, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.setLineDash([])
+      } else {
+        const angle = view.seesaws?.get(o.id) ?? 0.28
+        const gy = height(o.x)
+        // Trestle
+        ctx.fillStyle = '#7a5236'
+        ctx.strokeStyle = OUTLINE
+        ctx.lineWidth = 0.05
+        ctx.beginPath()
+        ctx.moveTo(o.x - 0.7, gy - 0.1)
+        ctx.lineTo(o.x + 0.7, gy - 0.1)
+        ctx.lineTo(o.x, o.y)
+        ctx.closePath()
+        ctx.fill()
+        ctx.stroke()
+        // Plank, with hazard ends
+        ctx.save()
+        ctx.translate(o.x, o.y)
+        ctx.rotate(angle)
+        const half = o.length / 2
+        ctx.fillStyle = '#c08a52'
+        ctx.fillRect(-half, -0.13, o.length, 0.26)
+        for (const end of [-half, half - 0.6]) {
+          for (let i = 0; i < 3; i++) {
+            ctx.fillStyle = i % 2 ? '#1d2433' : '#ffd23f'
+            ctx.fillRect(end + i * 0.2, -0.13, 0.2, 0.26)
+          }
+        }
+        ctx.strokeRect(-half, -0.13, o.length, 0.26)
+        ctx.restore()
+        ctx.fillStyle = '#59627a'
+        ctx.beginPath()
+        ctx.arc(o.x, o.y, 0.14, 0, Math.PI * 2)
+        ctx.fill()
+      }
     }
   }
 

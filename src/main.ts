@@ -10,6 +10,7 @@ import { WEATHER_NAME, type Atmosphere } from './data/weather'
 import { EngineRevs, LAUNCH } from './sim/launch'
 import { dailyFor, dateKey, oldDaily } from './data/daily'
 import { ENVIRONMENTS, environment, heightFor, puddlesFor } from './data/environments'
+import { stuntAvoid } from './sim/stunt'
 import { PickupField } from './data/track'
 import { VEHICLES, vehicleEntry } from './data/vehicles'
 import { applyUpgrades, BASE_LEVELS, FULL_LEVELS, MAX_LEVEL, price, type UpgradeId } from './data/upgrades'
@@ -215,7 +216,8 @@ function newRun(): Run {
     gravity: env.gravity,
     groundFriction: env.groundFriction,
     puddles: puddlesFor(env),
-    pickups: new PickupField(height, env.seed),
+    pickups: new PickupField(height, env.seed, env.stunt ? stuntAvoid(env.seed) : undefined),
+    stunt: env.stunt ? env.seed : undefined,
     // Distance bonuses count from this player's own best.
     bestDistance: playerBest(save, currentPlayer(), recordEnvId()),
     finish: currentMode().length,
@@ -1058,7 +1060,7 @@ function handleEvents(): void {
       popups.push({ text: 'Turbo!', at: { x: e.x, y: e.y }, age: 0 })
       renderer.sparkle(e.x, e.y, '#7fc4ff')
     }
-    else if (e.kind === 'flip' || e.kind === 'milestone' || e.kind === 'air' || e.kind === 'wheelie' || e.kind === 'combo') {
+    else if (e.kind === 'flip' || e.kind === 'milestone' || e.kind === 'air' || e.kind === 'wheelie' || e.kind === 'combo' || e.kind === 'stunt') {
       sound.fanfare()
       renderer.cheer()
     }
@@ -1085,6 +1087,10 @@ function handleEvents(): void {
       popups.push({ text: `${name}${e.direction === 'back' ? 'bakåtvolt' : 'framåtvolt'}!  +${e.value}`, age: 0 })
     }
     else if (e.kind === 'milestone') popups.push({ text: `${e.distance} m  +${e.value}`, age: 0 })
+    else if (e.kind === 'stunt') {
+      popups.push({ text: `${e.what === 'loop' ? 'Loop!' : 'Över gropen!'}  +${e.value}`, age: 0 })
+      renderer.sparkle(e.x, e.y, '#ffd23f')
+    }
     else if (e.kind === 'combo') popups.push({ text: `Kombo ${e.tricks} trick ×${String(e.multiplier).replace('.', ',')}  +${e.value}`, age: 0 })
     else if (e.kind === 'comboLost' && e.tricks >= 2) popups.push({ text: 'Kombon tappad!', age: 0 })
   }
@@ -1201,6 +1207,7 @@ function frame(now: number): void {
     outfit: outfitFor(mode === 'replay' && replay ? replay.player : currentPlayer()),
     ghosts: mode === 'driving' || mode === 'ending' ? ghostPoses() : [],
     puddles: puddlesFor(currentEnv()),
+    seesaws: currentEnv().stunt ? run.sim.seesawAngles() : undefined,
     race: currentMode().length ? { length: currentMode().length!, time: run.finishTime ?? run.sim.steps * STEP } : undefined,
     showHud: mode === 'driving' || mode === 'ending' || mode === 'results',
     revs: shownRevs,
