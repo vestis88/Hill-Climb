@@ -1,6 +1,8 @@
 import { environment, heightFor, type Environment } from './environments'
 import { BASE_LEVELS, type Levels, type UpgradeId } from './upgrades'
 import { VEHICLES } from './vehicles'
+import { pickAtmosphere, WEATHER_GRIP, type Atmosphere } from './weather'
+import { TERRAIN_FRICTION } from '../sim/terrain'
 
 /**
  * Dagens utmaning (the daily challenge): a new track every day, the same on every device,
@@ -10,7 +12,8 @@ import { VEHICLES } from './vehicles'
  * - a base map (weighted, so the hardest maps come up less often): its look, gravity, grip,
  *   puddles and terrain;
  * - a terrain style that scales the map's hills, crests, bumps and jumps within safe ranges;
- * - a small jitter on top, and the track's seed.
+ * - a small jitter on top, and the track's seed;
+ * - the time of day and weather (data/weather.ts): rain and snow cut the grip.
  * Then two events on that track: a 500 m race and an endless run, each with its own vehicle
  * (two different ones) at a balanced tuning that is the same for everyone (it ignores the
  * family's own upgrades). A track that comes out too steep is never used: the next variant
@@ -28,7 +31,9 @@ export interface Daily {
   /** Where today's records are kept (bests, ghosts, highscores): "daily-2026-11-12". */
   id: string
   style: string
-  /** The track: a base map's look and physics with today's terrain. */
+  /** Time of day and weather. Rain and snow make the ground slippery (already in env's grip). */
+  atmosphere: Atmosphere
+  /** The track: a base map's look and physics with today's terrain and the weather's grip. */
   env: Environment
   race: DailyEvent
   endless: DailyEvent
@@ -145,7 +150,11 @@ export function dailyFor(day: Date | string = new Date()): Daily {
     const v = VEHICLES[i]
     return { vehicle: v.id, levels: tuning(date, salt, v.upgrades.map((u) => u.id)) }
   }
-  const daily: Daily = { date, id: `daily-${date}`, style: chosen.style, env: chosen.env, race: event(first, 60), endless: event(second, 70) }
+  let salt = 80
+  const atmosphere = pickAtmosphere(chosen.env, () => rand(date, salt++))
+  const grip = (chosen.env.groundFriction ?? TERRAIN_FRICTION) * WEATHER_GRIP[atmosphere.weather]
+  const env = { ...chosen.env, groundFriction: grip }
+  const daily: Daily = { date, id: `daily-${date}`, style: chosen.style, atmosphere, env, race: event(first, 60), endless: event(second, 70) }
   cache.set(date, daily)
   return daily
 }

@@ -198,8 +198,60 @@ Not part of the first version; pick up once phases 1 to 4 are done.
 - (done) Start countdown with a launch boost and per-engine rev pace; wheelie multiplier; distance to the next fuel can; Swedish interface.
 - (done) Three more maps: Dune Sea, Red Canyon, Moonlit Woods; puddles; a fourth vehicle, the Marsh Rover. Cloud sync between devices.
 - (done) Daily challenge (Dagens utmaning): a date-seeded track with a 500 m race and an endless run, each with its own vehicle at a balanced tuning.
-- Vehicle tuning parts or perks as a second upgrade layer.
-- App Store build via a Capacitor wrapper.
+- (done) Pause, ghost setting, update prompt, packed ghost storage, player paint colours, set pieces (double jumps, table-top bridges, whoops, walls), ghosts fading near the player; time of day and weather on the daily challenge, where rain and snow lower the grip.
+
+### Phase 6: next ideas (planned, owner-approved list; any order)
+
+Each task is one branch and pull request, merged when `npm run check` passes, then the deploy
+is confirmed. New vehicles get their own handling tests (as V1, V2) and a stage-time line in
+`npm run stages`; anything that pays coins is checked with `npm run economy`.
+
+**A. Economy and goals**
+
+| ID | Task | Done when |
+|---|---|---|
+| E1 | Coin balance check: rerun the economy simulation with the newer income (fuel-on-empty 1000, wheelie multiplier, daily challenge, combos) and retune prices so a new upgrade still takes 2 to 4 runs early on | `npm run economy` prints a sane curve; prices updated |
+| E2 | Combo multiplier: tricks chained without a bad landing (flip, wheelie, air time) multiply each other; a live combo counter like the wheelie one | Run tests: a chain pays more than the same tricks apart; a crash or bad landing breaks it |
+| E3 | Missions (Uppdrag): three at a time per player, e.g. "3 bakåtvolter i ett åk", "200 m stegring", "nå 1 km i Frostpasset"; coins when done, a new one replaces it | Missions listed in the garage, progress saved per player, tests for counting |
+| E4 | Hidden stars: three per map, some only reachable with a big jump or a certain vehicle; finding all of a map's stars unlocks a paint pattern | Stars placed by seed, found ones saved and synced, shown per map in the garage |
+| E5 | Second upgrade layer: one part per vehicle chosen before a run (bigger tank, softer landings, extra wheelie coins, ...) to spend coins on once upgrades are maxed | Parts bought and equipped per vehicle; economy check |
+| E6 | Pip's outfit: each player buys and picks a helmet or hat and a pattern | Drawn on Pip and ghosts; bought with coins; saved per player |
+
+**B. New vehicles** (original designs; each with its own upgrades, prices and tests)
+
+| ID | Task | Character |
+|---|---|---|
+| N1 | Traktorn (tractor) | Huge rear wheels, tiny front; very slow but climbs almost anything and hardly tips backwards; good for younger players |
+| N2 | Monstertrucken (monster truck) | Giant soft bouncy wheels, big air, easy backflips; heavy, so it burns fuel fast |
+| N3 | Kartingen (go-kart) | Low and fast with almost no suspension: brilliant on smooth tracks, bad on bumps; a racer |
+| N4 | Månlandaren (moon lander) | A buggy with small thrusters: a boost button for short bursts that refill on the ground; made for Kraterfälten (new control) |
+| N5 | Snöskotern (snowmobile) | A track of many small wheels and a ski in front; great on Frostpasset |
+
+**C. Gameplay**
+
+| ID | Task | Done when |
+|---|---|---|
+| G15 | Turbo pickups: rare blue canisters that give a few seconds of boost | Placed by seed, boost tested in the sim, shown on the HUD |
+| G16 | Horn: a small tap button, a different sound per vehicle | Plays on tap without affecting driving |
+| G17 | Music: an optional light background track made in code, with its own volume | Setting on and off, quiet under the engine |
+
+**D. Family**
+
+| ID | Task | Done when |
+|---|---|---|
+| F1 | Help per player (Hjälp): extra fuel, a gentler start and softer flips for a younger player | Set per name in settings; only that player's runs change; tests |
+| F2 | Family table: round wins over time and this week's winner (Veckans vinnare) | Shown in Topplista; synced |
+| F3 | Tournament (Tävling): a cup of three tracks (or three daily challenges), points per placing, an overall winner with a trophy | Played as rounds; standings after each track and a final podium |
+| F4 | Two players at once on the iPad: split screen, each with their own pedals at the screen edge, racing live | Both sims step together; fits iPad landscape; frame time within budget |
+
+**E. Show off and delivery**
+
+| ID | Task | Done when |
+|---|---|---|
+| R1 | Replay of a record: watch any highscore run from the highscore list, the camera following its ghost | Plays from the stored ghost; pause and back |
+| D1 | App Store build via a Capacitor wrapper (needs an Apple developer account and a Mac to submit) | Owner decision first |
+
+Suggested order: E1 with E2, then N1 and N2, F3, then E3 and E6, then the rest.
 
 ## 6. How to run these tasks in the Claude app
 

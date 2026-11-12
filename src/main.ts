@@ -1,5 +1,5 @@
 import { advance, emptyRound, nextPlayerOf, nextRound, playerOf, recordTurn, roundOver, standings, together, type Round } from './game/round'
-import { randomAtmosphere, type Atmosphere } from './render/scenery'
+import { WEATHER_NAME, type Atmosphere } from './data/weather'
 import { EngineRevs, LAUNCH } from './sim/launch'
 import { dailyFor, dateKey, oldDaily } from './data/daily'
 import { ENVIRONMENTS, environment, heightFor, puddlesFor } from './data/environments'
@@ -82,7 +82,7 @@ type Mode = 'garage' | 'driving' | 'ending' | 'results' | 'tuning' | 'settings' 
 let mode: Mode = 'garage'
 /** Today's challenge, when one of its two events is picked in the garage (not saved). */
 let daily: 'race' | 'endless' | null = null
-/** This run's time of day and weather. */
+/** This run's time of day and weather (today's challenge only). */
 let atmosphere: Atmosphere | undefined
 /** Seconds left of the start countdown, and the engine revs it shows (sim/launch.ts). */
 let countdown = 0
@@ -268,7 +268,7 @@ function openGarage(justBought?: UpgradeId): void {
     players: PLAYERS.map((p) => ({ name: p.name, colour: p.colour, on: save.players.includes(p.name) })),
     onTogglePlayer: togglePlayer,
     modes: MODES.map((m) => ({ id: m.id, name: m.name, on: !daily && m.id === currentMode().id })),
-    dailyTitle: `Dagens utmaning · ${today().env.name} · ${today().style}`,
+    dailyTitle: `Dagens utmaning · ${today().env.name} · ${today().style}${WEATHER_NAME[today().atmosphere.weather] ? ` · ${WEATHER_NAME[today().atmosphere.weather]}` : ''}`,
     daily: (['race', 'endless'] as const).map((id) => {
       const d = today()
       const v = vehicleEntry(d[id].vehicle)
@@ -492,8 +492,8 @@ function collectGhosts(): void {
 }
 
 function startRun(): void {
-  // A random time of day and weather for every run (visual only).
-  atmosphere = randomAtmosphere(currentEnv())
+  // Time of day and weather come with today's challenge only (the date picks them).
+  atmosphere = daily ? today().atmosphere : undefined
   sound.setVehicle(driveVehicle().id)
   run = newRun()
   pickGhosts()
