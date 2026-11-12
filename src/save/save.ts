@@ -1,3 +1,4 @@
+import type { Hat, Pattern } from '../data/outfits'
 import type { Mission } from '../game/missions'
 import { BASE_LEVELS, type Levels } from '../data/upgrades'
 
@@ -36,6 +37,8 @@ export interface SaveData {
   playerVehicles?: Record<string, string>
   /** Each player's three missions (this device only). */
   missions?: Record<string, Mission[]>
+  /** Each player's pattern and hat (this device; the items bought are in unlocked). */
+  outfits?: Record<string, { pattern: Pattern; hat: Hat }>
 }
 
 export interface Score {

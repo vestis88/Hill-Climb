@@ -7,7 +7,8 @@ import type { HeightFn, Input, Pose, SimState, VehicleSpec } from '../sim/types'
 import { ghostNearFade, type GhostPose } from '../save/ghosts'
 import type { Puddle, PuddleFn } from '../sim/types'
 import { formatTime } from '../data/modes'
-import { drawHead, drawnHubs, drawPickup, drawVehicle, drawWheel, EXHAUST, OUTLINE, type Mood } from './art'
+import { drawHead, drawnHubs, drawPickup, drawVehicle, drawWheel, EXHAUST, OUTLINE, setOutfit, type Mood } from './art'
+import type { Outfit } from '../data/outfits'
 import { Particles } from './particles'
 import { drawAtmosphere, drawBackdrop, drawForeground, drawGround, drawProps, drawWeather, themeFor } from './scenery'
 import type { Atmosphere } from '../data/weather'
@@ -69,7 +70,9 @@ export interface View {
   /** The start countdown: seconds left before GO; shown while above 0. */
   countdown?: number
   /** Ghost riders to race: a recorded pose, its vehicle and a name tag. */
-  ghosts: { label: string; colour: string; spec: VehicleSpec; pose: GhostPose }[]
+  ghosts: { label: string; colour: string; spec: VehicleSpec; pose: GhostPose; outfit?: Outfit }[]
+  /** The driving player's outfit (helmet colour, pattern, hat). */
+  outfit?: Outfit
 }
 
 const FONT = "ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif"
@@ -643,7 +646,9 @@ export class GameRenderer {
       })
       ctx.translate(c.x, c.y)
       ctx.rotate(c.angle)
+      setOutfit(g.outfit ?? null)
       drawVehicle(ctx, g.spec, 0, true, 'normal', drawn, g.colour)
+      setOutfit(null)
       ctx.restore()
       // Name tag above the ghost, upright whatever its angle.
       const head = g.spec.driver.head
@@ -747,6 +752,7 @@ export class GameRenderer {
     // Upshift: the rider rocks back with the surge, then settles.
     const k = Math.min(1, this.shiftT / 0.35)
     const rock = this.shiftUp && k < 1 ? 0.13 * Math.sin(k * Math.PI) * (1 - k * 0.5) : 0
+    setOutfit(view.outfit ?? null)
     drawVehicle(ctx, spec, view.driver.lean + rock, !rag, this.mood(view, chassis), hubs, view.player?.colour)
     ctx.restore()
     if (rag) {
@@ -756,6 +762,7 @@ export class GameRenderer {
       drawHead(ctx, spec.driver.headRadius, 'worried')
       ctx.restore()
     }
+    setOutfit(null)
   }
 
   /** Grin after stunts and in long jumps; worried when the car tips too far. */
