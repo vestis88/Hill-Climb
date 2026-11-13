@@ -8,7 +8,7 @@ import type { HeightFn, Input, Pose, SimState, VehicleSpec } from '../sim/types'
 import { ghostNearFade, type GhostPose } from '../save/ghosts'
 import type { Puddle, PuddleFn } from '../sim/types'
 import { formatTime } from '../data/modes'
-import { drawHead, drawnHubs, drawPickup, drawVehicle, drawWheel, EXHAUST, OUTLINE, setOutfit, setThrusting, type Mood } from './art'
+import { drawHead, drawnHubs, drawRagdollTorso, drawPickup, drawVehicle, drawWheel, EXHAUST, OUTLINE, setOutfit, setThrusting, type Mood } from './art'
 import type { Outfit } from '../data/outfits'
 import { Particles } from './particles'
 import { drawAtmosphere, drawBackdrop, drawForeground, drawGround, drawProps, drawWeather, themeFor } from './scenery'
@@ -914,15 +914,7 @@ export class GameRenderer {
     ctx.save()
     ctx.translate(torso.x, torso.y)
     ctx.rotate(torso.angle)
-    ctx.lineCap = 'round'
-    for (const [lw, col] of [[0.36, OUTLINE], [0.26, '#24365c']] as const) {
-      ctx.beginPath()
-      ctx.moveTo(0, -0.3)
-      ctx.lineTo(0, 0.3)
-      ctx.lineWidth = lw
-      ctx.strokeStyle = col
-      ctx.stroke()
-    }
+    drawRagdollTorso(ctx)
     ctx.restore()
   }
 
