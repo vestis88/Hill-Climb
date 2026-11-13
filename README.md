@@ -237,6 +237,12 @@ a DNF (did not finish). Coins are earned as usual. Bests, ghosts and highscores 
 mode: in a race, *best* means the fastest finish, and your ghosts are your fastest and last
 runs at that length. Round standings rank finishers by time, then DNFs by how far they got.
 
+### Player colours
+
+Each player has a colour: their vehicle's paint, their helmet, their ghost and their name on
+screen. It can be changed in **Utstyrsel** from a palette of 14; a colour another player has is
+greyed out with their name, so two players never look alike. The choice is kept in the save.
+
 ### Players, rounds and ghosts
 
 - **Code:** the round rules (turns, results, standings, ghosts carried between rounds) live in

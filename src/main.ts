@@ -25,7 +25,7 @@ import { drawEnvironmentPreview, drawVehiclePreview } from './render/preview'
 import { addScore, drivenLevels, earn, emptySave, levelsFor, loadSave, setDrivenLevel, playerBest, playerTime, spend, writeSave } from './save/save'
 import { clearGhosts, poseToState, roundGhosts, GhostRecorder, GhostTrack, loadGhost, storeGhost, storeVehicleBest, vehicleKey, type Ghost } from './save/ghosts'
 import { CloudSync } from './save/cloud'
-import { PLAYERS, playerColour } from './data/players'
+import { COLOURS, PLAYERS, playerColour, setPlayerColours } from './data/players'
 import { formatTime, gameMode, MODES, recordKey, type Mode as GameMode } from './data/modes'
 import { Run, RULES } from './sim/run'
 import type { SimState } from './sim/types'
@@ -107,6 +107,7 @@ const canvas2 = $('game2') as HTMLCanvasElement
 const renderer2 = new GameRenderer(canvas2)
 const controls2 = createInput(canvas2, () => settings.swapPedals)
 const save = loadSave()
+setPlayerColours(save.colours)
 pruneOldDailies()
 
 /**
@@ -558,7 +559,7 @@ function openGarage(justBought?: UpgradeId): void {
     showHome(garageEl, {
       coins: save.coins,
       testMode: tuningEnabled(),
-      players: PLAYERS.map((p) => ({ name: p.name, colour: p.colour, on: save.players.includes(p.name) })),
+      players: PLAYERS.map((p) => ({ name: p.name, colour: playerColour(p.name), on: save.players.includes(p.name) })),
       onTogglePlayer: togglePlayer,
       vehicle: {
         id: vehicle.id,
@@ -656,7 +657,7 @@ function openScores(envId: string, modeId: string): void {
       .map((s) => ({ name: s.name, colour: playerColour(s.name), vehicle: vehicleEntry(s.vehicle).name, result: s.time !== undefined ? formatTime(s.time) : m.length ? `Ej i mål · ${Math.floor(s.distance)} m` : `${Math.floor(s.distance)} m` })),
     bests: PLAYERS.map((p) => {
       const t = playerTime(save, p.name, key)
-      return { name: p.name, colour: p.colour, replay: !!loadGhost(p.name, key, 'best') && !isDaily, result: m.length ? (t < Infinity ? formatTime(t) : '–') : `${Math.floor(playerBest(save, p.name, env.id))} m` }
+      return { name: p.name, colour: playerColour(p.name), replay: !!loadGhost(p.name, key, 'best') && !isDaily, result: m.length ? (t < Infinity ? formatTime(t) : '–') : `${Math.floor(playerBest(save, p.name, env.id))} m` }
     }),
     onReplay: (name) => startReplay(name, key, () => openScores(envId, modeId)),
     onTrack: (id) => openScores(id, m.id),
@@ -1003,7 +1004,7 @@ function openOutfit(name: string): void {
   const has = (kind: string, id: string, price: number) => price === 0 || save.unlocked.includes(`${kind}:${id}`)
   showOutfit(scoresEl, {
     coins: save.coins,
-    players: PLAYERS.map((p) => ({ name: p.name, colour: p.colour, on: p.name === name })),
+    players: PLAYERS.map((p) => ({ name: p.name, colour: playerColour(p.name), on: p.name === name })),
     preview: (c) => {
       const ctx = c.getContext('2d')!
       ctx.clearRect(0, 0, c.width, c.height)
@@ -1014,6 +1015,14 @@ function openOutfit(name: string): void {
       drawHead(ctx, 1, 'happy')
       setOutfit(null)
       ctx.restore()
+    },
+    colours: COLOURS.map((c) => ({ colour: c, on: playerColour(name) === c, takenBy: PLAYERS.find((p) => p.name !== name && playerColour(p.name) === c)?.name })),
+    onColour: (c) => {
+      if (PLAYERS.some((p) => p.name !== name && playerColour(p.name) === c)) return
+      save.colours = { ...save.colours, [name]: c }
+      setPlayerColours(save.colours)
+      persist()
+      openOutfit(name)
     },
     hats: HATS.map((h) => ({ ...h, owned: has('hat', h.id, h.price), on: mine.hat === h.id })),
     patterns: PATTERNS.map((p) => ({ ...p, owned: has('pattern', p.id, p.price), on: mine.pattern === p.id })),
@@ -1288,7 +1297,7 @@ function familyTable() {
   const weekAgo = Date.now() - 7 * 24 * 3600 * 1000
   const rows = PLAYERS.map((p) => ({
     name: p.name,
-    colour: p.colour,
+    colour: playerColour(p.name),
     rounds: (save.roundWins ?? []).filter((w) => w.winner === p.name).length,
     cups: (save.cupWins ?? []).filter((w) => w.winner === p.name).length,
     week: (save.roundWins ?? []).filter((w) => w.winner === p.name && w.at >= weekAgo).length,
