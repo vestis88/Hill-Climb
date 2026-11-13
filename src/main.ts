@@ -18,7 +18,7 @@ import { Sound } from './audio/sound'
 import { createInput } from './input/input'
 import { GameRenderer, type Popup } from './render/game'
 import { drawEnvironmentPreview, drawVehiclePreview } from './render/preview'
-import { addScore, earn, emptySave, levelsFor, loadSave, playerBest, playerTime, spend, writeSave } from './save/save'
+import { addScore, drivenLevels, earn, emptySave, levelsFor, loadSave, setDrivenLevel, playerBest, playerTime, spend, writeSave } from './save/save'
 import { clearGhosts, poseToState, roundGhosts, GhostRecorder, GhostTrack, loadGhost, storeGhost, storeVehicleBest, vehicleKey, type Ghost } from './save/ghosts'
 import { CloudSync } from './save/cloud'
 import { PLAYERS, playerColour } from './data/players'
@@ -211,9 +211,9 @@ function vehicleSpec() {
 function upgradedSpec() {
   const entry = driveVehicle()
   // A test drive from Trimning: its levels, hand-set values and every-vehicle factors.
-  if (sandboxRun) return sandboxSpec(sandbox, entry.id, levelsFor(save, entry.id))
-  // Otherwise the family's own upgrades (or today's challenge's set tuning).
-  const levels = daily ? today()[daily].levels : levelsFor(save, entry.id)
+  if (sandboxRun) return sandboxSpec(sandbox, entry.id, drivenLevels(save, entry.id))
+  // Otherwise the family's own upgrades, at the levels they chose (or today's challenge's set tuning).
+  const levels = daily ? today()[daily].levels : drivenLevels(save, entry.id)
   return applyUpgrades(entry.base, entry.full, levels)
 }
 
@@ -358,6 +358,7 @@ function openGarage(justBought?: UpgradeId): void {
   const common = { coins: save.coins, canDrive, onHome: goHome, onDrive: startRound }
   if (menu === 'vehicles') {
     const levels = levelsFor(save, vehicle.id)
+    const using = drivenLevels(save, vehicle.id)
     showVehicles(garageEl, {
       ...common,
       vehicles: VEHICLES.map((v) => ({
@@ -365,9 +366,16 @@ function openGarage(justBought?: UpgradeId): void {
         owned: owned(v.id, v.price), selected: v.id === vehicle.id,
         preview: (c: HTMLCanvasElement) => drawVehiclePreview(c, v.base),
       })),
-      vehicle: { id: vehicle.id, name: vehicle.name, blurb: vehicle.blurb, preview: (c) => drawVehiclePreview(c, applyUpgrades(vehicle.base, vehicle.full, levels)) },
+      vehicle: { id: vehicle.id, name: vehicle.name, blurb: vehicle.blurb, preview: (c) => drawVehiclePreview(c, applyUpgrades(vehicle.base, vehicle.full, using)) },
       upgrades: vehicle.upgrades,
       levels,
+      using,
+      onUse: (id, level) => {
+        setDrivenLevel(save, vehicle.id, id, level)
+        writeSave(save)
+        run = newRun()
+        openGarage()
+      },
       parts: PARTS.map((p) => ({ ...p, owned: p.price === 0 || save.unlocked.includes(`part:${p.id}`), on: (save.parts?.[vehicle.id] ?? 'none') === p.id })),
       justBought,
       onPick: (id) => pick('vehicle', id),
@@ -430,7 +438,7 @@ function openGarage(justBought?: UpgradeId): void {
     })
   } else {
     const env = currentEnv()
-    const levels = levelsFor(save, vehicle.id)
+    const levels = drivenLevels(save, vehicle.id)
     const avg = vehicle.upgrades.reduce((sum, u) => sum + levels[u.id], 0) / vehicle.upgrades.length
     const part = PARTS.find((p) => p.id === partFor(vehicle.id))
     showHome(garageEl, {
@@ -584,6 +592,8 @@ function buy(id: UpgradeId): void {
     onYes: () => {
       if (!spend(save, cost)) return
       save.levels[vehicle.id] = { ...levels, [id]: levels[id] + 1 }
+      // A new level is driven straight away.
+      setDrivenLevel(save, vehicle.id, id, levels[id] + 1)
       persist()
       sound.fanfare()
       openGarage(id)
@@ -630,7 +640,7 @@ function openTuning(): void {
     vehicles: VEHICLES.map((v) => ({ id: v.id, name: v.name, upgrades: v.upgrades, preview: (c: HTMLCanvasElement) => drawVehiclePreview(c, v.base) })),
     tracks: ENVIRONMENTS.map((e) => ({ id: e.id, name: e.name })),
     modes: MODES.map((m) => ({ id: m.id, name: m.name })),
-    ownLevels: (id) => levelsFor(save, id),
+    ownLevels: (id) => drivenLevels(save, id),
     onChange: () => saveSandbox(sandbox),
     onDrive: startSandbox,
     onBack: goHome,

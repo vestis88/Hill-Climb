@@ -1,4 +1,4 @@
-import { MAX_LEVEL, type Levels, type UpgradeId, type UpgradeInfo } from '../data/upgrades'
+import { MAX_LEVEL, MAX_LEVELS, type Levels, type UpgradeId, type UpgradeInfo } from '../data/upgrades'
 import {
   BASE_LEVELS, FIELDS, FULL_LEVELS, hasFactors, isCustom, sandboxLevels, sandboxSpec, setAllLevels, setCustom, setLevel, upgradedOnly, withCustom,
   type Sandbox,
@@ -61,7 +61,7 @@ export function showTuning(el: HTMLElement, v: TuningView): void {
     const custom = isCustom(s, s.vehicleId)
     const ids = vehicle().upgrades.map((u) => u.id)
     const l = levels()
-    const preset = same(l, BASE_LEVELS, ids) ? 'Grund' : same(l, FULL_LEVELS, ids) ? 'Max' : same(l, own(), ids) ? 'Familjens nivåer' : 'Egna nivåer'
+    const preset = same(l, BASE_LEVELS, ids) ? 'Grund' : same(l, FULL_LEVELS, ids) ? 'Full' : same(l, MAX_LEVELS, ids) ? 'Galen' : same(l, own(), ids) ? 'Familjens nivåer' : 'Egna nivåer'
     return `<span class="pill ${custom ? 'custom' : ''}">${custom ? 'Egen inställning' : `Från uppgraderingar · ${preset}`}</span>
       ${hasFactors(s) ? '<span class="pill all">Alla fordon ändrade</span>' : ''}
       ${custom ? '<button class="small" data-act="uncustom">Tillbaka till uppgraderingarna</button>' : ''}`
@@ -77,7 +77,7 @@ export function showTuning(el: HTMLElement, v: TuningView): void {
     return `
       <section class="tsec">
         <div class="tsec-head"><h3>Uppgraderingar</h3>
-          <span class="seg"><button data-preset="base">Grund</button><button data-preset="own">Familjens</button><button data-preset="full">Max</button></span></div>
+          <span class="seg"><button data-preset="base">Grund</button><button data-preset="own">Familjens</button><button data-preset="full">Full (10)</button><button data-preset="max">Galen (15)</button></span></div>
         <div class="tgrid">${veh.upgrades.map((u) => `
           <label class="tslider up">
             <span class="tl"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[u.id] ?? ''}</svg>${u.name}</span>
@@ -181,7 +181,7 @@ export function showTuning(el: HTMLElement, v: TuningView): void {
     else if (d.track) s.envId = d.track
     else if (d.mode) s.modeId = d.mode
     else if (d.scope) scope = d.scope as 'vehicle' | 'all'
-    else if (d.preset) setAllLevels(s, s.vehicleId, d.preset === 'base' ? BASE_LEVELS : d.preset === 'full' ? FULL_LEVELS : own())
+    else if (d.preset) setAllLevels(s, s.vehicleId, d.preset === 'base' ? BASE_LEVELS : d.preset === 'full' ? FULL_LEVELS : d.preset === 'max' ? MAX_LEVELS : own())
     else if (d.act === 'uncustom') s.custom = { ...s.custom, [s.vehicleId]: {} }
     else if (d.act === 'unfactor') s.factors = {}
     else if (d.act === 'reset') {
