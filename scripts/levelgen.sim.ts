@@ -84,11 +84,22 @@ class Builder {
     this.run.push([this.x, WALL], [this.x + 4, WALL])
     this.close()
   }
+  /** The level exactly as it will be saved (rounded to centimetres), so what is proven is what ships. */
   level(id: string): PuzzleLevel {
+    const pt = ([x, y]: Pt): Pt => [r2(x), r2(y)]
     return {
       id, name: id, hint: '', theme: 'meadow',
-      geom: { bottom: BOTTOM, polygons: this.polys, loops: this.loops, seesaws: this.seesaws },
-      start: { x: 0, y: this.polys.length ? this.run[0][1] : 0 }, gems: this.gems, goal: this.goal, goalOnGround: this.goalOnGround, plan: this.plan,
+      geom: {
+        bottom: BOTTOM,
+        polygons: this.polys.map((p) => p.map(pt)),
+        loops: this.loops.map((l) => ({ cx: r2(l.cx), cy: r2(l.cy), r: l.r })),
+        seesaws: this.seesaws.map((w) => ({ ...w, x: r2(w.x), y: r2(w.y) })),
+      },
+      start: { x: 0, y: 0 },
+      gems: this.gems.map((g) => ({ x: r2(g.x), y: r2(g.y) })),
+      goal: { x: r2(this.goal.x), y: r2(this.goal.y) },
+      goalOnGround: this.goalOnGround,
+      plan: this.plan.map((p) => ({ ...p, x: r2(p.x), speed: r2(p.speed) })),
     }
   }
 }
@@ -293,7 +304,7 @@ it('levelgen', () => {
   const levels: { level: PuzzleLevel; score: number; kinds: Kind[] }[] = []
   for (let i = 0; i < COUNT; i++) {
     const d = COUNT === 1 ? 0.5 : i / (COUNT - 1)
-    for (let attempt = 0; attempt < 6; attempt++) {
+    for (let attempt = 0; attempt < 12; attempt++) {
       const rand = rng(1000 + i * 97 + attempt * 7919)
       const stage = KINDS_BY_STAGE[Math.min(2, Math.floor(d * 3))]
       const n = 3 + Math.floor(d * 4.5)
@@ -308,7 +319,8 @@ it('levelgen', () => {
       const mods: Mod[] = []
       let ok = true
       for (const kind of kinds) {
-        const m = makeModule(kind, d, rand, log)
+        // A module that cannot be fitted is swapped for a plain jump before giving up.
+        const m = makeModule(kind, d, rand, log) ?? (kind !== 'island' ? makeModule('jump', d, rand, log) : null)
         if (!m) {
           ok = false
           break
@@ -357,18 +369,7 @@ it('levelgen', () => {
   const out = levels.map(({ level, kinds }, i) => {
     const words = kinds.map((k) => WORD[k])
     const hint = `${words.slice(0, -1).join(', ')}, sen ${words[words.length - 1]}.`.replace(/^./, (c) => c.toUpperCase())
-    const round = (pts: Pt[]) => pts.map(([x, y]) => [r2(x), r2(y)])
-    return {
-      ...level,
-      id: `k${13 + i}`,
-      name: NAMES[i] ?? `Bana ${13 + i}`,
-      hint,
-      theme: THEMES[i % THEMES.length],
-      geom: { ...level.geom, polygons: level.geom.polygons.map(round) },
-      gems: level.gems.map((g) => ({ x: r2(g.x), y: r2(g.y) })),
-      goal: { x: r2(level.goal.x), y: r2(level.goal.y) },
-      plan: level.plan.map((p) => ({ ...p, x: r2(p.x), speed: r2(p.speed) })),
-    }
+    return { ...level, id: `k${13 + i}`, name: NAMES[i] ?? `Bana ${13 + i}`, hint, theme: THEMES[i % THEMES.length] }
   })
   const ts = `import type { PuzzleLevel } from './klurbanor'
 
