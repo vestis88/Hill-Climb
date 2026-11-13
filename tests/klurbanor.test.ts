@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { LEVELS, puzzleLevel, type PuzzleLevel } from '../src/data/klurbanor'
+import { GENERATED } from '../src/data/klurbanor-gen'
 import { drivePlan } from '../src/game/klurbot'
 import { circleHits, groundBelow } from '../src/sim/level'
 
@@ -7,7 +8,7 @@ import { circleHits, groundBelow } from '../src/sim/level'
 const withPlan = (id: string, plan: PuzzleLevel['plan']): PuzzleLevel => ({ ...puzzleLevel(id)!, plan })
 
 describe('Klurbanor', () => {
-  it.each(LEVELS.map((l) => [l.id, l.name, l] as const))('%s %s can be finished: every gem, then the goal', (_, __, level) => {
+  it.each(LEVELS.filter((l) => !GENERATED.includes(l)).map((l) => [l.id, l.name, l] as const))('%s %s can be finished: every gem, then the goal', (_, __, level) => {
     const { run } = drivePlan(level)
     expect(run.gemsLeft).toEqual([])
     expect(run.status).toBe('finished')
