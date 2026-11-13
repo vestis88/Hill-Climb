@@ -60,7 +60,7 @@ function restoreRows(state: 'closed' | 'form' | 'done', g: Restore): string {
     <label>Klurbanor klarade (från första) ${num('klur', g.klur, 999)}</label>
     <label>Uppgraderingar på alla fordon minst nivå ${num('level', g.level, 15, 70)}</label>
     <label>Lås upp alla fordon och banor <input type="checkbox" data-give="unlockAll" ${g.unlockAll ? 'checked' : ''}></label>
-    <span class="seg"><button data-act="give-yes" style="background:#2b9348">Lägg till</button><button data-act="give-no">Avbryt</button></span></div>`
+    <span class="btns"><button class="small" data-act="give-yes" style="background:#2b9348">Lägg till</button><button class="small" data-act="give-no">Avbryt</button></span></div>`
 }
 
 /** What the backup rows are showing: the normal rows, typing a code, or the list to load from. */
@@ -81,7 +81,7 @@ function backupRows(b: CloudBackup | undefined, ui: BackupUi): string {
         ? `<span class="join"><input data-act="code" placeholder="XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="16">
            <button class="small" data-act="use-go">Använd</button><button class="small" data-act="use-no">Avbryt</button>
            ${ui.joinError ? '<small class="err">Koden fungerade inte</small>' : ''}</span>`
-        : '<span class="seg"><button data-act="backup-start">Starta</button><button data-act="use">Använd kod från en annan enhet</button></span>'}</div>`
+        : '<span class="btns"><button class="small" data-act="backup-start">Starta</button><button class="small" data-act="use">Använd kod från en annan enhet</button></span>'}</div>`
   }
   const status = { off: '', working: 'Sparar…', ok: `Sparad ${when(b.last)}`, error: 'Når inte molnet, försöker igen senare' }[b.state] || (b.last ? `Senast sparad ${when(b.last)}` : 'Inte sparad än')
   let list = ''
@@ -94,13 +94,13 @@ function backupRows(b: CloudBackup | undefined, ui: BackupUi): string {
       return `<div class="backup ${mine ? 'mine' : ''}"><span><b>${e.name}</b>${mine ? ' <small>(den här enheten)</small>' : ''}<br>
         <small>${when(e.at)} · ● ${e.summary.coins} · ${e.summary.klur} klurbanor · rekord ${e.summary.best} m${e.summary.players.length ? ` · ${e.summary.players.join(', ')}` : ''}</small></span>
         ${asking
-          ? `<span class="seg"><button data-act="load-yes" data-device="${e.device}" style="background:#e5383b">Ersätt mina framsteg</button><button data-act="load-no">Avbryt</button></span>`
+          ? `<span class="btns"><button class="small" data-act="load-yes" data-device="${e.device}" style="background:#e5383b">Ersätt mina framsteg</button><button class="small" data-act="load-no">Avbryt</button></span>`
           : `<button class="small" data-act="load" data-device="${e.device}">Läs in</button>`}</div>`
     }).join('') || '<small>Inga säkerhetskopior än</small>'}</div>`
   }
   return `<div class="sync"><span>Säkerhetskopior i molnet<br><small style="opacity:.7">Kod: <b class="code">${showCode(code)}</b> · ${status}<br>
       Den här enheten: <input data-act="devname" value="${b.name.replace(/"/g, '&quot;')}" maxlength="30" style="width:120px"></small></span>
-    <span class="seg"><button data-act="backup-now">Spara nu</button><button data-act="backup-list">Läs in framsteg…</button><button data-act="backup-stop">Sluta</button></span></div>
+    <span class="btns"><button class="small" data-act="backup-now">Spara nu</button><button class="small" data-act="backup-list">Läs in framsteg…</button><button class="small" data-act="backup-stop">Sluta</button></span></div>
     ${list}`
 }
 
@@ -114,11 +114,11 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
   const render = () => {
     el.innerHTML = `
       <div class="bar"><h2>Inställningar</h2><button class="small" data-act="back">Tillbaka</button></div>
-      <div class="rows" style="max-width:420px">
+      <div class="rows settings">
         <div><span>Ljud</span><span class="seg"><button data-sound="on" class="${s.sound ? 'on' : ''}">På</button><button data-sound="off" class="${s.sound ? '' : 'on'}">Av</button></span></div>
         <div><span>Musik</span><span class="seg"><button data-music="on" class="${s.music ? 'on' : ''}">På</button><button data-music="off" class="${s.music ? '' : 'on'}">Av</button></span></div>
         <div><span>Volym</span><input type="range" min="0" max="1" step="0.05" value="${s.volume}" data-act="volume" style="width:55%"></div>
-        <div><span>Testläge<br><small style="opacity:.7">Visar Trimning: provkör alla fordon och banor med valfri trimning. Räknas inte.</small></span><span class="seg"><button data-test="off" class="${tuningEnabled() ? '' : 'on'}">Av</button><button data-test="on" class="${tuningEnabled() ? 'on' : ''}">På</button></span></div>
+        <div><span>Testläge<br><small style="opacity:.7">Visar Trimning: provkör alla fordon och banor med valfri trimning. Räknas inte.</small></span><span class="seg"><button data-test="on" class="${tuningEnabled() ? 'on' : ''}">På</button><button data-test="off" class="${tuningEnabled() ? '' : 'on'}">Av</button></span></div>
         ${tuningEnabled() && onRestore ? restoreRows(restoring, give) : ''}
         ${backupRows(backup, ui)}
         <div><span>Spöken</span><span class="seg"><button data-ghosts="all" class="${s.ghosts === 'all' ? 'on' : ''}">Alla</button><button data-ghosts="records" class="${s.ghosts === 'records' ? 'on' : ''}">Bara rekord</button><button data-ghosts="off" class="${s.ghosts === 'off' ? 'on' : ''}">Av</button></span></div>

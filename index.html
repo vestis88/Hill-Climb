@@ -309,6 +309,20 @@
       #replayBar { position: fixed; z-index: 7; top: max(12px, var(--safe-top)); left: 50%; transform: translateX(-50%); display: flex; gap: 12px; align-items: center;
         background: rgba(16, 21, 28, 0.55); padding: 6px 8px 6px 16px; border-radius: 999px; font-weight: 800; }
       .bests button.play { margin-left: 6px; padding: 2px 8px; border-radius: 999px; border: 0; background: #3fbf5f; color: #fff; font-weight: 900; }
+      /* Settings: text on the left, its choices on the right on one line (under the text when narrow). */
+      .rows.settings { max-width: 680px; font-size: 16px; }
+      .rows.settings > div { align-items: center; flex-wrap: wrap; gap: 10px 20px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+      .rows.settings > div:last-child { border-bottom: 0; }
+      .rows.settings > div > span:first-child { flex: 1 1 220px; min-width: 0; }
+      .rows.settings .seg { flex-wrap: nowrap; flex-shrink: 0; }
+      .rows.settings .seg button { white-space: nowrap; padding: 9px 14px; }
+      .rows.settings .btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; flex-shrink: 0; }
+      .rows.settings .btns button { white-space: nowrap; }
+      .rows.settings .backups { padding: 0 0 10px; align-items: stretch; }
+      .rows.settings > div.give > span:first-child { flex: none; }
+      .rows.settings > div.give .btns { align-self: flex-end; }
+      .rows.settings .backup { padding: 8px 12px; }
+      #settings .actions { margin-top: 14px; }
       .screeninfo { font-size: 11px; opacity: 0.5; max-width: 600px; text-align: center; }
 
       /* ---- Menus: home (what you will drive + a menu of tiles) and its sub-menus ---- */
