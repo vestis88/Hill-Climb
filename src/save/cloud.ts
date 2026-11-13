@@ -17,7 +17,7 @@ import { betterGhost, listGhosts, packGhost, putGhost, unpackGhost, type Ghost }
  * The database address is set in CLOUD_DB_URL below. Without it, sync stays switched off.
  * The family code is the only key to the data, so it is long and random.
  */
-export const CLOUD_DB_URL = ''
+export const CLOUD_DB_URL = 'https://family-game-backups-default-rtdb.europe-west1.firebasedatabase.app'
 
 export type SyncState = 'off' | 'syncing' | 'ok' | 'error'
 

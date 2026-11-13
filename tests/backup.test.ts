@@ -10,7 +10,8 @@ function fakeDb() {
     if (init?.method === 'PUT') {
       let node = data as Record<string, unknown>
       for (const p of parts.slice(0, -1)) node = (node[p] ??= {}) as Record<string, unknown>
-      node[parts[parts.length - 1]] = JSON.parse(String(init.body))
+      // Like Firebase, empty arrays and objects are not stored.
+      node[parts[parts.length - 1]] = JSON.parse(String(init.body), (_k, v: unknown) => (v && typeof v === 'object' && Object.keys(v).length === 0 ? undefined : v))
       return new Response('{}', { status: 200 })
     }
     let node: unknown = data
