@@ -4,7 +4,8 @@ import type { HeightFn } from './types'
  * Stuntbanan: a track where timing decides everything. Every 75 m or so comes a feature, picked
  * from a fixed pattern by the seed and growing harder with distance:
  * - gap: a lip, then a deep pit to jump; too slow and you fall in (the run ends);
- * - loop: a downhill run-up into a full loop; too slow and you drop off at the top;
+ * - loop: a downhill run-up into a full loop (6 m radius, 7.6 m later on); too slow and you
+ *   drop off at the top;
  * - seesaw: a plank on a pivot that tips as you cross it; take it slowly;
  * - cliff: a ramp up to a flat top and an edge with a big drop, then a climb back up;
  * - whoops: quick rollers that reward pumping the gas in rhythm.
@@ -31,8 +32,8 @@ export type StuntObstacle =
 const FIRST = 70
 const SPACING = 78
 const PATTERN: StuntKind[] = ['gap', 'loop', 'seesaw', 'whoops', 'gap', 'cliff', 'loop', 'gap', 'seesaw', 'loop', 'whoops', 'cliff']
-const LOOP_RUNUP = 14
-const LOOP_DROP = 2.6
+const LOOP_RUNUP = 20
+const LOOP_DROP = 4.5
 
 function hash(i: number, salt: number): number {
   let h = Math.imul(i ^ Math.imul(salt + 0x2545f491, 0x9e3779b1), 0x85ebca6b)
@@ -55,7 +56,7 @@ export function featureAt(i: number, seed: number): StuntFeature {
       return { kind, start, length: 7 + width + 9, index: i, size: width }
     }
     case 'loop': {
-      const r = 3 + grow * 0.8
+      const r = 6 + grow * 1.6
       return { kind, start, length: LOOP_RUNUP + 2 * r + 6 + LOOP_RUNUP, index: i, size: r }
     }
     case 'seesaw':

@@ -174,11 +174,16 @@ export class Sim {
       const dx = p.x - l.o.cx
       const dy = p.y - l.o.cy
       const a = (Math.atan2(dy, dx) * 180) / Math.PI
-      const inside = Math.hypot(dx, dy) < l.o.r + 1.5
+      const dist = Math.hypot(dx, dy)
+      const inside = dist < l.o.r + 1.5
+      // Over the top and down the far side only count close to the ring: falling off at the top
+      // and dropping through the middle is not a loop.
+      const onRing = inside && dist > l.o.r - 1.8
       if (dx < -l.o.r - 3) l.phase = 0
       else if (l.phase === 0 && inside && a > -50 && a < 60) l.phase = 1
-      else if (l.phase === 1 && inside && (a > 100 || a < -150)) l.phase = 2
-      else if (l.phase === 2 && inside && a > -125 && a < -55) {
+      else if (l.phase === 1 && onRing && (a > 100 || a < -150)) l.phase = 2
+      else if (l.phase === 2 && dist < l.o.r - 1.8 && a > 30 && a < 150) l.phase = 1
+      else if (l.phase === 2 && onRing && a > -125 && a < -55) {
         l.phase = 3
         this.loopsDone++
       }
