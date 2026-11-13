@@ -1,19 +1,16 @@
-import { runabout, runaboutFull } from '../data/vehicles'
-import type { VehicleSpec } from '../sim/types'
+import { MAX_LEVEL, type Levels, type UpgradeId, type UpgradeInfo } from '../data/upgrades'
+import {
+  BASE_LEVELS, FIELDS, FULL_LEVELS, hasFactors, isCustom, sandboxLevels, sandboxSpec, setAllLevels, setCustom, setLevel, upgradedOnly, withCustom,
+  type Sandbox,
+} from '../game/sandbox'
+import { drawThumbs, ICONS } from './home'
 
 /**
- * Tuning sandbox (task P2): sliders for the handling values of the base car and the
- * fully upgraded car. Only shown when the page address ends in ?tune, so players never see it.
- * Changes are kept in this browser; "Copy values" gives JSON to paste into data/vehicles.ts.
+ * Trimning: the tuning sandbox's screen (game/sandbox.ts). Pick any vehicle and track, set its
+ * upgrade levels with sliders and watch the handling values follow, or set the values by hand
+ * ("Egen inställning"). "Alla fordon" scales a value on every vehicle at once. Test drives from
+ * here never count.
  */
-export interface Tuning {
-  base: VehicleSpec
-  full: VehicleSpec
-}
-
-export type DriveAs = 'mine' | 'base' | 'full'
-
-const KEY = 'ridgeline.tuning'
 
 const TEST_KEY = 'ridgeline.testmode'
 
@@ -36,131 +33,176 @@ export function setTestMode(on: boolean): void {
   }
 }
 
-export function defaultTuning(): Tuning {
-  return { base: structuredClone(runabout), full: structuredClone(runaboutFull) }
+export interface TuningView {
+  sandbox: Sandbox
+  vehicles: { id: string; name: string; upgrades: UpgradeInfo[]; preview(c: HTMLCanvasElement): void }[]
+  tracks: { id: string; name: string }[]
+  modes: { id: string; name: string }[]
+  /** The family's own upgrade levels for a vehicle ("Familjens" preset). */
+  ownLevels(vehicleId: string): Levels
+  /** Called after every change (to save it). */
+  onChange(): void
+  onDrive(): void
+  onBack(): void
 }
 
-export function loadTuning(): Tuning {
-  if (!tuningEnabled()) return defaultTuning()
-  try {
-    const raw = localStorage.getItem(KEY)
-    if (raw) return { ...defaultTuning(), ...JSON.parse(raw) }
-  } catch {
-    // fall through to defaults
+const fmt = (x: number, digits: number) => x.toFixed(digits).replace('.', ',')
+const pct = (k: number) => `${Math.round(k * 100)} %`
+
+export function showTuning(el: HTMLElement, v: TuningView): void {
+  const s = v.sandbox
+  let scope: 'vehicle' | 'all' = 'vehicle'
+  const vehicle = () => v.vehicles.find((x) => x.id === s.vehicleId) ?? v.vehicles[0]
+  const own = () => v.ownLevels(s.vehicleId)
+  const levels = () => sandboxLevels(s, s.vehicleId, own())
+  const same = (a: Levels, b: Levels, ids: UpgradeId[]) => ids.every((id) => a[id] === b[id])
+
+  const status = () => {
+    const custom = isCustom(s, s.vehicleId)
+    const ids = vehicle().upgrades.map((u) => u.id)
+    const l = levels()
+    const preset = same(l, BASE_LEVELS, ids) ? 'Grund' : same(l, FULL_LEVELS, ids) ? 'Max' : same(l, own(), ids) ? 'Familjens nivåer' : 'Egna nivåer'
+    return `<span class="pill ${custom ? 'custom' : ''}">${custom ? 'Egen inställning' : `Från uppgraderingar · ${preset}`}</span>
+      ${hasFactors(s) ? '<span class="pill all">Alla fordon ändrade</span>' : ''}
+      ${custom ? '<button class="small" data-act="uncustom">Tillbaka till uppgraderingarna</button>' : ''}`
   }
-  return defaultTuning()
-}
 
-function saveTuning(t: Tuning): void {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(t))
-  } catch {
-    // not persisted; still applies until reload
+  const vehicleScope = () => {
+    const veh = vehicle()
+    const l = levels()
+    const fromLevels = upgradedOnly(s, s.vehicleId, own())
+    const mine = withCustom(s, s.vehicleId, own())
+    const custom = s.custom[s.vehicleId] ?? {}
+    const groups = [...new Set(FIELDS.map((f) => f.group))]
+    return `
+      <section class="tsec">
+        <div class="tsec-head"><h3>Uppgraderingar</h3>
+          <span class="seg"><button data-preset="base">Grund</button><button data-preset="own">Familjens</button><button data-preset="full">Max</button></span></div>
+        <div class="tgrid">${veh.upgrades.map((u) => `
+          <label class="tslider up">
+            <span class="tl"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[u.id] ?? ''}</svg>${u.name}</span>
+            <output data-out="lvl:${u.id}">${l[u.id]}/${MAX_LEVEL}</output>
+            <input type="range" min="1" max="${MAX_LEVEL}" step="1" value="${l[u.id]}" data-level="${u.id}">
+            <small>${u.blurb}</small>
+          </label>`).join('')}</div>
+      </section>
+      <div class="tstatus" data-status>${status()}</div>
+      ${groups.map((g) => `
+        <section class="tsec">
+          <div class="tsec-head"><h3>${g}</h3></div>
+          <div class="tgrid">${FIELDS.filter((f) => f.group === g).map((f) => `
+            <label class="tslider ${f.key in custom ? 'changed' : ''}" data-row="${f.key}">
+              <span class="tl">${f.label}</span>
+              <output data-out="f:${f.key}">${fmt(f.get(mine), f.digits)}</output>
+              <input type="range" min="${f.min}" max="${f.max}" step="${f.step}" value="${f.get(mine)}" data-field="${f.key}">
+              <small>${f.help} <span class="from" data-from="${f.key}">${f.key in custom ? `Uppgraderingarna ger ${fmt(f.get(fromLevels), f.digits)}.` : ''}</span></small>
+            </label>`).join('')}</div>
+        </section>`).join('')}`
   }
-}
 
-interface Field {
-  label: string
-  min: number
-  max: number
-  step: number
-  get(v: VehicleSpec): number
-  set(v: VehicleSpec, value: number): void
-}
-
-const eng = (key: Exclude<keyof VehicleSpec['engine'], 'gearbox'>, label: string, min: number, max: number, step: number): Field => ({
-  label, min, max, step,
-  get: (v) => v.engine[key],
-  set: (v, x) => (v.engine[key] = x),
-})
-const air = (key: 'spinRate' | 'spinResponse' | 'groundTorque', label: string, min: number, max: number, step: number): Field => ({
-  label, min, max, step,
-  get: (v) => v.airControl[key],
-  set: (v, x) => (v.airControl[key] = x),
-})
-const wheel = (key: 'friction' | 'springHz' | 'damping', label: string, min: number, max: number, step: number): Field => ({
-  label, min, max, step,
-  get: (v) => v.wheels[0][key],
-  set: (v, x) => v.wheels.forEach((w) => (w[key] = x)),
-})
-
-const FIELDS: Field[] = [
-  eng('maxTorque', 'Motorns vridmoment', 5, 60, 0.5),
-  eng('maxWheelSpeed', 'Högsta hjulvarv (rad/s)', 10, 70, 0.5),
-  eng('torqueFalloff', 'Vridmomentsfall vid toppfart', 0, 0.9, 0.01),
-  eng('frontShare', 'Andel drivning fram', 0, 1, 0.01),
-  eng('brakeTorque', 'Bromsmoment', 5, 60, 0.5),
-  wheel('friction', 'Däckgrepp', 0.1, 2, 0.01),
-  wheel('springHz', 'Fjäderstyvhet (Hz)', 1, 10, 0.1),
-  wheel('damping', 'Fjäderdämpning', 0.05, 1.2, 0.01),
-  { label: 'Chassits massa', min: 3, max: 30, step: 0.5, get: (v) => v.chassis.mass, set: (v, x) => (v.chassis.mass = x) },
-  {
-    label: 'Tyngdpunktens höjd', min: -0.5, max: 0.5, step: 0.01,
-    get: (v) => v.chassis.centerOfMass.y,
-    set: (v, x) => (v.chassis.centerOfMass = { ...v.chassis.centerOfMass, y: x }),
-  },
-  air('spinRate', 'Snurrfart i luften (rad/s)', 0.5, 6, 0.05),
-  air('spinResponse', 'Snurrsvar i luften', 1, 40, 0.5),
-  air('groundTorque', 'Pedaltippning på marken', 0, 30, 0.5),
-]
-
-/** Build the tuning panel into el. onDrive starts a run with the chosen car. */
-export function showTuning(el: HTMLElement, tuning: Tuning, driveAs: DriveAs, onDrive: (driveAs: DriveAs) => void, onBack: () => void): void {
-  let editing: 'base' | 'full' = driveAs === 'full' ? 'full' : 'base'
-  let drive = driveAs
+  const allScope = () => `
+    <div class="hint">Ändringar här gäller <b>alla fordon</b>, i procent av varje fordons eget värde (100 % = oförändrat). De läggs ovanpå uppgraderingar och egna inställningar.</div>
+    <div class="tstatus"><button class="small" data-act="unfactor" ${hasFactors(s) ? '' : 'disabled'}>Nollställ alla fordon</button></div>
+    ${[...new Set(FIELDS.map((f) => f.group))].map((g) => `
+      <section class="tsec">
+        <div class="tsec-head"><h3>${g}</h3></div>
+        <div class="tgrid">${FIELDS.filter((f) => f.group === g).map((f) => {
+          const k = s.factors[f.key] ?? 1
+          return `<label class="tslider ${k !== 1 ? 'changed' : ''}" data-row="${f.key}">
+            <span class="tl">${f.label}</span>
+            <output data-out="k:${f.key}">${pct(k)}</output>
+            <input type="range" min="0.5" max="2" step="0.05" value="${k}" data-factor="${f.key}">
+            <small>${f.help}</small>
+          </label>`
+        }).join('')}</div>
+      </section>`).join('')}`
 
   const render = () => {
-    const spec = tuning[editing]
+    const veh = vehicle()
     el.innerHTML = `
-      <div class="bar"><h2>Trimning</h2><button class="small" data-act="back">Tillbaka</button></div>
-      <div class="bar">
-        <span>Redigera: <span class="seg"><button data-edit="base" class="${editing === 'base' ? 'on' : ''}">Grundbil</button><button data-edit="full" class="${editing === 'full' ? 'on' : ''}">Fullt uppgraderad</button></span></span>
-        <span>Kör som: <span class="seg"><button data-drive="mine" class="${drive === 'mine' ? 'on' : ''}">Mina uppgraderingar</button><button data-drive="base" class="${drive === 'base' ? 'on' : ''}">Grund</button><button data-drive="full" class="${drive === 'full' ? 'on' : ''}">Full</button></span></span>
+      <div class="bar menu-bar"><button class="small back" data-act="back">‹ Hem</button><h2>Trimning <span class="badge">RÄKNAS INTE</span></h2><button class="big" data-act="drive">Provkör</button></div>
+      <div class="tpick">
+        <div class="tveh-row">${v.vehicles.map((x) => `<button class="tveh ${x.id === s.vehicleId ? 'on' : ''}" data-vehicle="${x.id}" style="--c:#3fbf5f"><canvas data-thumb="tv:${x.id}"></canvas>${x.name}${isCustom(s, x.id) ? ' ✎' : ''}</button>`).join('')}</div>
+        <div class="trow"><span class="label">Bana</span><span class="seg">${v.tracks.map((t) => `<button data-track="${t.id}" class="${t.id === s.envId ? 'on' : ''}">${t.name}</button>`).join('')}</span></div>
+        <div class="trow"><span class="label">Läge</span><span class="seg">${v.modes.map((m) => `<button data-mode="${m.id}" class="${m.id === s.modeId ? 'on' : ''}">${m.name}</button>`).join('')}</span></div>
       </div>
-      <div class="sliders">${FIELDS.map((f, i) => `
-        <label>${f.label}<output id="out${i}">${f.get(spec)}</output>
-          <input type="range" min="${f.min}" max="${f.max}" step="${f.step}" value="${f.get(spec)}" data-field="${i}">
-        </label>`).join('')}
-      </div>
+      <div class="ttabs seg"><button data-scope="vehicle" class="${scope === 'vehicle' ? 'on' : ''}">${veh.name}</button><button data-scope="all" class="${scope === 'all' ? 'on' : ''}">Alla fordon</button></div>
+      <div class="tbody">${scope === 'vehicle' ? vehicleScope() : allScope()}</div>
       <div class="actions">
-        <button class="big" data-act="drive">Kör</button>
-        <button class="small" data-act="copy">Kopiera värden</button>
-        <button class="small" data-act="reset">Återställ standard</button>
+        <button class="small" data-act="copy">Kopiera värden (JSON)</button>
+        <button class="small" data-act="reset">Nollställ ${veh.name}</button>
       </div>
       <textarea class="hidden" readonly></textarea>`
+    drawThumbs(el, Object.fromEntries(v.vehicles.map((x) => [`tv:${x.id}`, x.preview])))
   }
-  render()
 
+  /** Refresh every value on screen except the slider being dragged (re-drawing it would stop the drag). */
+  const refresh = (active?: HTMLInputElement) => {
+    if (scope !== 'vehicle') return
+    const l = levels()
+    const fromLevels = upgradedOnly(s, s.vehicleId, own())
+    const mine = withCustom(s, s.vehicleId, own())
+    const custom = s.custom[s.vehicleId] ?? {}
+    for (const u of vehicle().upgrades) {
+      const input = el.querySelector<HTMLInputElement>(`input[data-level="${u.id}"]`)
+      if (input && input !== active) input.value = String(l[u.id])
+      el.querySelector(`[data-out="lvl:${u.id}"]`)!.textContent = `${l[u.id]}/${MAX_LEVEL}`
+    }
+    for (const f of FIELDS) {
+      const input = el.querySelector<HTMLInputElement>(`input[data-field="${f.key}"]`)
+      if (input && input !== active) input.value = String(f.get(mine))
+      el.querySelector(`[data-out="f:${f.key}"]`)!.textContent = fmt(f.get(mine), f.digits)
+      el.querySelector(`[data-row="${f.key}"]`)?.classList.toggle('changed', f.key in custom)
+      el.querySelector(`[data-from="${f.key}"]`)!.textContent = f.key in custom ? `Uppgraderingarna ger ${fmt(f.get(fromLevels), f.digits)}.` : ''
+    }
+    el.querySelector('[data-status]')!.innerHTML = status()
+  }
+
+  render()
   el.oninput = (e) => {
     const input = e.target as HTMLInputElement
-    const i = Number(input.dataset.field)
-    if (Number.isNaN(i)) return
-    FIELDS[i].set(tuning[editing], Number(input.value))
-    el.querySelector(`#out${i}`)!.textContent = input.value
-    saveTuning(tuning)
+    const x = Number(input.value)
+    if (input.dataset.level) setLevel(s, s.vehicleId, input.dataset.level as UpgradeId, x, own())
+    else if (input.dataset.field) setCustom(s, s.vehicleId, input.dataset.field, x, own())
+    else if (input.dataset.factor) {
+      s.factors = { ...s.factors, [input.dataset.factor]: x }
+      el.querySelector(`[data-out="k:${input.dataset.factor}"]`)!.textContent = pct(x)
+      el.querySelector(`[data-row="${input.dataset.factor}"]`)?.classList.toggle('changed', x !== 1)
+      el.querySelector<HTMLButtonElement>('[data-act="unfactor"]')!.disabled = !hasFactors(s)
+    } else return
+    refresh(input)
+    v.onChange()
   }
   el.onclick = (e) => {
     const b = (e.target as HTMLElement).closest('button')
-    if (!b) return
-    if (b.dataset.edit) {
-      editing = b.dataset.edit as 'base' | 'full'
-      render()
-    } else if (b.dataset.drive) {
-      drive = b.dataset.drive as DriveAs
-      render()
-    } else if (b.dataset.act === 'drive') onDrive(drive)
-    else if (b.dataset.act === 'back') onBack()
-    else if (b.dataset.act === 'reset') {
-      Object.assign(tuning, defaultTuning())
-      saveTuning(tuning)
-      render()
-    } else if (b.dataset.act === 'copy') {
-      const text = JSON.stringify({ base: tuning.base, full: tuning.full }, null, 2)
+    if (!b || b.disabled) return
+    const d = b.dataset
+    if (d.vehicle) s.vehicleId = d.vehicle
+    else if (d.track) s.envId = d.track
+    else if (d.mode) s.modeId = d.mode
+    else if (d.scope) scope = d.scope as 'vehicle' | 'all'
+    else if (d.preset) setAllLevels(s, s.vehicleId, d.preset === 'base' ? BASE_LEVELS : d.preset === 'full' ? FULL_LEVELS : own())
+    else if (d.act === 'uncustom') s.custom = { ...s.custom, [s.vehicleId]: {} }
+    else if (d.act === 'unfactor') s.factors = {}
+    else if (d.act === 'reset') {
+      s.custom = { ...s.custom, [s.vehicleId]: {} }
+      const { [s.vehicleId]: _, ...rest } = s.levels
+      s.levels = rest
+    } else if (d.act === 'drive') return v.onDrive()
+    else if (d.act === 'back') return v.onBack()
+    else if (d.act === 'copy') {
+      const text = JSON.stringify(sandboxSpec(s, s.vehicleId, own()), null, 2)
       const area = el.querySelector('textarea')!
       area.value = text
       area.classList.remove('hidden')
       area.select()
       navigator.clipboard?.writeText(text).catch(() => undefined)
-    }
+      return
+    } else return
+    v.onChange()
+    // Keep the scroll position across the re-draw.
+    const top = el.scrollTop
+    render()
+    el.scrollTop = top
   }
 }

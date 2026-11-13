@@ -360,6 +360,16 @@ Database rules (Firebase console, Realtime Database, Rules):
 The family code (12 random characters) is the only key to a family's progress, and the
 whole list of families cannot be read.
 
+### Menus and buying
+
+The home screen shows what you are about to drive: the vehicle (tap for **Garaget**: vehicles,
+upgrades and parts), the track and mode (tap for **Banor**), who plays, and a big **Kör!**.
+Everything else is a tile: Dagens utmaning, Uppdrag, Tävling, Duell, Utstyrsel, Topplista, and
+Trimning in test mode; settings are behind ⚙. Each sub-menu has ‹ Hem and its own Kör button.
+Every purchase (vehicle, track, upgrade level, part) asks first in a box showing the price and
+what is left after; its Köp button only works after a short moment, so a quick double tap
+never buys by mistake.
+
 ### Pause, ghosts setting and updates
 
 - **Pause:** the ❚❚ button during a run (or leaving the app, e.g. a call) pauses: nothing moves,
@@ -400,16 +410,27 @@ starts one from the garage.
 Progress (coins, upgrades, best distance) is saved in the browser on each
 device. Clearing Safari's website data resets it.
 
-### Test mode and tuning sandbox
+### Test mode and Trimning (the tuning sandbox)
 
 Turn on **Test mode** in Settings (or add `?tune` to the address, for example
-`…/Hill-Climb/?tune`): every vehicle and environment can be picked without buying it (a red
-TEST MODE badge shows in the garage, and no coins are spent), and the garage
-gets a **Tuning** button. It has sliders for every handling value of
-the base car and of the fully upgraded car, a choice of which to drive (your
-upgrades, base, or full), and **Copy values** to get the numbers to put into
-`src/data/vehicles.ts`. Tuning changes stay in that browser only. Players
-without `?tune` never see it.
+`…/Hill-Climb/?tune`). It changes nothing in the normal game: picking a vehicle in Garaget and
+pressing Kör always drives the family's own vehicle with its own upgrades, and only owned
+vehicles and tracks can be picked. It only adds a **Trimning** tile to the home screen
+(`src/ui/tuning.ts`, `src/game/sandbox.ts`):
+
+- Pick **any vehicle, track and mode**, owned or not.
+- **Upgrade sliders** (level 1 to 10) with Grund / Familjens / Max presets; the handling values
+  below follow them live.
+- **Handling values**, grouped (Motor, Hjul och fjädring, Kaross, I luften), each with a short
+  description. Moving one makes it an **Egen inställning** (custom): it replaces what the levels
+  give for that value, is marked in orange with what the levels would give, and "Tillbaka till
+  uppgraderingarna" drops all custom values. Wheel values keep each vehicle's front/back difference.
+- **Alla fordon**: a percentage per value applied on top of every vehicle (100 % = unchanged).
+- **Kopiera värden** gives the vehicle's final values as JSON for `src/data/vehicles.ts`.
+
+**Provkör** starts a test drive. Test drives never count: no coins, records, highscores,
+ghosts, missions or stars, and the results screen says so ("Testkörning: räknas inte"). The
+sandbox's settings stay in that browser only.
 
 ## Play on a phone
 
