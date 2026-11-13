@@ -694,6 +694,11 @@ function pick(kind: 'vehicle' | 'env', id: string): void {
       onYes: () => {
         if (!spend(save, item.price)) return
         save.unlocked.push(item.id)
+        // A vehicle just bought starts without upgrades, whatever levels were stored for it before.
+        if (kind === 'vehicle') {
+          delete save.levels[item.id]
+          if (save.useLevels) delete save.useLevels[item.id]
+        }
         sound.fanfare()
         select()
       },
