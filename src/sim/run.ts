@@ -178,7 +178,10 @@ export class Run {
     const { vehicle, height, gravity, groundFriction, puddles } = options
     const stunt = options.stunt
     const level = options.level
-    const loops: StuntObstacle[] = (level?.geom.loops ?? []).map((l, i) => ({ kind: 'loop', id: `loop${i}`, ...l }))
+    const loops: StuntObstacle[] = [
+      ...(level?.geom.loops ?? []).map((l, i): StuntObstacle => ({ kind: 'loop', id: `loop${i}`, ...l })),
+      ...(level?.geom.seesaws ?? []).map((w, i): StuntObstacle => ({ kind: 'seesaw', id: `seesaw${i}`, ...w })),
+    ]
     this.sim = new Sim({
       vehicle, height, gravity, groundFriction, puddles,
       obstacles: stunt !== undefined ? stuntObstacles(stunt) : loops.length ? () => loops : undefined,

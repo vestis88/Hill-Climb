@@ -211,7 +211,7 @@ export class Sim {
     const pivot = this.world.createBody({ position: new Vec2(o.x, o.y) })
     // Joined while level, so its limits are ±0.3 from level; then tipped onto its near end.
     const plank = this.world.createBody({ type: 'dynamic', position: new Vec2(o.x, o.y), userData: { track: true } })
-    plank.createFixture(new Box(o.length / 2, 0.13), { density: 2.2, friction: 0.9 })
+    plank.createFixture(new Box(o.length / 2, 0.13), { density: o.density ?? 2.2, friction: 0.9 })
     this.world.createJoint(new RevoluteJoint({ enableLimit: true, lowerAngle: -0.3, upperAngle: 0.3 }, pivot, plank, new Vec2(o.x, o.y)))
     plank.setAngle(0.28)
     return { pivot, plank }

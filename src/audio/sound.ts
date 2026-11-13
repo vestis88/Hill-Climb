@@ -339,6 +339,52 @@ export class Sound {
     if (v.kind) silence(this.eng.out)
   }
 
+  /**
+   * Another engine on the same output, for a duel: each player hears their own vehicle. `pan`
+   * places it left (-1) or right (1). Its pops and shift sounds go through the same pan.
+   * Null before the first tap has started the audio.
+   */
+  engineVoice(pan = 0): Sound | null {
+    if (!this.ctx || !this.master) return null
+    const s = new Sound()
+    s.ctx = this.ctx
+    s.offline = this.offline
+    let out: AudioNode = this.master
+    if (typeof (this.ctx as AudioContext).createStereoPanner === 'function') {
+      const panner = (this.ctx as AudioContext).createStereoPanner()
+      panner.pan.value = pan
+      panner.connect(this.master)
+      out = panner
+      s.panner = panner
+    }
+    // Only ever used as somewhere to connect to: the volume stays on this Sound's master.
+    s.master = out as GainNode
+    s.buildEngine()
+    for (const kind of ['twoStroke', 'v8', 'i4'] as const) s.pulses[kind] = s.buildPulseEngine(PULSE[kind])
+    s.applyVoice()
+    return s
+  }
+
+  private panner: StereoPannerNode | null = null
+
+  /** Move an engine voice left or right (a duel's layout changed). */
+  setPan(pan: number): void {
+    if (this.panner && this.ctx) this.panner.pan.setTargetAtTime(pan, this.ctx.currentTime, 0.1)
+  }
+
+  /** Stop an engine voice for good (the duel is over). */
+  close(): void {
+    const nodes: AudioNode[] = []
+    if (this.eng) nodes.push(this.eng.out)
+    for (const g of Object.values(this.pulses)) if (g) nodes.push(g.out)
+    for (const n of nodes) n.disconnect()
+    if (this.eng) for (const o of [this.eng.oscA, this.eng.oscB, this.eng.sub, this.eng.lfo]) o.stop()
+    for (const g of Object.values(this.pulses)) if (g) for (const src of [g.on, g.off]) src.stop()
+    this.panner?.disconnect()
+    this.eng = null
+    this.pulses = {}
+  }
+
   /** Switch the engine voice to suit a vehicle. */
   setVehicle(id: string): void {
     this.vehicleId = id

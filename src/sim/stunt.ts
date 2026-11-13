@@ -27,7 +27,7 @@ export interface StuntFeature {
 
 export type StuntObstacle =
   | { kind: 'loop'; id: string; cx: number; cy: number; r: number }
-  | { kind: 'seesaw'; id: string; x: number; y: number; length: number }
+  | { kind: 'seesaw'; id: string; x: number; y: number; length: number; /** Plank density (default 2.2): heavier tips slower. */ density?: number }
 
 const FIRST = 70
 const SPACING = 78

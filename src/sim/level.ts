@@ -10,6 +10,8 @@ export interface LevelGeom {
   polygons: Pt[][]
   /** Physics loops: a ring whose bottom sits flush on the ground; entered from the left. */
   loops?: { cx: number; cy: number; r: number }[]
+  /** Seesaws: a plank `length` long on a pivot at (x, y); it starts tipped down on its left end. */
+  seesaws?: { x: number; y: number; length: number; density?: number }[]
   /** Below this the vehicle has fallen out of the level (the run ends). */
   bottom: number
 }

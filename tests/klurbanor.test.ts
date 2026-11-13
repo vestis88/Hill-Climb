@@ -88,4 +88,16 @@ describe('Klurbanor', () => {
     expect(drivePlan(withPlan('k10', at(4, 8))).run.status).toBe('crashed')
     expect(drivePlan(withPlan('k10', at(5, 10.5))).run.status).toBe('crashed')
   }, 120000)
+
+  it('11 · Gungbrädan: only 5 to 7 m/s gets across (slower cannot jump off the plank, faster hits the roof)', () => {
+    for (const [speed, ok] of [[4, false], [6, true], [8, false]] as const) {
+      const { run } = drivePlan(withPlan('k11', [{ x: 30, speed }, { x: 92, speed }]))
+      expect(run.status === 'finished', `${speed} m/s`).toBe(ok)
+    }
+  }, 60000)
+
+  it('12 · Dubbelloopen: losing speed before the kicker drops you into the pit', () => {
+    const plan = puzzleLevel('k12')!.plan.map((p) => (p.x === 74 ? { ...p, speed: 9 } : p))
+    expect(drivePlan(withPlan('k12', plan)).run.status).toBe('crashed')
+  }, 60000)
 })

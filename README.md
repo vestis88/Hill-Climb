@@ -128,6 +128,14 @@ Each level opens when the one before is finished; the first time the family fini
   rollers (ease off: rushing it bangs your head), then a kicker through a needle's eye (about
   10-10.25 m/s) down onto the goal island.
 
+- **11 · Gungbrädan** (tough): three heavy seesaws over bottomless pits, each tipping onto
+  nothing, with the next ledge a little gap away and lower, and a low roof over each plank's
+  far half. Only 5-7 m/s works: slower and you cannot jump off the tipped plank, faster and you
+  ride up the plank before it tips and hit the roof.
+- **12 · Dubbelloopen**: two loops back to back (a gem at each top), then a kicker onto a 4 m
+  shelf at a cliff edge with the goal flag (counts once landed): lose speed before the kicker
+  and you drop into the pit.
+
 Klurbanor show the speed in km/h under the gem counter, for learning what each jump needs, and
 after finishing one a **Nästa: …** button goes straight on to the next level.
 
@@ -138,7 +146,7 @@ ground below a point). Loops are the same physics loops as Stuntbanan's. Each le
 `plan` for a scripted driver (`src/game/klurbot.ts`); `tests/klurbanor.test.ts` drives every
 level to the goal with it, and checks that the wrong approach fails (too fast on level 1, too
 slow on level 2, rushing level 3, driving straight at the wall on level 4, and the speed windows
-of levels 6 to 10).
+of levels 6 to 12).
 
 ### The run
 
@@ -272,8 +280,9 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
   for sitting next to each other. **Mot varandra** (portrait, forced even if the iPad lies flat
   and reports landscape): player 2 on the bottom half and player 1 on the top half turned upside
   down, for sitting either side of the iPad. When both are done, the further (or faster) wins;
-  coins, bests and highscores count as usual (no ghosts are recorded). The engine heard is player
-  1's. Made for the iPad.
+  coins, bests and highscores count as usual (no ghosts are recorded).
+  Each player hears their own engine (side by side: player 1 on the left speaker, player 2 on
+  the right). Made for the iPad.
 - **Tävling (tournament):** with two or more players ticked, the garage's "🏆 Tävling: 3 banor"
   starts a cup on three of the family's maps (different ones when three are owned) in the chosen
   mode. Each track is a round; placings give 5, 3, 2 and 1 points (ties share), the table shows

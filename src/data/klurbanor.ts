@@ -390,7 +390,68 @@ const mastarprovet: PuzzleLevel = {
   plan: [{ x: 20, speed: 9.5 }, { x: 34, speed: 11 }, { x: 49, speed: 11 }, { x: 88, speed: 14 }, { x: 113, speed: 3.5 }, { x: 128, speed: 10 }, { x: 141.3, speed: 1 }],
 }
 
-const LEVELS_RAW: PuzzleLevel[] = [tvaVagar, stopp, lagtITak, gungan, loopenEllerGropen, trappan, fonstret, nalsogat, avsatserna, mastarprovet]
+/**
+ * 11 · Gungbrädan. Three seesaws bridge bottomless pits, with only a short ledge between the
+ * last two. Drive on gently and the plank tips you across; rush it and you are thrown off its
+ * high end before it tips, into the low roof over it. A gem sits above each pivot.
+ */
+const gungbradan: PuzzleLevel = {
+  id: 'k11',
+  name: 'Gungbrädan',
+  hint: 'Låt brädan tippa, men ha fart nog att hoppa av den.',
+  theme: 'woods',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], ...pillar(-12, 33.4, 0).slice(0, -1), [-14, -40]],
+      block(36.8, -40, 37.2, 0.2),
+      // Each plank tips onto nothing: the next ledge is a little gap away and lower.
+      pillar(43, 53.4, -0.8),
+      block(56.8, -40, 57.2, -0.6),
+      pillar(63, 66.4, -1.6),
+      block(69.8, -40, 70.2, -1.4),
+      ground([[76, -2.4], [100, -2.4], [100, WALL], [104, WALL]], -40),
+      // Low roofs over the far half of each plank: ride up it before it tips and your helmet
+      // hits the roof.
+      block(37.6, 4.1, 42, 8),
+      block(57.6, 3.3, 62, 8),
+      block(70.6, 2.5, 75, 8),
+    ],
+    seesaws: [{ x: 37, y: 1.1, length: 8, density: 15 }, { x: 57, y: 0.3, length: 8, density: 15 }, { x: 70, y: -0.5, length: 8, density: 15 }],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 37, y: 2.3 }, { x: 57, y: 1.5 }, { x: 70, y: 0.7 }],
+  goal: { x: 92, y: -1.4 },
+  plan: [{ x: 30, speed: 6 }, { x: 92, speed: 6 }],
+}
+
+/**
+ * 12 · Dubbelloopen. Two loops back to back (a gem at the top of each), then a kicker over a
+ * pit onto a 4 m shelf at the edge of a cliff, with the goal flag on it: it only counts once
+ * you have landed, so keep all your speed through the loops for the jump.
+ */
+const dubbelloopen: PuzzleLevel = {
+  id: 'k12',
+  name: 'Dubbelloopen',
+  hint: 'Två loopar i rad, sen hoppet ner på en liten hylla vid stupet.',
+  theme: 'dunes',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [70, 0], ...kicker(70, 0, 4, 1.2).slice(1), [74, -40], [-14, -40]],
+      pillar(86, 90, -1),
+      ground([[110, WALL], [114, WALL]], -40),
+    ],
+    loops: [{ cx: 36, cy: 3.4, r: 3.4 }, { cx: 54, cy: 3.4, r: 3.4 }],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 36, y: 5.9 }, { x: 54, y: 5.9 }, { x: 87.5, y: 0 }],
+  goal: { x: 89, y: 0 },
+  goalOnGround: true,
+  plan: [{ x: 70, speed: 14 }, { x: 74, speed: 11 }, { x: 89, speed: 0.5 }],
+}
+
+const LEVELS_RAW: PuzzleLevel[] = [tvaVagar, stopp, lagtITak, gungan, loopenEllerGropen, trappan, fonstret, nalsogat, avsatserna, mastarprovet, gungbradan, dubbelloopen]
 
 export const LEVELS = LEVELS_RAW
 

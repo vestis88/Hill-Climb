@@ -67,6 +67,7 @@ function toggleDuelLayout(): void {
   settings.duelLayout = settings.duelLayout === 'opposite' ? 'beside' : 'opposite'
   saveSettings(settings)
   applyDuelLayout()
+  duel?.voices.forEach((v, i) => v?.setPan(duelPan(i)))
   controls.reset()
   controls2.reset()
   duelLayoutBtn.blur()
@@ -1117,7 +1118,9 @@ interface DuelSide {
   renderer: GameRenderer
   popups: Popup[]
 }
-let duel: { sides: DuelSide[]; countdown: number; acc: number; endTimer: number } | null = null
+let duel: { sides: DuelSide[]; countdown: number; acc: number; endTimer: number; voices: (Sound | null)[] } | null = null
+/** Duel engines: player 1 to the left and player 2 to the right when sitting side by side. */
+const duelPan = (i: number) => (settings.duelLayout === 'opposite' ? 0 : i === 0 ? -0.6 : 0.6)
 
 function startDuel(): void {
   if (save.players.length < 2) return
@@ -1139,7 +1142,13 @@ function startDuel(): void {
     side.renderer.resetCamera(side.next)
   }
   atmosphere = undefined
-  duel = { sides, countdown: 3 * LAUNCH.beat, acc: 0, endTimer: 1.2 }
+  // Each player hears their own engine (the main engine stays quiet during a duel).
+  const voices = sides.map((side, i) => {
+    const v = sound.engineVoice(duelPan(i))
+    v?.setVehicle(side.run.options.vehicle.id)
+    return v
+  })
+  duel = { sides, countdown: 3 * LAUNCH.beat, acc: 0, endTimer: 1.2, voices }
   sound.beep(false)
   show('duel')
 }
@@ -1184,9 +1193,11 @@ function stepDuel(dt: number): void {
 
 function drawDuel(dt: number): void {
   const d = duel!
-  const top = d.sides[0]
-  const shown = d.countdown > 0 ? top.revs.revs : top.revs.follow(top.next.revs, dt)
-  sound.engine(shown, top.input.gas && top.run.fuel > 0 && !top.next.shifting, top.run.status === 'running' && top.run.fuel > 0 && !paused)
+  sound.engine(0, false, false)
+  d.sides.forEach((side, i) => {
+    const shown = d.countdown > 0 ? side.revs.revs : side.revs.follow(side.next.revs, dt)
+    d.voices[i]?.engine(shown, side.input.gas && side.run.fuel > 0 && !side.next.shifting, side.run.status === 'running' && side.run.fuel > 0 && !paused)
+  })
   for (const side of d.sides) {
     side.popups = side.popups.filter((p) => (p.age += dt) < (p.at ? 0.9 : 1.6))
     const r = side.run
@@ -1226,6 +1237,7 @@ function finishDuel(): void {
   const d = duel
   if (!d) return
   duel = null
+  for (const v of d.voices) v?.close()
   const envId = currentEnv().id
   const race = currentMode()
   const key = currentKey()
@@ -1497,7 +1509,7 @@ function frame(now: number): void {
     outfit: outfitFor(mode === 'replay' && replay ? replay.player : currentPlayer()),
     ghosts: mode === 'driving' || mode === 'ending' ? ghostPoses() : [],
     puddles: puddlesFor(currentEnv()),
-    seesaws: currentEnv().stunt ? run.sim.seesawAngles() : undefined,
+    seesaws: currentEnv().stunt || puzzle?.geom.seesaws ? run.sim.seesawAngles() : undefined,
     level: puzzle && run.options.level ? { geom: puzzle.geom, gems: run.gemsLeft, total: puzzle.gems.length, goal: puzzle.goal, time: run.finishTime ?? run.sim.steps * STEP } : undefined,
     race: currentMode().length ? { length: currentMode().length!, time: run.finishTime ?? run.sim.steps * STEP } : undefined,
     showHud: mode === 'driving' || mode === 'ending' || mode === 'results',
