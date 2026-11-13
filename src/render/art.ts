@@ -350,144 +350,241 @@ export function setOutfit(o: Outfit | null): void {
   outfit = o
 }
 
-export function drawHead(ctx: Ctx, r: number, mood: Mood = 'normal'): void {
-  // An open-face helmet: the shell over the top and back, the face showing at the front (+x).
-  const helmet = ctx.createLinearGradient(0, -r, 0, r)
-  const hc = outfit ? paintColours(outfit.colour) : { dark: '#0e7779', light: '#2cc6c8' }
-  helmet.addColorStop(0, hc.dark)
-  helmet.addColorStop(1, hc.light)
+/**
+ * The helmet shell in profile (head coordinates, radius r, facing +x, y up): over the top and
+ * back of the head and down past the ear, open at the front from the brow to the jaw.
+ */
+function shellPath(ctx: Ctx, r: number): void {
   ctx.beginPath()
-  ctx.arc(0, 0, r, 0, Math.PI * 2)
-  ctx.fillStyle = helmet
-  ctx.fill()
-  drawPattern(ctx, r, outfit?.pattern ?? 'stripe')
-  // The face, cut out of the front of the helmet.
-  ctx.save()
-  ctx.beginPath()
-  ctx.arc(0, 0, r * 0.97, 0, Math.PI * 2)
-  ctx.clip()
-  ctx.beginPath()
-  ctx.ellipse(r * 0.48, -r * 0.12, r * 0.62, r * 0.6, 0, 0, Math.PI * 2)
-  ctx.fillStyle = '#ffd9b8'
-  ctx.fill()
-  ctx.lineWidth = LINE
-  ctx.strokeStyle = OUTLINE
-  ctx.stroke()
-  // Cheek
-  ctx.beginPath()
-  ctx.ellipse(r * 0.42, -r * 0.3, r * 0.13, r * 0.08, 0, 0, Math.PI * 2)
-  ctx.fillStyle = 'rgba(255, 130, 120, 0.45)'
-  ctx.fill()
-  ctx.restore()
-  // Helmet rim around the face, and the outline.
-  ctx.beginPath()
-  ctx.arc(0, 0, r, 0, Math.PI * 2)
-  ctx.lineWidth = LINE
-  ctx.strokeStyle = OUTLINE
-  ctx.stroke()
-  // Visor peak over the forehead.
-  ctx.beginPath()
-  ctx.moveTo(r * 0.05, r * 0.5)
-  ctx.quadraticCurveTo(r * 0.75, r * 0.62, r * 1.18, r * 0.42)
-  ctx.lineTo(r * 1.1, r * 0.3)
-  ctx.quadraticCurveTo(r * 0.7, r * 0.45, r * 0.1, r * 0.38)
+  ctx.moveTo(r * 0.4, r * 0.66)
+  ctx.bezierCurveTo(r * 0.28, r * 1.02, -r * 0.58, r * 1.06, -r * 0.9, r * 0.52)
+  ctx.bezierCurveTo(-r * 1.1, r * 0.12, -r * 1.02, -r * 0.55, -r * 0.74, -r * 0.84)
+  ctx.lineTo(-r * 0.08, -r * 0.88)
+  // Up the front of the cheek pad and along the temple to the brow.
+  ctx.bezierCurveTo(r * 0.1, -r * 0.88, r * 0.2, -r * 0.7, r * 0.2, -r * 0.48)
+  ctx.bezierCurveTo(r * 0.2, -r * 0.15, r * 0.18, r * 0.3, r * 0.4, r * 0.66)
   ctx.closePath()
-  ctx.fillStyle = hc.dark
-  ctx.fill()
-  ctx.stroke()
-  // Eyes: the near one bigger; pupils look ahead.
+}
+
+/** The face in profile: forehead, brow, nose, lips and chin (head coordinates). */
+function facePath(ctx: Ctx, r: number): void {
+  const p = (x: number, y: number): [number, number] => [x * r, y * r]
+  ctx.beginPath()
+  ctx.moveTo(...p(0.05, 0.62))
+  ctx.lineTo(...p(0.48, 0.62))
+  ctx.bezierCurveTo(...p(0.62, 0.55), ...p(0.72, 0.42), ...p(0.73, 0.3)) // forehead to brow
+  ctx.bezierCurveTo(...p(0.72, 0.22), ...p(0.7, 0.17), ...p(0.73, 0.12)) // bridge of the nose
+  ctx.bezierCurveTo(...p(0.8, 0.04), ...p(0.92, -0.02), ...p(0.92, -0.07)) // down the nose to the tip
+  ctx.bezierCurveTo(...p(0.92, -0.12), ...p(0.82, -0.13), ...p(0.77, -0.13)) // under the nose
+  ctx.bezierCurveTo(...p(0.8, -0.17), ...p(0.81, -0.22), ...p(0.79, -0.25)) // upper lip
+  ctx.bezierCurveTo(...p(0.81, -0.29), ...p(0.8, -0.34), ...p(0.76, -0.36)) // lower lip
+  ctx.bezierCurveTo(...p(0.74, -0.4), ...p(0.74, -0.44), ...p(0.77, -0.5)) // under the lip to the chin
+  ctx.bezierCurveTo(...p(0.79, -0.6), ...p(0.7, -0.68), ...p(0.58, -0.69)) // round the chin
+  ctx.bezierCurveTo(...p(0.42, -0.69), ...p(0.25, -0.62), ...p(0.12, -0.56)) // jaw line
+  ctx.lineTo(...p(0.0, -0.4))
+  ctx.closePath()
+}
+
+const SKIN = '#f8c9a2'
+const SKIN_SHADE = '#e2a77e'
+
+export function drawHead(ctx: Ctx, r: number, mood: Mood = 'normal'): void {
+  const hc = outfit ? paintColours(outfit.colour) : { dark: '#0e7779', light: '#2cc6c8', body: '#18a3a5' }
+  ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
-  for (const [ex, size] of [[0.42, 1], [0.78, 0.8]] as const) {
-    const ey = r * 0.08
-    const w = r * 0.11 * size
-    const h = r * 0.15 * size
-    if (mood === 'happy') {
-      // Squinting with joy: upturned arcs.
-      ctx.beginPath()
-      ctx.arc(r * ex, ey - h * 0.3, w, Math.PI * 0.15, Math.PI * 0.85)
-      ctx.lineWidth = r * 0.07
-      ctx.strokeStyle = OUTLINE
-      ctx.stroke()
-      continue
-    }
-    const big = mood === 'worried' ? 1.25 : 1
+  // Face first: the helmet's edge covers its back.
+  facePath(ctx, r)
+  const skin = ctx.createLinearGradient(r * 0.2, 0, r * 0.9, 0)
+  skin.addColorStop(0, SKIN_SHADE)
+  skin.addColorStop(0.45, SKIN)
+  skin.addColorStop(1, SKIN)
+  ctx.fillStyle = skin
+  ctx.fill()
+  ctx.lineWidth = r * 0.05
+  ctx.strokeStyle = OUTLINE
+  ctx.stroke()
+  // Nostril and cheek.
+  ctx.beginPath()
+  ctx.moveTo(r * 0.84, -r * 0.09)
+  ctx.quadraticCurveTo(r * 0.8, -r * 0.06, r * 0.8, -r * 0.02)
+  ctx.lineWidth = r * 0.03
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.ellipse(r * 0.56, -r * 0.2, r * 0.11, r * 0.07, 0, 0, Math.PI * 2)
+  ctx.fillStyle = 'rgba(240, 120, 110, 0.35)'
+  ctx.fill()
+  // Eye: the near eye in profile, looking ahead.
+  const ex = r * 0.55
+  const ey = r * 0.13
+  if (mood === 'happy') {
     ctx.beginPath()
-    ctx.ellipse(r * ex, ey, w * big, h * big, 0, 0, Math.PI * 2)
-    ctx.fillStyle = '#ffffff'
-    ctx.fill()
-    ctx.lineWidth = r * 0.035
+    ctx.arc(ex, ey - r * 0.04, r * 0.08, Math.PI * 0.15, Math.PI * 0.85)
+    ctx.lineWidth = r * 0.05
     ctx.strokeStyle = OUTLINE
     ctx.stroke()
+  } else {
+    const open = mood === 'worried' ? 1.35 : 1
     ctx.beginPath()
-    ctx.arc(r * ex + w * 0.35, ey - (mood === 'worried' ? 0 : h * 0.15), w * (mood === 'worried' ? 0.4 : 0.6), 0, Math.PI * 2)
-    ctx.fillStyle = OUTLINE
+    ctx.moveTo(ex - r * 0.1, ey)
+    ctx.quadraticCurveTo(ex, ey + r * 0.09 * open, ex + r * 0.1, ey + r * 0.01)
+    ctx.quadraticCurveTo(ex, ey - r * 0.07 * open, ex - r * 0.1, ey)
+    ctx.fillStyle = '#ffffff'
     ctx.fill()
-    // Eyebrow
+    ctx.save()
+    ctx.clip()
     ctx.beginPath()
-    const by = ey + h * big + r * 0.08
-    if (mood === 'worried') {
-      ctx.moveTo(r * ex - w, by - r * 0.05)
-      ctx.lineTo(r * ex + w, by + r * 0.04)
-    } else {
-      ctx.moveTo(r * ex - w, by)
-      ctx.quadraticCurveTo(r * ex, by + r * 0.04, r * ex + w, by)
-    }
-    ctx.lineWidth = r * 0.045
+    ctx.arc(ex + r * 0.045, ey + r * 0.005, r * 0.06, 0, Math.PI * 2)
+    ctx.fillStyle = '#5a3b22'
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(ex + r * 0.055, ey + r * 0.005, r * 0.032, 0, Math.PI * 2)
+    ctx.fillStyle = '#14100c'
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(ex + r * 0.07, ey + r * 0.03, r * 0.013, 0, Math.PI * 2)
+    ctx.fillStyle = '#ffffff'
+    ctx.fill()
+    ctx.restore()
+    // Upper lid line.
+    ctx.beginPath()
+    ctx.moveTo(ex - r * 0.11, ey + r * 0.005)
+    ctx.quadraticCurveTo(ex, ey + r * 0.1 * open, ex + r * 0.11, ey + r * 0.015)
+    ctx.lineWidth = r * 0.04
+    ctx.strokeStyle = OUTLINE
     ctx.stroke()
   }
-  // Nose: a small bump at the front of the face.
+  // Eyebrow: raised and tilted when worried.
   ctx.beginPath()
-  ctx.ellipse(r * 1.0, -r * 0.08, r * 0.09, r * 0.07, 0, 0, Math.PI * 2)
-  ctx.fillStyle = '#f5bf98'
-  ctx.fill()
-  ctx.lineWidth = r * 0.03
-  ctx.strokeStyle = OUTLINE
+  if (mood === 'worried') {
+    ctx.moveTo(ex - r * 0.1, ey + r * 0.15)
+    ctx.quadraticCurveTo(ex + r * 0.02, ey + r * 0.24, ex + r * 0.12, ey + r * 0.22)
+  } else {
+    ctx.moveTo(ex - r * 0.11, ey + r * 0.14)
+    ctx.quadraticCurveTo(ex + r * 0.02, ey + r * 0.2, ex + r * 0.13, ey + r * 0.15)
+  }
+  ctx.lineWidth = r * 0.055
+  ctx.strokeStyle = '#4a2f1c'
   ctx.stroke()
-  // Mouth
-  ctx.beginPath()
+  // Mouth, at the lips.
+  ctx.strokeStyle = OUTLINE
   if (mood === 'happy') {
-    // A big open grin.
-    ctx.moveTo(r * 0.42, -r * 0.3)
-    ctx.quadraticCurveTo(r * 0.68, -r * 0.62, r * 0.92, -r * 0.3)
-    ctx.closePath()
-    ctx.fillStyle = '#8a2a2a'
+    ctx.beginPath()
+    ctx.moveTo(r * 0.8, -r * 0.25)
+    ctx.quadraticCurveTo(r * 0.72, -r * 0.4, r * 0.6, -r * 0.27)
+    ctx.quadraticCurveTo(r * 0.7, -r * 0.27, r * 0.8, -r * 0.25)
+    ctx.fillStyle = '#7a2424'
     ctx.fill()
-    ctx.lineWidth = r * 0.04
+    ctx.lineWidth = r * 0.03
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(r * 0.78, -r * 0.265)
+    ctx.lineTo(r * 0.65, -r * 0.275)
+    ctx.lineWidth = r * 0.03
+    ctx.strokeStyle = '#ffffff'
     ctx.stroke()
   } else if (mood === 'worried') {
-    ctx.ellipse(r * 0.7, -r * 0.38, r * 0.07, r * 0.09, 0, 0, Math.PI * 2)
-    ctx.fillStyle = '#8a2a2a'
+    ctx.beginPath()
+    ctx.ellipse(r * 0.75, -r * 0.29, r * 0.045, r * 0.065, 0, 0, Math.PI * 2)
+    ctx.fillStyle = '#7a2424'
     ctx.fill()
-    ctx.lineWidth = r * 0.035
+    ctx.lineWidth = r * 0.03
     ctx.stroke()
   } else {
-    ctx.moveTo(r * 0.52, -r * 0.33)
-    ctx.quadraticCurveTo(r * 0.7, -r * 0.43, r * 0.88, -r * 0.31)
-    ctx.lineWidth = r * 0.045
+    ctx.beginPath()
+    ctx.moveTo(r * 0.79, -r * 0.27)
+    ctx.quadraticCurveTo(r * 0.72, -r * 0.29, r * 0.65, -r * 0.24)
+    ctx.lineWidth = r * 0.035
     ctx.stroke()
   }
-  // Shine on the helmet
-  ctx.beginPath()
-  ctx.ellipse(-r * 0.4, r * 0.48, r * 0.22, r * 0.11, -0.5, 0, Math.PI * 2)
-  ctx.fillStyle = 'rgba(255,255,255,0.5)'
+  // Helmet shell, with its pattern.
+  shellPath(ctx, r)
+  const shell = ctx.createLinearGradient(-r * 0.6, r * 0.9, r * 0.2, -r * 0.8)
+  shell.addColorStop(0, hc.light)
+  shell.addColorStop(1, hc.dark)
+  ctx.fillStyle = shell
   ctx.fill()
+  ctx.save()
+  shellPath(ctx, r)
+  ctx.clip()
+  drawPattern(ctx, r, outfit?.pattern ?? 'stripe')
+  // Rubber trim round the open edge and along the bottom.
+  ctx.beginPath()
+  ctx.moveTo(-r * 0.74, -r * 0.84)
+  ctx.lineTo(-r * 0.08, -r * 0.88)
+  ctx.bezierCurveTo(r * 0.1, -r * 0.88, r * 0.2, -r * 0.7, r * 0.2, -r * 0.48)
+  ctx.bezierCurveTo(r * 0.2, -r * 0.15, r * 0.18, r * 0.3, r * 0.4, r * 0.66)
+  ctx.lineWidth = r * 0.15
+  ctx.strokeStyle = '#2a2f38'
+  ctx.stroke()
+  // Vents on top.
+  for (const [x, y] of [[-0.1, 0.86], [-0.42, 0.78]] as const) {
+    ctx.beginPath()
+    ctx.ellipse(x * r, y * r, r * 0.11, r * 0.035, -0.25 + x * 0.6, 0, Math.PI * 2)
+    ctx.fillStyle = 'rgba(20, 24, 32, 0.6)'
+    ctx.fill()
+  }
+  // Shine.
+  ctx.beginPath()
+  ctx.ellipse(-r * 0.45, r * 0.55, r * 0.28, r * 0.1, 0.55, 0, Math.PI * 2)
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'
+  ctx.fill()
+  ctx.restore()
+  shellPath(ctx, r)
+  ctx.lineWidth = r * 0.06
+  ctx.strokeStyle = OUTLINE
+  ctx.stroke()
+  // Chin strap under the jaw.
+  ctx.beginPath()
+  ctx.moveTo(r * 0.12, -r * 0.62)
+  ctx.quadraticCurveTo(r * 0.3, -r * 0.74, r * 0.55, -r * 0.7)
+  ctx.lineWidth = r * 0.06
+  ctx.strokeStyle = '#2a2f38'
+  ctx.stroke()
+  // Clear face shield from the brow down past the chin; its back edge runs along the helmet's
+  // opening, so no line crosses the face.
+  ctx.beginPath()
+  ctx.moveTo(r * 0.4, r * 0.7)
+  ctx.bezierCurveTo(r * 0.85, r * 0.72, r * 1.1, r * 0.42, r * 1.08, r * 0.02)
+  ctx.bezierCurveTo(r * 1.07, -r * 0.4, r * 0.95, -r * 0.72, r * 0.62, -r * 0.8)
+  ctx.bezierCurveTo(r * 0.45, -r * 0.84, r * 0.3, -r * 0.8, r * 0.2, -r * 0.7)
+  ctx.fillStyle = 'rgba(190, 225, 255, 0.16)'
+  ctx.fill()
+  ctx.lineWidth = r * 0.04
+  ctx.strokeStyle = 'rgba(29, 36, 51, 0.8)'
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.moveTo(r * 0.62, r * 0.62)
+  ctx.quadraticCurveTo(r * 0.92, r * 0.5, r * 1.0, r * 0.18)
+  ctx.lineWidth = r * 0.05
+  ctx.strokeStyle = 'rgba(255,255,255,0.65)'
+  ctx.stroke()
+  // The helmet's front edge over the shield's back edge.
+  ctx.beginPath()
+  ctx.moveTo(r * 0.12, -r * 0.82)
+  ctx.bezierCurveTo(r * 0.2, -r * 0.7, r * 0.2, -r * 0.6, r * 0.2, -r * 0.48)
+  ctx.bezierCurveTo(r * 0.2, -r * 0.15, r * 0.18, r * 0.3, r * 0.4, r * 0.66)
+  ctx.lineWidth = r * 0.06
+  ctx.strokeStyle = OUTLINE
+  ctx.stroke()
+  // Hinge.
+  ctx.beginPath()
+  ctx.arc(r * 0.08, r * 0.08, r * 0.09, 0, Math.PI * 2)
+  ctx.fillStyle = '#c9ced6'
+  ctx.fill()
+  ctx.lineWidth = r * 0.035
+  ctx.strokeStyle = OUTLINE
+  ctx.stroke()
   if (outfit && outfit.hat !== 'none') drawHat(ctx, r, outfit.hat)
 }
 
 /** A helmet pattern over the top and back of the helmet (the visor side stays clear). */
 function drawPattern(ctx: Ctx, r: number, pattern: Pattern): void {
+  // Called with the shell already clipped.
   ctx.save()
-  ctx.beginPath()
-  ctx.arc(0, 0, r * 0.96, 0, Math.PI * 2)
-  ctx.clip()
-  // Only on the shell: the back and the top, not where the face is.
-  ctx.beginPath()
-  ctx.rect(-r, -r, r * 1.05, r * 2)
-  ctx.rect(-r, r * 0.45, r * 2, r)
-  ctx.clip()
   if (pattern === 'stripe') {
     ctx.beginPath()
-    ctx.arc(0, 0, r * 0.82, Math.PI * 0.35, Math.PI * 0.75)
+    // A racing stripe from the brow over the top to the back.
+    ctx.arc(-r * 0.2, 0, r * 0.82, Math.PI * 0.12, Math.PI * 0.92)
     ctx.lineWidth = r * 0.16
     ctx.strokeStyle = '#ffffff'
     ctx.stroke()
@@ -573,49 +670,157 @@ function drawHat(ctx: Ctx, r: number, hat: Hat): void {
   }
 }
 
+const SUIT = { light: '#4f7fcc', body: '#2f5fae', dark: '#22457f' }
+const TROUSERS = '#3a3f52'
+const GLOVE = '#30343f'
+const BOOT = '#262a33'
+
+/**
+ * The jacket from the hips (y = 0) to the shoulders (y = top), facing +x: a rounded back, a
+ * chest a little forward of the belly, a collar, a zip and a racing stripe down the side.
+ */
+export function drawTorso(ctx: Ctx, top: number): void {
+  const k = top / 0.46
+  const p = (x: number, y: number): [number, number] => [x, y * k]
+  ctx.beginPath()
+  ctx.moveTo(...p(-0.13, -0.02))
+  ctx.bezierCurveTo(...p(-0.17, 0.14), ...p(-0.19, 0.32), ...p(-0.14, 0.44)) // the back
+  ctx.bezierCurveTo(...p(-0.09, 0.5), ...p(0.04, 0.52), ...p(0.1, 0.47)) // over the shoulders
+  ctx.bezierCurveTo(...p(0.17, 0.42), ...p(0.17, 0.3), ...p(0.15, 0.2)) // chest
+  ctx.bezierCurveTo(...p(0.14, 0.1), ...p(0.15, 0.03), ...p(0.12, -0.02)) // belly
+  ctx.closePath()
+  const g = ctx.createLinearGradient(-0.18, 0, 0.16, 0)
+  g.addColorStop(0, SUIT.dark)
+  g.addColorStop(0.55, SUIT.body)
+  g.addColorStop(1, SUIT.light)
+  ctx.fillStyle = g
+  ctx.fill()
+  ctx.save()
+  ctx.clip()
+  // Racing stripe and belt.
+  ctx.beginPath()
+  ctx.moveTo(...p(-0.05, 0.5))
+  ctx.bezierCurveTo(...p(-0.08, 0.3), ...p(-0.06, 0.15), ...p(-0.02, -0.02))
+  ctx.lineWidth = 0.05
+  ctx.strokeStyle = '#ff8a2a'
+  ctx.stroke()
+  ctx.fillStyle = '#1d2433'
+  ctx.fillRect(-0.2, 0.02 * k, 0.4, 0.05 * k)
+  ctx.restore()
+  ctx.lineWidth = LINE
+  ctx.strokeStyle = OUTLINE
+  ctx.stroke()
+  // Zip.
+  ctx.beginPath()
+  ctx.moveTo(...p(0.115, 0.46))
+  ctx.bezierCurveTo(...p(0.15, 0.36), ...p(0.14, 0.2), ...p(0.12, 0.08))
+  ctx.lineWidth = 0.018
+  ctx.strokeStyle = SUIT.dark
+  ctx.stroke()
+}
+
+/** A glove at the end of a forearm pointing from `from` to the hand: fist with a thumb on top. */
+function glove(ctx: Ctx, hand: Pt, from: Pt): void {
+  const a = Math.atan2(hand[1] - from[1], hand[0] - from[0])
+  ctx.save()
+  ctx.translate(hand[0], hand[1])
+  ctx.rotate(a)
+  // Cuff
+  ctx.beginPath()
+  ctx.roundRect(-0.1, -0.055, 0.06, 0.11, 0.02)
+  ctx.fillStyle = '#c9ced6'
+  ctx.fill()
+  ctx.lineWidth = LINE * 0.7
+  ctx.strokeStyle = OUTLINE
+  ctx.stroke()
+  // Fist and thumb
+  ctx.beginPath()
+  ctx.ellipse(0, 0, 0.075, 0.06, 0, 0, Math.PI * 2)
+  ctx.fillStyle = GLOVE
+  ctx.fill()
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.ellipse(0.02, 0.05, 0.04, 0.022, 0.4, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.stroke()
+  ctx.restore()
+}
+
 /** Pip's body from the seat (origin) up the y axis, with the head on top. */
 export function drawDriver(ctx: Ctx, headRadius: number, torso: number, hands?: Pt, mood: Mood = 'normal', foot?: Pt): void {
-  const neck = torso - headRadius - 0.04
-  const hip: Pt = [0, 0.1]
-  const jacket = '#2f5fae'
-  const jacketDark = '#22457f'
-  const trousers = '#3a3f52'
-  // Leg (the near one): thigh forward to a bent knee, shin down to a boot on the pedal or peg.
+  const helmetBottom = torso - headRadius * 0.86
+  const shoulderY = Math.min(0.48, helmetBottom - 0.08)
+  const hip: Pt = [0.0, 0.08]
+  // Leg (the near one): thigh forward to a bent knee with a pad, shin down to a boot.
   if (foot) {
-    const knee: Pt = [foot[0] * 0.65 + 0.06, Math.max(foot[1] + 0.3, hip[1] + 0.12)]
-    tube(ctx, [hip, knee], 0.16, trousers)
-    tube(ctx, [knee, [foot[0], foot[1] + 0.06]], 0.13, trousers)
+    const knee: Pt = [foot[0] * 0.62 + 0.06, Math.max(foot[1] + 0.32, hip[1] + 0.12)]
+    const ankle: Pt = [foot[0], foot[1] + 0.07]
+    tube(ctx, [hip, knee], 0.17, TROUSERS)
+    tube(ctx, [knee, ankle], 0.13, TROUSERS)
     ctx.beginPath()
-    ctx.roundRect(foot[0] - 0.07, foot[1] - 0.05, 0.22, 0.1, 0.04)
-    ctx.fillStyle = '#2a2f38'
+    ctx.ellipse(knee[0] + 0.02, knee[1] + 0.01, 0.06, 0.07, 0, 0, Math.PI * 2)
+    ctx.fillStyle = '#5b6372'
     ctx.fill()
-    ctx.lineWidth = LINE * 0.8
+    ctx.lineWidth = LINE * 0.7
     ctx.strokeStyle = OUTLINE
     ctx.stroke()
+    // Boot: shaft, heel and toe, with a sole.
+    ctx.beginPath()
+    ctx.moveTo(foot[0] - 0.06, foot[1] + 0.12)
+    ctx.lineTo(foot[0] - 0.07, foot[1] - 0.04)
+    ctx.lineTo(foot[0] + 0.15, foot[1] - 0.04)
+    ctx.quadraticCurveTo(foot[0] + 0.17, foot[1] + 0.04, foot[0] + 0.06, foot[1] + 0.05)
+    ctx.lineTo(foot[0] + 0.05, foot[1] + 0.12)
+    ctx.closePath()
+    ctx.fillStyle = BOOT
+    ctx.fill()
+    ctx.stroke()
+    ctx.fillStyle = '#5b6372'
+    ctx.fillRect(foot[0] - 0.07, foot[1] - 0.045, 0.22, 0.025)
   }
-  // Torso: a jacket that widens at the shoulders, leaning a little forward.
-  const shoulderY = neck - 0.05
-  shaded(ctx, [[-0.16, 0.02], [0.14, 0.02], [0.18, shoulderY - 0.06], [0.1, shoulderY + 0.04], [-0.12, shoulderY + 0.04], [-0.2, shoulderY - 0.08]], '#4f7fcc', jacket, jacketDark)
-  // Zip line and a number badge on the chest
-  tube(ctx, [[0.1, 0.06], [0.13, shoulderY - 0.04]], 0.02, jacketDark)
-  // Arm: shoulder, elbow, glove on the bars or wheel.
-  const shoulder: Pt = [0.03, shoulderY - 0.02]
-  const hand: Pt = hands ?? [0.4, torso * 0.45]
-  const elbow: Pt = [(shoulder[0] + hand[0]) / 2 - 0.04, Math.min(shoulder[1], hand[1]) - 0.08]
-  tube(ctx, [shoulder, elbow], 0.12, jacket)
-  tube(ctx, [elbow, hand], 0.1, jacket)
+  // Neck, then the jacket over it.
+  tube(ctx, [[0.0, shoulderY - 0.04], [0.03, helmetBottom + 0.05]], 0.1, SKIN_SHADE)
+  drawTorso(ctx, shoulderY)
+  // Collar.
   ctx.beginPath()
-  ctx.arc(hand[0], hand[1], 0.07, 0, Math.PI * 2)
-  ctx.fillStyle = '#ffffff'
+  ctx.roundRect(-0.07, shoulderY - 0.02, 0.17, 0.06, 0.03)
+  ctx.fillStyle = SUIT.dark
   ctx.fill()
   ctx.lineWidth = LINE * 0.8
   ctx.strokeStyle = OUTLINE
   ctx.stroke()
-  // Neck scarf (just around the neck).
-  tube(ctx, [[-0.1, neck + 0.01], [0.12, neck + 0.03]], 0.09, '#ff8a2a')
+  // Arm: shoulder, elbow (bent down and back), forearm, glove on the bars or wheel.
+  const shoulder: Pt = [0.0, shoulderY - 0.05]
+  const hand: Pt = hands ?? [0.4, torso * 0.45]
+  const reach = Math.hypot(hand[0] - shoulder[0], hand[1] - shoulder[1])
+  const bend = Math.max(0.04, 0.2 - reach * 0.25)
+  const mid: Pt = [(shoulder[0] + hand[0]) / 2, (shoulder[1] + hand[1]) / 2]
+  const elbow: Pt = [mid[0] - bend * 0.3, mid[1] - bend]
+  tube(ctx, [shoulder, elbow], 0.12, SUIT.body)
+  tube(ctx, [elbow, hand], 0.1, SUIT.body)
+  // Shoulder cap over the top of the arm.
+  ctx.beginPath()
+  ctx.arc(shoulder[0], shoulder[1], 0.07, 0, Math.PI * 2)
+  ctx.fillStyle = SUIT.light
+  ctx.fill()
+  ctx.lineWidth = LINE * 0.7
+  ctx.strokeStyle = OUTLINE
+  ctx.stroke()
+  glove(ctx, hand, elbow)
   ctx.save()
   ctx.translate(0, torso)
   drawHead(ctx, headRadius, mood)
+  ctx.restore()
+}
+
+/** The body after a crash (the ragdoll's torso, centred, 0.6 long): jacket with a limp arm and leg. */
+export function drawRagdollTorso(ctx: Ctx): void {
+  ctx.save()
+  ctx.translate(0, -0.3)
+  tube(ctx, [[0, 0.06], [0.12, -0.22], [0.08, -0.5]], 0.15, TROUSERS)
+  drawTorso(ctx, 0.6)
+  tube(ctx, [[0, 0.52], [0.06, 0.25], [0.16, 0.08]], 0.11, SUIT.body)
+  glove(ctx, [0.16, 0.06], [0.06, 0.25])
   ctx.restore()
 }
 
