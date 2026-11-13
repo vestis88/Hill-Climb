@@ -26,7 +26,7 @@ export function puzzleRun(level: PuzzleLevel, vehicle: VehicleSpec, assist = fal
     pickups: fixedPickups([]),
     bestDistance: 1e9,
     assist,
-    level: { geom: level.geom, start: level.start, gems: level.gems, goal: level.goal, goalOnGround: level.goalOnGround },
+    level: { geom: level.geom, start: level.start, gems: level.gems, goal: level.goal, goalOnGround: level.goalOnGround, goalStill: level.goalStill },
   })
 }
 
@@ -46,7 +46,7 @@ export function drivePlan(level: PuzzleLevel, vehicleId = 'runabout', limit = 12
     const s = run.sim.state()
     const x = s.chassis.x
     let p = level.plan[k]
-    while (p && (p.speed >= 0 ? x >= p.x : x <= p.x)) p = level.plan[++k]
+    while (p && ((p.below !== undefined && s.chassis.y < p.below) || (p.speed >= 0 ? x >= p.x : x <= p.x))) p = level.plan[++k]
     p ??= level.plan[level.plan.length - 1]
     const a = wrap(s.chassis.angle)
     const vx = run.sim.vehicle.chassis.getLinearVelocity().x
@@ -55,6 +55,8 @@ export function drivePlan(level: PuzzleLevel, vehicleId = 'runabout', limit = 12
     else if (s.airborne) {
       const target = p.air ?? 0
       input = { gas: a < target - 0.12, brake: a > target + 0.12 }
+    } else if (p.coast) {
+      input = { gas: false, brake: false }
     } else if (p.pump && pumped < p.pump) {
       // Rock: drive with the motion, so each swing goes a little higher.
       pumped += STEP

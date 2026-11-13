@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { LEVELS, puzzleLevel, type PuzzleLevel } from '../src/data/klurbanor'
-import { GENERATED } from '../src/data/klurbanor-gen'
 import { drivePlan } from '../src/game/klurbot'
 import { circleHits, groundBelow } from '../src/sim/level'
 
@@ -8,7 +7,7 @@ import { circleHits, groundBelow } from '../src/sim/level'
 const withPlan = (id: string, plan: PuzzleLevel['plan']): PuzzleLevel => ({ ...puzzleLevel(id)!, plan })
 
 describe('Klurbanor', () => {
-  it.each(LEVELS.filter((l) => !GENERATED.includes(l)).map((l) => [l.id, l.name, l] as const))('%s %s can be finished: every gem, then the goal', (_, __, level) => {
+  it.each(LEVELS.map((l) => [l.id, l.name, l] as const))('%s %s can be finished: every gem, then the goal', (_, __, level) => {
     const { run } = drivePlan(level)
     expect(run.gemsLeft).toEqual([])
     expect(run.status).toBe('finished')
@@ -101,4 +100,47 @@ describe('Klurbanor', () => {
     const plan = puzzleLevel('k12')!.plan.map((p) => (p.x === 74 ? { ...p, speed: 9 } : p))
     expect(drivePlan(withPlan('k12', plan)).run.status).toBe('crashed')
   }, 60000)
+
+  /** The level's plan with step i's speed changed. */
+  const at = (id: string, i: number, speed: number) => puzzleLevel(id)!.plan.map((p, j) => (j === i ? { ...p, speed } : p))
+  const ends = (id: string, plan: PuzzleLevel['plan'], limit = 60) => drivePlan(withPlan(id, plan), 'runabout', limit).run.status
+
+  it('13 · Studsmattan: the deep pit only works between about 3.5 and 7 m/s', () => {
+    for (const [speed, ok] of [[3, false], [5.5, true], [7.5, false]] as const) expect(ends('n13', at('n13', 2, speed)) === 'finished', `${speed} m/s`).toBe(ok)
+  }, 120000)
+
+  it('14 · Nyckeln: the yellow door stays shut without the key behind you; backing up too fast flies off the ledge', () => {
+    expect(ends('n14', [{ x: 100, speed: 6 }], 40)).not.toBe('finished')
+    expect(ends('n14', at('n14', 0, -6.5))).toBe('crashed')
+  }, 120000)
+
+  it('15 · Isbanan: the icy hump only works between 10.5 and 11.5 m/s (you must stop on its top)', () => {
+    for (const [speed, ok] of [[10, false], [11, true], [12, false]] as const) expect(ends('n15', at('n15', 2, speed)) === 'finished', `${speed} m/s`).toBe(ok)
+  }, 120000)
+
+  it('16 · Rasbron: too slow over the first bridge and it falls under you', () => {
+    expect(ends('n16', [{ x: 20, speed: 8 }, { x: 44, speed: 8 }, ...puzzleLevel('n16')!.plan.slice(2)])).toBe('crashed')
+  }, 120000)
+
+  it('17 · Turbo: the needle needs 16 to 16.5 m/s after braking; landing on the last strip throws you off the cliff', () => {
+    for (const [speed, ok] of [[15.5, false], [16.25, true], [17, false]] as const) expect(ends('n17', at('n17', 1, speed)) === 'finished', `${speed} m/s`).toBe(ok)
+    expect(ends('n17', at('n17', 4, 7))).toBe('crashed')
+  }, 120000)
+
+  it('18 · Gruvan: too slow off the ledge drops you back into the mine', () => {
+    expect(ends('n18', at('n18', 2, 7), 70)).not.toBe('finished')
+  }, 120000)
+
+  it('19 · Raset: too slow over the first planks and they fall into the void', () => {
+    expect(ends('n19', at('n19', 0, 6))).toBe('crashed')
+  }, 120000)
+
+  it('20 · Berg-och-dal: too fast up the first hill hits the rock; too slow up the second slides back', () => {
+    expect(ends('n20', at('n20', 0, 13))).toBe('crashed')
+    expect(ends('n20', at('n20', 1, 12))).not.toBe('finished')
+  }, 120000)
+
+  it('21 · Mästarverket: rolling onto the last ice too fast slides you over the edge', () => {
+    expect(ends('n21', at('n21', 5, 4), 80)).not.toBe('finished')
+  }, 120000)
 })

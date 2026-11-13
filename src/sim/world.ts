@@ -1,5 +1,5 @@
-import { Box, Chain, Edge, RevoluteJoint, Vec2, World, type Body, type Fixture } from 'planck'
-import type { LevelGeom } from './level'
+import { Box, Chain, Edge, Polygon, RevoluteJoint, Vec2, World, type Body, type Fixture } from 'planck'
+import { padPolygon, type LevelGeom, type Pad } from './level'
 import type { StuntObstacle } from './stunt'
 import { TerrainStreamer, TERRAIN_FRICTION } from './terrain'
 import type { HeightFn, Input, PuddleFn, SimState, VehicleSpec } from './types'
@@ -7,6 +7,12 @@ import { Vehicle } from './vehicle'
 
 /** Fixed simulation step. Rendering interpolates; physics never uses real time. */
 export const STEP = 1 / 60
+
+/** Ice's friction: the tyre's and the ground's are mixed as a square root, so this gives about 0.01. */
+const ICE = 0.00008
+
+/** Seconds after a crumbling plank starts to fall that it breaks up and is gone. */
+const CRUMBLE_GONE = 1.4
 
 /** Ground is kept this far behind and ahead of the car, metres. */
 const BEHIND = 80
@@ -60,6 +66,9 @@ export class Sim {
    * than half a turn is taken back out, so turns keep adding up.
    */
   private angleOffsets: number[] = []
+  /** Klurbanor's doors (null once opened) and crumbling planks (with the step a wheel first touched each). */
+  private doors: (Body | null)[] = []
+  private crumbles: { body: Body | null; touched: number | null; falling: number | null }[] = []
   private lastRaw: number[] = []
 
   constructor(readonly options: SimOptions) {
@@ -72,6 +81,22 @@ export class Sim {
       // it as ground).
       for (const poly of options.level.polygons) {
         ground.createFixture(new Chain(poly.map(([px, py]) => new Vec2(px, py)), true), { friction: options.groundFriction ?? TERRAIN_FRICTION })
+      }
+      for (const poly of options.level.ice ?? []) {
+        ground.createFixture(new Chain(poly.map(([px, py]) => new Vec2(px, py)), true), { friction: ICE })
+      }
+      for (const pad of options.level.pads ?? []) {
+        ground.createFixture(new Polygon(padPolygon(pad).map(([px, py]) => new Vec2(px, py))), { friction: pad.kind === 'ice' ? ICE : (options.groundFriction ?? TERRAIN_FRICTION), userData: { pad } })
+      }
+      for (const d of options.level.doors ?? []) {
+        const body = this.world.createBody({ userData: { track: true } })
+        body.createFixture(new Chain(d.poly.map(([px, py]) => new Vec2(px, py)), true), { friction: options.groundFriction ?? TERRAIN_FRICTION })
+        this.doors.push(body)
+      }
+      for (const c of options.level.crumbles ?? []) {
+        const body = this.world.createBody({ position: new Vec2((c.x0 + c.x1) / 2, c.y - 0.225), userData: { track: true } })
+        body.createFixture(new Box((c.x1 - c.x0) / 2, 0.225), { density: 3, friction: options.groundFriction ?? TERRAIN_FRICTION })
+        this.crumbles.push({ body, touched: null, falling: null })
       }
     } else this.terrain.ensure(startX - BEHIND, startX + AHEAD)
 
@@ -146,6 +171,7 @@ export class Sim {
     this.vehicle.applyInput(input)
     this.puddleDrag()
     this.world.step(STEP, 8, 3)
+    if (this.options.level) this.levelPieces()
     this.vehicle.limitTravel()
     this.unwrapAngles()
     this.steps++
@@ -194,6 +220,73 @@ export class Sim {
         this.world.destroyBody(s.pivot)
         this.seesaws.delete(id)
       }
+    }
+  }
+
+  /**
+   * Klurbanor's pieces after each step: trampolines and boost strips act on the vehicle, and
+   * crumbling planks start their countdown when first touched and fall when it runs out.
+   */
+  private levelPieces(): void {
+    const bodies = [this.vehicle.chassis, ...this.vehicle.wheels]
+    let bounce = 0
+    let boost = 0
+    for (const b of bodies) {
+      for (let e = b.getContactList(); e; e = e.next ?? null) {
+        if (!e.contact.isTouching()) continue
+        const f = e.contact.getFixtureA().getBody() === b ? e.contact.getFixtureB() : e.contact.getFixtureA()
+        const pad = (f.getUserData() as { pad?: Pad } | null)?.pad
+        if (pad?.kind === 'bounce') bounce = Math.max(bounce, pad.power ?? 12)
+        if (pad?.kind === 'boost' && b !== this.vehicle.chassis) boost = pad.power ?? 18
+        const i = this.crumbles.findIndex((c) => c.body !== null && c.body === f.getBody())
+        if (i >= 0 && this.crumbles[i].touched === null) this.crumbles[i].touched = this.steps
+      }
+    }
+    if (bounce > 0) {
+      for (const b of bodies) {
+        const v = b.getLinearVelocity()
+        if (v.y < bounce) b.setLinearVelocity(new Vec2(v.x, bounce))
+      }
+    }
+    if (boost !== 0) {
+      const dir = Math.sign(boost)
+      if (this.vehicle.chassis.getLinearVelocity().x * dir < Math.abs(boost)) {
+        for (const b of bodies) b.applyForceToCenter(new Vec2(dir * 30 * b.getMass(), 0), true)
+      }
+    }
+    this.options.level!.crumbles?.forEach((c, i) => {
+      const s = this.crumbles[i]
+      if (!s.body) return
+      if (s.falling === null && s.touched !== null && (this.steps - s.touched) * STEP >= c.delay) {
+        s.falling = this.steps
+        s.body.setDynamic()
+        s.body.setAwake(true)
+      }
+      // A fallen plank breaks up after a while (so it never lies in the way on a floor below).
+      if (s.falling !== null && (this.steps - s.falling) * STEP >= CRUMBLE_GONE) {
+        this.world.destroyBody(s.body)
+        s.body = null
+      }
+    })
+  }
+
+  /** Open a door (its key gem was taken). */
+  openDoor(i: number): void {
+    const d = this.doors[i]
+    if (!d) return
+    this.world.destroyBody(d)
+    this.doors[i] = null
+  }
+
+  /** Which doors are still shut, and where each crumbling plank is now (renderer, head checks). */
+  pieces(): { doors: boolean[]; crumbles: ({ x: number; y: number; angle: number; touched: boolean } | null)[] } {
+    return {
+      doors: this.doors.map((d) => d !== null),
+      crumbles: this.crumbles.map((c) => {
+        if (!c.body) return null
+        const p = c.body.getPosition()
+        return { x: p.x, y: p.y, angle: c.body.getAngle(), touched: c.touched !== null }
+      }),
     }
   }
 

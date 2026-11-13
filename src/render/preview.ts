@@ -4,6 +4,7 @@ import { drawVehicle, drawWheel } from './art'
 import { drawBackdrop, drawGround, drawSolids } from './scenery'
 import type { PuzzleLevel } from '../data/klurbanor'
 import { levelBounds } from '../sim/level'
+import { doorColour, drawIce } from './game'
 
 /** Small pictures for the garage: a vehicle on its own, and an environment's scenery. */
 function prepare(canvas: HTMLCanvasElement): { ctx: CanvasRenderingContext2D; w: number; h: number } | null {
@@ -74,6 +75,7 @@ export function drawLevelPreview(canvas: HTMLCanvasElement, level: PuzzleLevel, 
   ctx.scale(scale, -scale)
   ctx.translate(-b.minX, -minY)
   drawSolids(ctx, env, level.geom.polygons, b.minX, b.maxX)
+  if (level.geom.ice) drawIce(ctx, level.geom.ice, b.minX, b.maxX)
   ctx.lineWidth = 0.35
   ctx.strokeStyle = '#59627a'
   for (const l of level.geom.loops ?? []) {
@@ -88,12 +90,30 @@ export function drawLevelPreview(canvas: HTMLCanvasElement, level: PuzzleLevel, 
     ctx.lineTo(w.x + (w.length / 2) * Math.cos(0.28), w.y + (w.length / 2) * Math.sin(0.28))
     ctx.stroke()
   }
-  ctx.fillStyle = '#b44cff'
-  for (const g of level.gems) {
+  // Trampolines red, boost strips yellow, ice pale blue; doors and their key gems in their colour.
+  for (const pad of level.geom.pads ?? []) {
+    ctx.strokeStyle = pad.kind === 'bounce' ? '#e5383b' : pad.kind === 'boost' ? '#ffd23f' : '#bdeeff'
+    ctx.lineWidth = 0.6
+    ctx.beginPath()
+    ctx.moveTo(pad.x0, pad.y + 0.2)
+    ctx.lineTo(pad.x1, (pad.y1 ?? pad.y) + 0.2)
+    ctx.stroke()
+  }
+  for (const d of level.geom.doors ?? []) {
+    ctx.fillStyle = doorColour(level.geom, d.key)
+    ctx.beginPath()
+    d.poly.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)))
+    ctx.fill()
+  }
+  ctx.fillStyle = '#a0522d'
+  for (const c of level.geom.crumbles ?? []) ctx.fillRect(c.x0, c.y - 0.45, c.x1 - c.x0, 0.45)
+  level.gems.forEach((g, i) => {
+    const door = level.geom.doors?.find((d) => d.key === i)
+    ctx.fillStyle = door ? doorColour(level.geom, door.key) : '#b44cff'
     ctx.beginPath()
     ctx.arc(g.x, g.y, 0.9, 0, Math.PI * 2)
     ctx.fill()
-  }
+  })
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(level.goal.x - 0.25, level.goal.y - 1, 0.5, 3)
   ctx.fillStyle = '#e5383b'

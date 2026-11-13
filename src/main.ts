@@ -1530,7 +1530,7 @@ function frame(now: number): void {
     ghosts: mode === 'driving' || mode === 'ending' ? ghostPoses() : [],
     puddles: puddlesFor(currentEnv()),
     seesaws: currentEnv().stunt || puzzle?.geom.seesaws ? run.sim.seesawAngles() : undefined,
-    level: puzzle && run.options.level ? { geom: puzzle.geom, gems: run.gemsLeft, total: puzzle.gems.length, goal: puzzle.goal, time: run.finishTime ?? run.sim.steps * STEP } : undefined,
+    level: puzzle && run.options.level ? { geom: puzzle.geom, gems: run.gemsLeft, allGems: puzzle.gems, total: puzzle.gems.length, goal: puzzle.goal, time: run.finishTime ?? run.sim.steps * STEP, pieces: run.sim.pieces() } : undefined,
     race: currentMode().length ? { length: currentMode().length!, time: run.finishTime ?? run.sim.steps * STEP } : undefined,
     showHud: mode === 'driving' || mode === 'ending' || mode === 'results',
     revs: shownRevs,

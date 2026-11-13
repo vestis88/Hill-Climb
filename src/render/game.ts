@@ -73,7 +73,17 @@ export interface View {
    * A Klurbana: its solids and loops, the gems still out there, the goal flag (lit once every
    * gem is taken), and the clock for the HUD.
    */
-  level?: { geom: LevelGeom; gems: { x: number; y: number }[]; total: number; goal: { x: number; y: number }; time: number }
+  level?: {
+    geom: LevelGeom
+    gems: { x: number; y: number }[]
+    /** Every gem of the level, taken or not (a key gem is coloured like its door). */
+    allGems?: { x: number; y: number }[]
+    total: number
+    goal: { x: number; y: number }
+    time: number
+    /** Doors still shut, and where the crumbling planks are (sim.pieces()). */
+    pieces?: { doors: boolean[]; crumbles: ({ x: number; y: number; angle: number; touched: boolean } | null)[] }
+  }
   /** Stuntbanan: each seesaw's plank angle by id (from the sim; at rest when missing). */
   seesaws?: Map<string, number>
   /** Puddles on the track, to draw and splash through. */
@@ -342,8 +352,15 @@ export class GameRenderer {
         if (w.x + w.length > left && w.x - w.length < right) this.drawSeesaw(w.x, w.y, w.length, view.seesaws?.get(`seesaw${i}`) ?? 0.28, groundBelow(lv.geom, w.x, w.y - 0.3))
       })
       drawSolids(ctx, env, lv.geom.polygons, left, right)
+      if (lv.geom.ice) drawIce(ctx, lv.geom.ice, left, right)
+      this.drawLevelPieces(lv, left, right)
       this.drawGoal(lv.goal.x, lv.goal.y, lv.gems.length === 0)
-      for (const g of lv.gems) if (g.x > left - 1 && g.x < right + 1) this.drawGem(g.x, g.y)
+      for (const g of lv.gems) {
+        if (g.x < left - 1 || g.x > right + 1) continue
+        const index = lv.allGems?.findIndex((q) => q.x === g.x && q.y === g.y) ?? -1
+        const door = lv.geom.doors?.find((d) => d.key === index)
+        this.drawGem(g.x, g.y, door ? doorColour(lv.geom, door.key) : undefined)
+      }
     } else {
       drawProps(ctx, env, height, left, right)
       drawGround(ctx, env, height, left, right, bottom, this.camY + this.viewWidth, this.time)
@@ -550,13 +567,150 @@ export class GameRenderer {
   }
 
   /** A gem to pick up in a Klurbana: a purple crystal, turning and glowing. */
-  private drawGem(x: number, y: number): void {
+  /**
+   * Klurbanor's special pieces: trampolines (red and white, with springs), boost strips (yellow
+   * with arrows the way they push), ice (pale blue sheen), doors (bars in their key gem's colour,
+   * only an outline once open) and crumbling planks (wood, shaking once touched).
+   */
+  private drawLevelPieces(lv: NonNullable<View['level']>, left: number, right: number): void {
+    const { ctx } = this
+    const g = lv.geom
+    const poly = (pts: [number, number][]) => {
+      ctx.beginPath()
+      pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)))
+      ctx.closePath()
+    }
+    for (const p of g.pads ?? []) {
+      if (p.x1 < left - 1 || p.x0 > right + 1) continue
+      const y1 = p.y1 ?? p.y
+      const at = (x: number) => p.y + ((y1 - p.y) * (x - p.x0)) / (p.x1 - p.x0)
+      ctx.save()
+      if (p.kind === 'bounce') {
+        // Springs under a striped mat.
+        ctx.strokeStyle = '#3a3a3a'
+        ctx.lineWidth = 0.07
+        for (let x = p.x0 + 0.3; x < p.x1; x += 0.7) {
+          ctx.beginPath()
+          for (let k = 0; k <= 6; k++) ctx.lineTo(x + (k % 2 ? 0.12 : -0.12), at(x) - 0.42 + (k * 0.48) / 6)
+          ctx.stroke()
+        }
+        const n = Math.max(2, Math.round((p.x1 - p.x0) / 0.6))
+        for (let i = 0; i < n; i++) {
+          const a = p.x0 + ((p.x1 - p.x0) * i) / n
+          const b = p.x0 + ((p.x1 - p.x0) * (i + 1)) / n
+          const squash = Math.sin(this.time * 6 + i) * 0.02
+          poly([[a, at(a) + 0.02], [b, at(b) + 0.02], [b, at(b) + 0.16 + squash], [a, at(a) + 0.16 + squash]])
+          ctx.fillStyle = i % 2 ? '#ffffff' : '#e5383b'
+          ctx.fill()
+        }
+        poly([[p.x0, at(p.x0) + 0.02], [p.x1, at(p.x1) + 0.02], [p.x1, at(p.x1) + 0.16], [p.x0, at(p.x0) + 0.16]])
+        ctx.lineWidth = 0.05
+        ctx.strokeStyle = OUTLINE
+        ctx.stroke()
+      } else if (p.kind === 'boost') {
+        poly([[p.x0, at(p.x0) - 0.05], [p.x1, at(p.x1) - 0.05], [p.x1, at(p.x1) + 0.1], [p.x0, at(p.x0) + 0.1]])
+        ctx.fillStyle = '#ffd23f'
+        ctx.fill()
+        ctx.lineWidth = 0.04
+        ctx.strokeStyle = OUTLINE
+        ctx.stroke()
+        // Chevrons running the way it pushes.
+        const dir = Math.sign(p.power ?? 18) || 1
+        const shift = ((this.time * 3) % 1) * 0.8 * dir
+        ctx.strokeStyle = '#e85d04'
+        ctx.lineWidth = 0.09
+        for (let x = p.x0 + 0.3; x < p.x1 - 0.2; x += 0.8) {
+          const cx = x + ((shift % 0.8) + 0.8) % 0.8
+          if (cx > p.x1 - 0.2) continue
+          ctx.beginPath()
+          ctx.moveTo(cx - 0.15 * dir, at(cx) + 0.5)
+          ctx.lineTo(cx + 0.15 * dir, at(cx) + 0.3)
+          ctx.lineTo(cx - 0.15 * dir, at(cx) + 0.1)
+          ctx.stroke()
+        }
+      } else {
+        poly([[p.x0, at(p.x0) - 0.25], [p.x1, at(p.x1) - 0.25], [p.x1, at(p.x1) + 0.08], [p.x0, at(p.x0) + 0.08]])
+        ctx.fillStyle = 'rgba(190, 235, 255, 0.85)'
+        ctx.fill()
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)'
+        ctx.lineWidth = 0.05
+        for (let x = p.x0 + 0.4; x < p.x1 - 0.4; x += 1.7) {
+          ctx.beginPath()
+          ctx.moveTo(x, at(x) - 0.05)
+          ctx.lineTo(x + 0.5, at(x + 0.5) + 0.05)
+          ctx.stroke()
+        }
+      }
+      ctx.restore()
+    }
+    ;(g.doors ?? []).forEach((d, i) => {
+      const shut = lv.pieces?.doors[i] ?? true
+      const colour = doorColour(g, d.key)
+      ctx.save()
+      poly(d.poly)
+      if (shut) {
+        ctx.fillStyle = colour
+        ctx.globalAlpha = 0.85
+        ctx.fill()
+        ctx.globalAlpha = 1
+        ctx.save()
+        ctx.clip()
+        const xs = d.poly.map(([x]) => x)
+        const ys = d.poly.map(([, y]) => y)
+        ctx.strokeStyle = 'rgba(0,0,0,0.35)'
+        ctx.lineWidth = 0.12
+        for (let x = Math.min(...xs) + 0.25; x < Math.max(...xs); x += 0.5) {
+          ctx.beginPath()
+          ctx.moveTo(x, Math.min(...ys))
+          ctx.lineTo(x, Math.max(...ys))
+          ctx.stroke()
+        }
+        ctx.restore()
+        poly(d.poly)
+        ctx.lineWidth = 0.08
+        ctx.strokeStyle = OUTLINE
+        ctx.stroke()
+      } else {
+        ctx.setLineDash([0.3, 0.25])
+        ctx.lineWidth = 0.06
+        ctx.strokeStyle = colour
+        ctx.globalAlpha = 0.5
+        ctx.stroke()
+      }
+      ctx.restore()
+    })
+    ;(g.crumbles ?? []).forEach((c, i) => {
+      const q = lv.pieces ? lv.pieces.crumbles[i] : { x: (c.x0 + c.x1) / 2, y: c.y - 0.225, angle: 0, touched: false }
+      if (!q || q.x < left - 6 || q.x > right + 6) return
+      const hw = (c.x1 - c.x0) / 2
+      ctx.save()
+      const shake = q.touched ? Math.sin(this.time * 70 + i) * 0.03 : 0
+      ctx.translate(q.x + shake, q.y)
+      ctx.rotate(q.angle)
+      ctx.fillStyle = '#a0522d'
+      ctx.fillRect(-hw, -0.225, hw * 2, 0.45)
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)'
+      ctx.lineWidth = 0.04
+      for (let x = -hw + 0.9; x < hw; x += 0.9) {
+        ctx.beginPath()
+        ctx.moveTo(x, -0.225)
+        ctx.lineTo(x + (q.touched ? 0.15 : 0), 0.225)
+        ctx.stroke()
+      }
+      ctx.lineWidth = 0.06
+      ctx.strokeStyle = OUTLINE
+      ctx.strokeRect(-hw, -0.225, hw * 2, 0.45)
+      ctx.restore()
+    })
+  }
+
+  private drawGem(x: number, y: number, colour?: string): void {
     const { ctx } = this
     ctx.save()
     ctx.translate(x, y + Math.sin(this.time * 2.2 + x) * 0.1)
     const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1.1)
-    g.addColorStop(0, 'rgba(200, 120, 255, 0.55)')
-    g.addColorStop(1, 'rgba(200, 120, 255, 0)')
+    g.addColorStop(0, colour ? `${colour}aa` : 'rgba(200, 120, 255, 0.55)')
+    g.addColorStop(1, colour ? `${colour}00` : 'rgba(200, 120, 255, 0)')
     ctx.fillStyle = g
     ctx.fillRect(-1.1, -1.1, 2.2, 2.2)
     ctx.scale(Math.abs(Math.cos(this.time * 1.6 + x)) * 0.55 + 0.45, 1)
@@ -566,7 +720,7 @@ export class GameRenderer {
     ctx.lineTo(0, -0.5)
     ctx.lineTo(-0.38, 0.12)
     ctx.closePath()
-    ctx.fillStyle = '#b44cff'
+    ctx.fillStyle = colour ?? '#b44cff'
     ctx.fill()
     ctx.lineWidth = 0.06
     ctx.strokeStyle = OUTLINE
@@ -1367,5 +1521,45 @@ export class GameRenderer {
     pedal(swap ? rightX : leftX, input.brake, '#ff8080', 'BROMS')
     pedal(swap ? leftX : rightX, input.gas, '#7dff9a', 'GAS')
     ctx.textBaseline = 'top'
+  }
+}
+
+/** A door's colour (and its key gem's): one colour per key, in the order the doors are listed. */
+export function doorColour(geom: LevelGeom, key: number): string {
+  const keys = [...new Set((geom.doors ?? []).map((d) => d.key))]
+  return ['#ffb703', '#2ec4f1', '#ff5d8f', '#80ed99'][keys.indexOf(key) % 4]
+}
+
+/** Ice solids: pale blue with a white glaze along the top and a few cracks. */
+export function drawIce(ctx: CanvasRenderingContext2D, polygons: [number, number][][], left: number, right: number): void {
+  for (const poly of polygons) {
+    const xs = poly.map(([x]) => x)
+    if (Math.max(...xs) < left - 2 || Math.min(...xs) > right + 2) continue
+    ctx.beginPath()
+    poly.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)))
+    ctx.closePath()
+    const ys = poly.map(([, y]) => y)
+    const g = ctx.createLinearGradient(0, Math.max(...ys), 0, Math.max(...ys) - 6)
+    g.addColorStop(0, '#e6f7ff')
+    g.addColorStop(0.15, '#a8dcf5')
+    g.addColorStop(1, '#5aa9d6')
+    ctx.fillStyle = g
+    ctx.fill()
+    ctx.lineWidth = 0.08
+    ctx.strokeStyle = '#2b5d7a'
+    ctx.stroke()
+    // A white glaze along the edges that face up.
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)'
+    ctx.lineWidth = 0.16
+    ctx.beginPath()
+    for (let i = 0; i < poly.length; i++) {
+      const [x1, y1] = poly[i]
+      const [x2, y2] = poly[(i + 1) % poly.length]
+      if (Math.abs(x2 - x1) > Math.abs(y2 - y1) * 0.3) {
+        ctx.moveTo(x1, y1 - 0.06)
+        ctx.lineTo(x2, y2 - 0.06)
+      }
+    }
+    ctx.stroke()
   }
 }
