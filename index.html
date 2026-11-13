@@ -319,6 +319,17 @@
       canvas.detail-thumb { width: 150px; height: 70px; border-radius: 12px; flex: none; }
       .cards.two { grid-template-columns: repeat(2, 1fr); max-width: none; }
       .card .lvl { margin-left: auto; font-size: 12px; opacity: 0.7; font-weight: 800; }
+      /* Upgrade levels: driven (green; orange for the galna levels 11-15), bought but not driven
+         (outlined), a gap before level 11; and a stepper to drive at a lower level. */
+      .pips i.owned { background: transparent; box-shadow: inset 0 0 0 1.5px #3fbf5f; }
+      .pips i.wild.on { background: #ff8a2a; }
+      .pips i.gap { margin-left: 4px; }
+      .card.wild { border-color: rgba(255, 138, 42, 0.55); }
+      button.buy.wild:not(:disabled) { background: linear-gradient(180deg, #ffa24c, #e5671a); box-shadow: 0 3px 0 #9a3f0c; }
+      .card .use { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; }
+      .card .use b { min-width: 20px; text-align: center; font-size: 14px; }
+      .card .use button { width: 26px; height: 24px; border: 0; border-radius: 8px; background: rgba(255,255,255,0.16); color: #fff; font: 800 16px ui-rounded, system-ui, sans-serif; line-height: 1; padding: 0; }
+      .card .use button:disabled { opacity: 0.3; }
       button.part.on { border-color: #3fbf5f; background: rgba(63, 191, 95, 0.18); }
       @media (max-aspect-ratio: 4/3) { .split { grid-template-columns: 1fr; } .hero { grid-template-columns: 1fr 1fr; } .go-col { grid-column: 1 / -1; } button.big.huge { padding: 14px; } }
       /* Dagens utmaning */

@@ -1,4 +1,4 @@
-import { MAX_LEVEL, price, type Levels, type UpgradeId, type UpgradeInfo } from '../data/upgrades'
+import { FULL_LEVEL, MAX_LEVEL, price, type Levels, type UpgradeId, type UpgradeInfo } from '../data/upgrades'
 
 /**
  * The menus: a home screen with what you are about to drive (vehicle, track) and a big Drive
@@ -163,12 +163,16 @@ export interface VehiclesView {
   /** The selected vehicle. */
   vehicle: { id: string; name: string; blurb: string; preview(c: HTMLCanvasElement): void }
   upgrades: UpgradeInfo[]
+  /** Levels bought, and the levels driven (the same, or lower if chosen). */
   levels: Levels
+  using: Levels
   parts: { id: string; name: string; blurb: string; price: number; owned: boolean; on: boolean }[]
   /** The upgrade just bought, to play its card animation once. */
   justBought?: UpgradeId
   onPick(id: string): void
   onBuy(id: UpgradeId): void
+  /** Drive an upgrade at another level (1 up to the level bought). */
+  onUse(id: UpgradeId, level: number): void
   onPart(id: string): void
   onHome(): void
   onDrive(): void
@@ -177,15 +181,24 @@ export interface VehiclesView {
 export function showVehicles(el: HTMLElement, v: VehiclesView): void {
   const card = (u: UpgradeInfo) => {
     const level = v.levels[u.id]
+    const using = v.using[u.id]
     const maxed = level >= MAX_LEVEL
     const cost = maxed ? 0 : price(level + 1)
     const bought = v.justBought === u.id
-    const pips = Array.from({ length: MAX_LEVEL }, (_, i) => `<i class="${i < level ? 'on' : ''} ${bought && i === level - 1 ? 'new' : ''}"></i>`).join('')
-    return `<div class="card ${bought ? 'bought' : ''}">
-      <div class="name"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[u.id] ?? ''}</svg>${u.name}<span class="lvl">${level}/${MAX_LEVEL}</span></div>
+    // Levels driven (green, orange for the galna levels above FULL_LEVEL), bought but not driven
+    // (outlined), and not bought yet (grey); a small gap before the galna levels.
+    const pips = Array.from({ length: MAX_LEVEL }, (_, i) => {
+      const cls = i < using ? (i >= FULL_LEVEL ? 'on wild' : 'on') : i < level ? 'owned' : ''
+      return `<i class="${cls} ${i === FULL_LEVEL ? 'gap' : ''} ${bought && i === level - 1 ? 'new' : ''}"></i>`
+    }).join('')
+    const stepper = level > 1
+      ? `<span class="use"><button data-use="${u.id}:${using - 1}" ${using <= 1 ? 'disabled' : ''} aria-label="Lägre nivå">−</button><b>${using}</b><button data-use="${u.id}:${using + 1}" ${using >= level ? 'disabled' : ''} aria-label="Högre nivå">+</button></span>`
+      : `<span class="lvl">1/${MAX_LEVEL}</span>`
+    return `<div class="card ${bought ? 'bought' : ''} ${using > FULL_LEVEL ? 'wild' : ''}">
+      <div class="name"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[u.id] ?? ''}</svg>${u.name}${stepper}</div>
       <div class="pips">${pips}</div>
-      <div class="blurb">${u.blurb}</div>
-      <button class="buy" data-buy="${u.id}" ${maxed || cost > v.coins ? 'disabled' : ''}>${maxed ? 'Max' : `Uppgradera ● ${cost}`}</button>
+      <div class="blurb">${using < level ? `Kör nivå ${using} av ${level} köpta` : u.blurb}</div>
+      <button class="buy ${level >= FULL_LEVEL ? 'wild' : ''}" data-buy="${u.id}" ${maxed || cost > v.coins ? 'disabled' : ''}>${maxed ? 'Max' : `${level >= FULL_LEVEL ? 'Galen nivå' : 'Uppgradera'} ● ${cost}`}</button>
     </div>`
   }
   el.innerHTML = `
@@ -209,7 +222,10 @@ export function showVehicles(el: HTMLElement, v: VehiclesView): void {
     const b = (e.target as HTMLElement).closest('button')
     if (!b || b.disabled) return
     if (b.dataset.buy) v.onBuy(b.dataset.buy as UpgradeId)
-    else if (b.dataset.part) v.onPart(b.dataset.part)
+    else if (b.dataset.use) {
+      const [id, level] = b.dataset.use.split(':')
+      v.onUse(id as UpgradeId, Number(level))
+    } else if (b.dataset.part) v.onPart(b.dataset.part)
     else if (b.dataset.pick) v.onPick(b.dataset.pick.split(':')[1])
     else if (b.dataset.act === 'home') v.onHome()
     else if (b.dataset.act === 'drive') v.onDrive()

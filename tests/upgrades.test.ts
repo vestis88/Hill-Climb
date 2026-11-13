@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ENVIRONMENTS } from '../src/data/environments'
 import { runabout, runaboutFull, VEHICLES } from '../src/data/vehicles'
-import { applyUpgrades, BASE_LEVELS, FULL_LEVELS, MAX_LEVEL, price, type Levels, type UpgradeId } from '../src/data/upgrades'
+import { applyUpgrades, BASE_LEVELS, FULL_LEVEL, FULL_LEVELS, MAX_LEVEL, MAX_LEVELS, price, type Levels, type UpgradeId } from '../src/data/upgrades'
 import { flat } from '../src/sim/terrain'
 import type { Input, VehicleSpec } from '../src/sim/types'
 import { Sim } from '../src/sim/world'
@@ -119,6 +119,16 @@ describe('upgrades', () => {
     expect(landingBounce(at({ suspension: MAX_LEVEL }))).toBeLessThan(landingBounce(runabout) * 0.9)
   })
 
+  it('the galna levels (11-15) go further than the full spec, and stay sane', () => {
+    const wild = applyUpgrades(runabout, runaboutFull, MAX_LEVELS)
+    expect(topSpeed(wild)).toBeGreaterThan(topSpeed(runaboutFull) * 1.25)
+    expect(wild.engine.maxTorque).toBeGreaterThan(runaboutFull.engine.maxTorque)
+    expect(wild.engine.frontShare).toBeLessThanOrEqual(1)
+    expect(wild.engine.torqueFalloff).toBeGreaterThanOrEqual(0)
+    expect(wild.chassis.mass).toBeGreaterThan(0)
+    for (const level of [11, 12, 13, 14, 15]) expect(price(level)).toBeGreaterThan(price(level - 1))
+  })
+
   it('the fully upgraded car is much better all round', () => {
     expect(topSpeed(runaboutFull) * 3.6).toBeGreaterThan(60)
     expect(climb(runaboutFull, 40)).toBeGreaterThan(30)
@@ -191,9 +201,11 @@ describe.each(VEHICLES)('every vehicle: $name', (entry) => {
 
   it.runIf(entry.launchSafe)('beginner-safe: does not flip backwards from a standstill at base, full or any single upgrade', () => {
     // Owner: launch backflips are fine for some vehicles (feathering is the skill), but not all.
-    // Mixed in-between setups may flip; Crater Fields, the low-gravity map, is excepted.
+    // Mixed in-between setups may flip; Crater Fields, the low-gravity map, is excepted. The
+    // galna levels above FULL_LEVEL are meant to be wild (owner: "bananas"), and a family can
+    // drive at a lower level any time, so this holds up to the full spec.
     const ids = entry.upgrades.map((u) => u.id)
-    const combos: Partial<Levels>[] = [{}, FULL_LEVELS, ...ids.map((id) => ({ [id]: MAX_LEVEL }))]
+    const combos: Partial<Levels>[] = [{}, FULL_LEVELS, ...ids.map((id) => ({ [id]: FULL_LEVEL }))]
     const gravities = [...new Set(ENVIRONMENTS.filter((e) => e.id !== 'crater').map((e) => e.gravity))]
     for (const g of gravities) {
       for (const levels of combos) expect(worstLaunchPitch(at(levels), g), `${JSON.stringify(levels)} at gravity ${g}`).toBeLessThan(1)

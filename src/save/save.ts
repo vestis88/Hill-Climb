@@ -44,6 +44,11 @@ export interface SaveData {
   roundWins?: { at: number; winner: string }[]
   /** The part fitted to each vehicle (this device; the parts bought are in unlocked). */
   parts?: Record<string, PartId>
+  /**
+   * Upgrade levels chosen below what was bought, per vehicle (this device): drive a vehicle at a
+   * lower level without losing the levels bought. Absent means the level bought.
+   */
+  useLevels?: Record<string, Partial<Levels>>
   cupWins?: { at: number; winner: string }[]
 }
 
@@ -206,6 +211,28 @@ export function writeSave(data: SaveData): void {
   }
 }
 
+/** The levels bought for a vehicle. */
 export function levelsFor(data: SaveData, vehicleId: string): Levels {
   return { ...BASE_LEVELS, ...data.levels[vehicleId] }
+}
+
+/** The levels a vehicle is driven at: the levels bought, or lower ones the family chose. */
+export function drivenLevels(data: SaveData, vehicleId: string): Levels {
+  const owned = levelsFor(data, vehicleId)
+  const use = data.useLevels?.[vehicleId] ?? {}
+  const out = { ...owned }
+  for (const [k, v] of Object.entries(use)) {
+    const id = k as keyof Levels
+    if (typeof v === 'number') out[id] = Math.max(1, Math.min(owned[id], v))
+  }
+  return out
+}
+
+/** Choose the level a vehicle's upgrade is driven at (1 up to the level bought). */
+export function setDrivenLevel(data: SaveData, vehicleId: string, id: keyof Levels, level: number): void {
+  const owned = levelsFor(data, vehicleId)[id]
+  const use = { ...data.useLevels?.[vehicleId] }
+  if (level >= owned) delete use[id]
+  else use[id] = Math.max(1, level)
+  data.useLevels = { ...data.useLevels, [vehicleId]: use }
 }

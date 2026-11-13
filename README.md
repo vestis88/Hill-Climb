@@ -272,9 +272,18 @@ there to its best version. So when we tune:
 
 ### Upgrades
 
-Each vehicle has four upgrades chosen to suit it, each with 10 levels. Level 1
-is the base vehicle. Engine, Tyres and Suspension are shared; the fourth is
-specific:
+Each vehicle has four upgrades chosen to suit it, each with 15 levels. Level 1
+is the base vehicle and level 10 its full spec. Levels 11 to 15 are the **galna nivåer**
+(orange in Garaget): each carries every value a quarter of the way further past the full spec
+again, so level 15 is 2.25 times as far from the base as level 10 (top speed, torque, grip and
+so on, clamped where a value would stop making sense). They cost 25 % more per level after
+level 10. A level-15 vehicle runs 500 m of Green Meadows 20-35 % quicker than at level 10
+(the motocross bike about 7 %), and the beginner-safe launch check only holds up to level 10.
+
+**Driving at a lower level**: each upgrade card in Garaget has − and + to drive that upgrade
+at any level up to the one bought (kept on this device). Filled pips are driven, outlined ones
+bought but not driven. Buying a new level drives it straight away. Engine, Tyres and
+Suspension are shared; the fourth is specific:
 
 | Vehicle | Fourth upgrade | Why |
 |---|---|---|
