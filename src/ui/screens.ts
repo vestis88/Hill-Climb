@@ -126,6 +126,9 @@ export interface OutfitView {
   players: { name: string; colour: string; on: boolean }[]
   /** Pip in the chosen player's outfit. */
   preview: (canvas: HTMLCanvasElement) => void
+  /** Colours to choose from; one another player has chosen shows their name and cannot be taken. */
+  colours: { colour: string; on: boolean; takenBy?: string }[]
+  onColour(colour: string): void
   hats: { id: string; name: string; price: number; owned: boolean; on: boolean }[]
   patterns: { id: string; name: string; price: number; owned: boolean; on: boolean }[]
   onPlayer(name: string): void
@@ -143,6 +146,8 @@ export function showOutfit(el: HTMLElement, v: OutfitView): void {
     <div class="bar"><h2>Utstyrsel</h2><span class="coins">● ${v.coins}</span><button class="small" data-act="back">Tillbaka</button></div>
     <div class="players">${v.players.map((p) => `<button class="player ${p.on ? 'on' : ''}" data-player="${p.name}" style="--c:${p.colour}"><span class="tick">${p.on ? '✓' : ''}</span>${p.name}</button>`).join('')}</div>
     <canvas class="pip" width="360" height="300"></canvas>
+    <div class="label">Färg (fordonet, hjälmen och spöket)</div>
+    <div class="swatches">${v.colours.map((c) => `<button class="swatch ${c.on ? 'on' : ''}" data-colour="${c.colour}" style="--c:${c.colour}" ${c.takenBy ? 'disabled' : ''} aria-label="${c.takenBy ? `Tagen av ${c.takenBy}` : 'Välj färg'}">${c.on ? '✓' : c.takenBy ? `<small>${c.takenBy}</small>` : ''}</button>`).join('')}</div>
     <div class="label">Hatt</div><div class="choices outfit">${v.hats.map((x) => item('hat', x)).join('')}</div>
     <div class="label">Mönster på hjälmen</div><div class="choices outfit">${v.patterns.map((x) => item('pattern', x)).join('')}</div>`
   const c = el.querySelector<HTMLCanvasElement>('canvas.pip')
@@ -151,6 +156,7 @@ export function showOutfit(el: HTMLElement, v: OutfitView): void {
     const b = (e.target as HTMLElement).closest('button')
     if (!b || b.disabled) return
     if (b.dataset.player) v.onPlayer(b.dataset.player)
+    else if (b.dataset.colour) v.onColour(b.dataset.colour)
     else if (b.dataset.item) {
       const [kind, id] = b.dataset.item.split(':')
       v.onItem(kind as 'hat' | 'pattern', id)

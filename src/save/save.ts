@@ -40,6 +40,8 @@ export interface SaveData {
   missions?: Record<string, Mission[]>
   /** Each player's pattern and hat (this device; the items bought are in unlocked). */
   outfits?: Record<string, { pattern: Pattern; hat: Hat }>
+  /** Each player's chosen colour (vehicle paint, helmet, ghost, name), this device. */
+  colours?: Record<string, string>
   /** The family table: who won each round (and each cup) with several players, and when (this device). */
   roundWins?: { at: number; winner: string }[]
   /** The part fitted to each vehicle (this device; the parts bought are in unlocked). */
