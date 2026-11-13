@@ -37,6 +37,7 @@ import { confirmPurchase } from './ui/confirm'
 import { loadSandbox, saveSandbox, sandboxSpec } from './game/sandbox'
 import { loadSettings, saveSettings, showSettings } from './ui/settings'
 import { trackViewport, updateViewport } from './ui/viewport'
+import { requestLandscapeLock, updateLandscape } from './ui/landscape'
 import { showTuning, tuningEnabled } from './ui/tuning'
 
 trackViewport()
@@ -142,6 +143,19 @@ function puzzleEnv(level: PuzzleLevel): Environment {
     puzzleEnvs.set(level.id, env)
   }
   return env
+}
+/** The Klurbana after the one being played, when it is open (for the "Nästa" button). */
+function nextPuzzle(): PuzzleLevel | undefined {
+  if (!puzzle) return undefined
+  const i = LEVELS.indexOf(puzzle) + 1
+  return i < LEVELS.length && puzzleOpen(i) ? LEVELS[i] : undefined
+}
+/** Go straight on to the next Klurbana with the same players. */
+function playNextPuzzle(): void {
+  const n = nextPuzzle()
+  if (!n) return
+  puzzle = n
+  startRound()
 }
 /** Whether a Klurbana can be played: the first always, the others once the one before is done. */
 function puzzleOpen(i: number): boolean {
@@ -819,6 +833,7 @@ function collectGhosts(): void {
 }
 
 function startRun(): void {
+  requestLandscapeLock()
   // Time of day and weather come with today's challenge only (the date picks them).
   atmosphere = daily && !puzzle ? today().atmosphere : undefined
   sound.setVehicle(driveVehicle().id)
@@ -902,6 +917,8 @@ function finishRun(): void {
     next: nextPlayer,
     roundOver: counts && roundOver(round),
     sandbox: !counts,
+    nextLevel: counts && !nextPlayer && !roundOver(round) ? nextPuzzle()?.name : undefined,
+    onNextLevel: playNextPuzzle,
     onGarage: !counts ? openTuning : puzzle ? () => openMenu('puzzles') : goHome,
     onAgain: counts ? startRound : startSandbox,
     onNext: () => {
@@ -938,6 +955,8 @@ function openStandings(): void {
       goHome()
     },
     onAgain: () => (cup ? startCup() : startRound()),
+    nextLevel: cup ? undefined : nextPuzzle()?.name,
+    onNextLevel: playNextPuzzle,
     onNextTrack: () => {
       if (!cup) return
       cup.index++
@@ -1343,6 +1362,7 @@ let last = performance.now()
 let accumulator = 0
 
 function frame(now: number): void {
+  updateLandscape(mode === 'driving' || mode === 'ending' || mode === 'duel')
   updateViewport()
   const dt = Math.min(0.1, (now - last) / 1000)
   last = now

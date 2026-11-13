@@ -22,6 +22,9 @@ export interface ResultsView {
   roundOver: boolean
   /** A Klurbana: the time if the goal was reached, and the gems taken. */
   puzzle?: { time?: number; newBestTime: boolean; gems: number; total: number }
+  /** A Klurbana: the next level's name when it is open (a button to go straight on). */
+  nextLevel?: string
+  onNextLevel?(): void
   /** A test drive from Trimning: nothing counts, and Back goes to Trimning. */
   sandbox?: boolean
   onGarage(): void
@@ -39,7 +42,7 @@ export function showResults(el: HTMLElement, v: ResultsView): void {
     ? `<button class="big" data-act="next">${genitive(v.next)} tur</button>`
     : v.roundOver
       ? '<button class="big blue" data-act="standings">Omgångens resultat</button>'
-      : `<button class="big blue" data-act="garage">${v.sandbox ? 'Trimning' : 'Hem'}</button><button class="big" data-act="again">Kör igen</button>`
+      : `<button class="big blue" data-act="garage">${v.sandbox ? 'Trimning' : v.puzzle ? 'Klurbanor' : 'Hem'}</button><button class="big ${v.nextLevel ? 'blue' : ''}" data-act="again">Kör igen</button>${v.nextLevel ? `<button class="big" data-act="nextlevel">Nästa: ${v.nextLevel} ›</button>` : ''}`
   // Two columns when the screen is wide: the result and buttons on the left, the coin breakdown on the right.
   el.innerHTML = `<div class="res">
     <div class="res-main">
@@ -78,6 +81,7 @@ export function showResults(el: HTMLElement, v: ResultsView): void {
     else if (b?.dataset.act === 'again') v.onAgain()
     else if (b?.dataset.act === 'next') v.onNext()
     else if (b?.dataset.act === 'standings') v.onStandings()
+    else if (b?.dataset.act === 'nextlevel') v.onNextLevel?.()
   }
 }
 
@@ -165,6 +169,9 @@ export interface StandingsView {
   onHome(): void
   onAgain(): void
   onNextTrack?(): void
+  /** A Klurbana round: the next level's name when it is open. */
+  nextLevel?: string
+  onNextLevel?(): void
 }
 
 /** After the last turn: who got furthest this round. */
@@ -176,7 +183,7 @@ export function showStandings(el: HTMLElement, v: StandingsView): void {
     ? `<button class="big" data-act="next">Nästa bana: ${cup.nextTrack}</button>`
     : cup
       ? '<button class="big blue" data-act="home">Hem</button><button class="big" data-act="again">Ny tävling</button>'
-      : '<button class="big blue" data-act="home">Hem</button><button class="big" data-act="again">Spela igen</button>'
+      : `<button class="big blue" data-act="home">Hem</button><button class="big ${v.nextLevel ? 'blue' : ''}" data-act="again">Spela igen</button>${v.nextLevel ? `<button class="big" data-act="nextlevel">Nästa: ${v.nextLevel} ›</button>` : ''}`
   el.innerHTML = `
     ${cup?.winners ? `<div class="trophy">🏆</div><div class="who big-who" style="--c:${cup.table[0].colour}">${cup.winners.join(' och ')} ${cup.winners.length > 1 ? 'vinner' : 'vinner'} tävlingen!</div>` : `<h2>${cup ? cup.title : v.heading ?? 'Omgångens resultat'}</h2>`}
     <div class="best">${v.track}</div>
@@ -188,6 +195,7 @@ export function showStandings(el: HTMLElement, v: StandingsView): void {
     if (b?.dataset.act === 'home') v.onHome()
     else if (b?.dataset.act === 'again') v.onAgain()
     else if (b?.dataset.act === 'next') v.onNextTrack?.()
+    else if (b?.dataset.act === 'nextlevel') v.onNextLevel?.()
   }
 }
 

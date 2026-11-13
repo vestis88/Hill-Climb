@@ -1224,6 +1224,8 @@ export class GameRenderer {
       ctx.font = `800 20px ${FONT}`
       const w = ctx.measureText(`◆ ${got}/${lv.total}`).width
       this.outlinedText(lv.gems.length ? 'Ta alla stenar, sen målflaggan' : 'Till målflaggan!', x0 + w + 12, y0 + 33, 15, lv.gems.length ? '#ffffff' : '#ffd23f')
+      // Speed, for learning what each jump needs.
+      this.outlinedText(`${Math.round(Math.abs(view.next.speed) * 3.6)} km/h`, x0, y0 + 58, 17, '#ffffff')
       return
     }
     // Fuel gauge with a small can icon

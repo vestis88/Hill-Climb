@@ -71,6 +71,18 @@ export function kicker(x0: number, y0: number, len: number, h: number, steps = 8
   return out
 }
 
+/** A pillar from x0 to x1 with its top at y, reaching down to `bottom`; optionally a kicker at its right end. */
+export function pillar(x0: number, x1: number, y: number, bottom = -40, kick?: { len: number; h: number }): Pt[] {
+  const top: Pt[] = kick ? [[x0, y], ...kicker(x1 - kick.len, y, kick.len, kick.h)] : [[x0, y], [x1, y]]
+  const last = top[top.length - 1]
+  return [...top, [last[0], bottom], [x0, bottom]]
+}
+
+/** A floating block (a ledge or a ceiling piece) from (x0, y0) to (x1, y1). */
+export function block(x0: number, y0: number, x1: number, y1: number): Pt[] {
+  return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]
+}
+
 const WALL = 30
 
 /**
@@ -208,7 +220,67 @@ const loopenEllerGropen: PuzzleLevel = {
   plan: [{ x: 26, speed: 4 }, { x: 58, speed: 5 }, { x: 160, speed: 15 }, { x: 176, speed: 4 }],
 }
 
-const LEVELS_RAW: PuzzleLevel[] = [tvaVagar, stopp, lagtITak, gungan, loopenEllerGropen]
+/**
+ * 6 · Trappan. Stepping stones over a bottomless gorge: short pillars at different heights,
+ * each with its own gap, and only a few metres to change speed between jumps. Every jump has a
+ * window of a m/s or two (the first one 9 to 10 m/s, about 33 to 36 km/h on the HUD): too slow
+ * falls short, too fast flies past the next stone or leaves no room on it for the next jump.
+ */
+const trappan: PuzzleLevel = {
+  id: 'k6',
+  name: 'Trappan',
+  hint: 'Små stenar, olika långt mellan. Varje hopp kräver sin egen fart.',
+  theme: 'canyon',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], ...pillar(-12, 20, 0, -40, { len: 4, h: 1.2 }).slice(0, -1), [-14, -40]],
+      pillar(27, 34, 0.5, -40, { len: 3, h: 1 }),
+      pillar(41, 49, -2, -40, { len: 3, h: 1 }),
+      pillar(55, 61, -2.8),
+      pillar(64.5, 71.5, -5, -40, { len: 3, h: 1.2 }),
+      ground([[77.5, -5], [97, -5], [97, WALL], [101, WALL]], -40),
+    ],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 31, y: 1.5 }, { x: 45, y: -1 }, { x: 58, y: -1.8 }, { x: 68, y: -4 }],
+  goal: { x: 89, y: -4 },
+  plan: [{ x: 20, speed: 9.5 }, { x: 34, speed: 11 }, { x: 49, speed: 11 }, { x: 61, speed: 11 }, { x: 71.5, speed: 12 }, { x: 89, speed: 8 }],
+}
+
+/**
+ * 7 · Fönstret. A long jump under a hanging rock: it needs speed, but jump too high and your
+ * helmet hits the rock. Then a careful drop into a low cave for a gem, out over a pit, and an
+ * upward jump through a narrow window between two rocks, with a gem hanging right in it.
+ */
+const fonstret: PuzzleLevel = {
+  id: 'k7',
+  name: 'Fönstret',
+  hint: 'Hoppa lågt och fort under klippan. Sen genom fönstret, mitt i.',
+  theme: 'woods',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], ...pillar(-12, 30, 0, -40, { len: 4, h: 0.9 }).slice(0, -1), [-14, -40]],
+      // The hanging rock over the first pit.
+      block(34.5, 4.1, 39.5, 14),
+      // Landing shelf, its roof over the cave below, then the cave floor with a kicker out.
+      pillar(40, 58, 0, -2.6),
+      [[58, -6], ...kicker(72, -6, 4, 1.4), [76, -40], [50, -40], [50, -6]],
+      // The far side: a shelf, then the window: a rock above and a rock below the gap.
+      pillar(83, 101, -5.5, -40, { len: 4, h: 1.3 }),
+      block(103.5, 1.2, 108, 14),
+      block(103.5, -12, 106.5, -5.2),
+      ground([[110, -3.8], [134, -3.8], [134, WALL], [138, WALL]], -40),
+    ],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 64, y: -5 }, { x: 105.5, y: -1.8 }],
+  goal: { x: 126, y: -2.8 },
+  plan: [{ x: 30, speed: 12 }, { x: 57.5, speed: 2 }, { x: 76, speed: 12 }, { x: 101, speed: 13 }, { x: 126, speed: 4 }],
+}
+
+const LEVELS_RAW: PuzzleLevel[] = [tvaVagar, stopp, lagtITak, gungan, loopenEllerGropen, trappan, fonstret]
 
 export const LEVELS = LEVELS_RAW
 
