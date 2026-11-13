@@ -443,7 +443,7 @@ on iPhone and iPad): add the icon again, type the code, and load the old backup.
 
 **Återskapa framsteg** (Settings, only with Testläge on) gives back roughly what was lost
 before backups existed: coins to add, how many Klurbanor were done (from the first), a
-minimum upgrade level for every vehicle, and unlocking every vehicle and map. It only adds,
+minimum upgrade level for every vehicle already owned (one bought later starts without upgrades), and unlocking every vehicle and map. It only adds,
 never takes anything away (`src/save/restore.ts`).
 
 Database rules (Firebase console, Realtime Database, Rules):

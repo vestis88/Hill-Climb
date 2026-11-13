@@ -58,7 +58,7 @@ function restoreRows(state: 'closed' | 'form' | 'done', g: Restore): string {
   return `<div class="give"><span>${head}</span>
     <label>Mynt att lägga till ${num('coins', g.coins, 10000000, 110)}</label>
     <label>Klurbanor klarade (från första) ${num('klur', g.klur, 999)}</label>
-    <label>Uppgraderingar på alla fordon minst nivå ${num('level', g.level, 15, 70)}</label>
+    <label>Uppgraderingar på ägda fordon minst nivå ${num('level', g.level, 15, 70)}</label>
     <label>Lås upp alla fordon och banor <input type="checkbox" data-give="unlockAll" ${g.unlockAll ? 'checked' : ''}></label>
     <span class="btns"><button class="small" data-act="give-yes" style="background:#2b9348">Lägg till</button><button class="small" data-act="give-no">Avbryt</button></span></div>`
 }

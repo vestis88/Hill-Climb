@@ -15,6 +15,15 @@ describe('restoring lost progress', () => {
     for (const v of VEHICLES) for (const u of v.upgrades) expect(levelsFor(s, v.id)[u.id]).toBe(6)
   })
 
+  it('only upgrades vehicles already owned', () => {
+    const s = emptySave()
+    restoreProgress(s, { coins: 0, unlockAll: false, klur: 0, level: 6 })
+    for (const v of VEHICLES) {
+      const expected = v.price === 0 ? 6 : 1
+      for (const u of v.upgrades) expect(levelsFor(s, v.id)[u.id]).toBe(expected)
+    }
+  })
+
   it('never takes anything away', () => {
     const s = emptySave()
     s.levels[VEHICLES[0].id] = { ...levelsFor(s, VEHICLES[0].id), [VEHICLES[0].upgrades[0].id]: 9 }

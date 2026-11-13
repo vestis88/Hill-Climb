@@ -15,7 +15,7 @@ export interface Restore {
   unlockAll: boolean
   /** Klurbanor done, counted from the first. */
   klur: number
-  /** Raise every upgrade on every vehicle to at least this level (1 leaves them). */
+  /** Raise every upgrade on every owned vehicle to at least this level (1 leaves them). */
   level: number
 }
 
@@ -28,7 +28,8 @@ export function restoreProgress(save: SaveData, r: Restore): void {
   for (const l of LEVELS.slice(0, Math.max(0, Math.floor(r.klur)))) add(`klur:${l.id}`)
   const level = Math.max(1, Math.min(MAX_LEVEL, Math.floor(r.level)))
   if (level > 1) {
-    for (const v of VEHICLES) {
+    // Only vehicles the family owns: one bought later starts without upgrades.
+    for (const v of VEHICLES.filter((v) => v.price === 0 || save.unlocked.includes(v.id))) {
       const levels = levelsFor(save, v.id)
       for (const u of v.upgrades) levels[u.id] = Math.max(levels[u.id], level)
       save.levels[v.id] = levels
