@@ -13,7 +13,7 @@ import { ENVIRONMENTS, environment, heightFor, puddlesFor } from './data/environ
 import { stuntAvoid } from './sim/stunt'
 import { PickupField } from './data/track'
 import { VEHICLES, vehicleEntry } from './data/vehicles'
-import { applyUpgrades, BASE_LEVELS, FULL_LEVELS, MAX_LEVEL, price, type UpgradeId } from './data/upgrades'
+import { applyUpgrades, MAX_LEVEL, price, type UpgradeId } from './data/upgrades'
 import { Sound } from './audio/sound'
 import { createInput } from './input/input'
 import { GameRenderer, type Popup } from './render/game'
@@ -26,10 +26,13 @@ import { formatTime, gameMode, MODES, recordKey } from './data/modes'
 import { Run, RULES } from './sim/run'
 import type { SimState } from './sim/types'
 import { STEP } from './sim/world'
-import { showGarage, showOutfit, showResults, showScores, showStandings, showTurn } from './ui/screens'
+import { showOutfit, showResults, showScores, showStandings, showTurn } from './ui/screens'
+import { showDaily, showHome, showMissions, showTracks, showVehicles } from './ui/home'
+import { confirmPurchase } from './ui/confirm'
+import { loadSandbox, saveSandbox, sandboxSpec } from './game/sandbox'
 import { loadSettings, saveSettings, showSettings } from './ui/settings'
 import { trackViewport, updateViewport } from './ui/viewport'
-import { loadTuning, showTuning, tuningEnabled, type DriveAs } from './ui/tuning'
+import { showTuning, tuningEnabled } from './ui/tuning'
 
 trackViewport()
 const $ = (id: string) => document.getElementById(id) as HTMLElement
@@ -106,8 +109,12 @@ function persist(): void {
   writeSave(save)
   cloud.soon()
 }
-const tuning = loadTuning()
-let driveAs: DriveAs = 'mine'
+/** Trimning's sandbox (game/sandbox.ts), and whether the run in progress is one of its test drives (never counts). */
+const sandbox = loadSandbox()
+let sandboxRun = false
+/** Which menu the garage screen shows: home, or one of its sub-menus. */
+type Menu = 'home' | 'vehicles' | 'tracks' | 'daily' | 'missions'
+let menu: Menu = 'home'
 
 type Mode = 'garage' | 'driving' | 'ending' | 'results' | 'tuning' | 'settings' | 'scores' | 'replay' | 'duel'
 let mode: Mode = 'garage'
@@ -142,12 +149,12 @@ let endTimer = 0
 
 // Function declarations, not arrow consts: the first run is created above, before this point.
 function owned(id: string, price: number): boolean {
-  // Test mode (?tune in the address): everything is open, nothing is bought.
-  return price === 0 || tuningEnabled() || save.unlocked.includes(id)
+  return price === 0 || save.unlocked.includes(id)
 }
 const today = () => dailyFor(new Date())
 function currentEnv() {
   if (replay) return environment(replay.env)
+  if (sandboxRun) return environment(sandbox.envId)
   return daily ? today().env : cup ? environment(cup.tracks[cup.index]) : environment(save.envId)
 }
 /** Where this track's records live: the map, or today's challenge ("daily-2026-11-12"). */
@@ -170,10 +177,12 @@ function playerVehicle(name: string) {
 }
 /** The vehicle for the turn being driven now. */
 function driveVehicle() {
+  if (sandboxRun) return vehicleEntry(sandbox.vehicleId)
   if (daily) return vehicleEntry(today()[daily].vehicle)
   return together(round) ? playerVehicle(currentPlayer()) : currentVehicle()
 }
 function currentMode() {
+  if (sandboxRun) return gameMode(sandbox.modeId)
   if (daily) return gameMode(daily === 'race' ? 'race500' : 'endless')
   return gameMode(save.modeId)
 }
@@ -187,9 +196,9 @@ function currentPlayer(): string {
 
 /** The part fitted to a vehicle (none on the daily challenge, where all are tuned alike). */
 function partFor(vehicleId: string): PartId {
-  if (daily) return 'none'
+  if (daily || sandboxRun) return 'none'
   const id = save.parts?.[vehicleId] ?? 'none'
-  return id === 'none' || tuningEnabled() || save.unlocked.includes(`part:${id}`) ? id : 'none'
+  return id === 'none' || save.unlocked.includes(`part:${id}`) ? id : 'none'
 }
 
 function vehicleSpec() {
@@ -201,10 +210,11 @@ function vehicleSpec() {
 
 function upgradedSpec() {
   const entry = driveVehicle()
-  const levels = daily ? today()[daily].levels : driveAs === 'base' ? BASE_LEVELS : driveAs === 'full' ? FULL_LEVELS : levelsFor(save, entry.id)
-  // The tuning sandbox edits the starter car; other vehicles use their own data.
-  const [base, full] = entry.id === 'runabout' ? [tuning.base, tuning.full] : [entry.base, entry.full]
-  return applyUpgrades(base, full, levels)
+  // A test drive from Trimning: its levels, hand-set values and every-vehicle factors.
+  if (sandboxRun) return sandboxSpec(sandbox, entry.id, levelsFor(save, entry.id))
+  // Otherwise the family's own upgrades (or today's challenge's set tuning).
+  const levels = daily ? today()[daily].levels : levelsFor(save, entry.id)
+  return applyUpgrades(entry.base, entry.full, levels)
 }
 
 function newRun(): Run {
@@ -223,7 +233,7 @@ function newRun(): Run {
     finish: currentMode().length,
     assist: settings.help.includes(currentPlayer()),
     part: partFor(driveVehicle().id),
-    stars: starsFor(env).filter((s) => !save.unlocked.includes(s.id)),
+    stars: sandboxRun ? [] : starsFor(env).filter((s) => !save.unlocked.includes(s.id)),
   })
 }
 
@@ -322,88 +332,167 @@ if (import.meta.env.PROD) {
   document.addEventListener('visibilitychange', () => !document.hidden && void checkForUpdate())
 }
 
+/** Back to the home screen. */
+function goHome(): void {
+  menu = 'home'
+  openGarage()
+}
+
+/** Open a menu: home, or one of its sub-menus. */
+function openMenu(m: Menu): void {
+  menu = m
+  openGarage()
+}
+
+/** Today's challenge's line: track, terrain style and weather. */
+function dailyTitle(): string {
+  const d = today()
+  const weather = WEATHER_NAME[d.atmosphere.weather]
+  return `${d.env.name} · ${d.style}${weather ? ` · ${weather}` : ''}`
+}
+
+/** Draw the garage screen's current menu (home by default). */
 function openGarage(justBought?: UpgradeId): void {
   const vehicle = currentVehicle()
-  showGarage(garageEl, {
-    coins: save.coins,
-    vehicleName: vehicle.name,
-    upgrades: vehicle.upgrades,
-    levels: levelsFor(save, vehicle.id),
-    vehicles: VEHICLES.map((v) => ({
-      id: v.id, name: v.name, blurb: v.blurb, price: v.price,
-      owned: owned(v.id, v.price), selected: v.id === vehicle.id,
-      preview: (c: HTMLCanvasElement) => drawVehiclePreview(c, v.base),
-    })),
-    environments: ENVIRONMENTS.map((e) => ({
-      id: e.id, name: e.name, blurb: e.blurb, price: e.price,
-      owned: owned(e.id, e.price), selected: !daily && e.id === currentEnv().id,
-      note: `Rekord ${Math.floor(save.best[e.id] ?? 0)} m · ★ ${starsFor(e).filter((s) => save.unlocked.includes(s.id)).length}/3`,
-      preview: (c: HTMLCanvasElement) => drawEnvironmentPreview(c, e, heightFor(e)),
-    })),
-    onPick: pick,
-    tuning: tuningEnabled(),
-    testMode: tuningEnabled(),
-    onBuy: buy,
-    players: PLAYERS.map((p) => ({ name: p.name, colour: p.colour, on: save.players.includes(p.name) })),
-    onTogglePlayer: togglePlayer,
-    modes: MODES.map((m) => ({ id: m.id, name: m.name, on: !daily && m.id === currentMode().id })),
-    dailyTitle: `Dagens utmaning · ${today().env.name} · ${today().style}${WEATHER_NAME[today().atmosphere.weather] ? ` · ${WEATHER_NAME[today().atmosphere.weather]}` : ''}`,
-    daily: (['race', 'endless'] as const).map((id) => {
-      const d = today()
-      const v = vehicleEntry(d[id].vehicle)
-      const key = recordKey(d.id, id === 'race' ? 'race500' : 'endless')
-      const results = PLAYERS.map((p) => ({ name: p.name, t: playerTime(save, p.name, key), m: playerBest(save, p.name, d.id) }))
-      const leader = id === 'race' ? results.filter((r) => r.t < Infinity).sort((a, b) => a.t - b.t)[0] : results.filter((r) => r.m > 0).sort((a, b) => b.m - a.m)[0]
-      return {
-        id,
-        name: id === 'race' ? 'Dagens lopp · 500 m' : 'Dagens oändliga',
-        blurb: `${v.name}, trimmad för alla`,
-        note: leader ? `Bäst idag: ${leader.name} ${id === 'race' ? formatTime(leader.t) : `${Math.floor(leader.m)} m`}` : 'Ingen har kört än',
-        on: daily === id,
+  const canDrive = save.players.length > 0
+  const common = { coins: save.coins, canDrive, onHome: goHome, onDrive: startRound }
+  if (menu === 'vehicles') {
+    const levels = levelsFor(save, vehicle.id)
+    showVehicles(garageEl, {
+      ...common,
+      vehicles: VEHICLES.map((v) => ({
+        id: v.id, name: v.name, blurb: v.blurb, price: v.price,
+        owned: owned(v.id, v.price), selected: v.id === vehicle.id,
         preview: (c: HTMLCanvasElement) => drawVehiclePreview(c, v.base),
-      }
-    }),
-    onDaily: (id) => {
-      daily = id
-      run = newRun()
-      prev = next = run.sim.state()
-      renderer.resetCamera(next)
-      openGarage()
-    },
-    onMode: (id: string) => {
-      daily = null
-      save.modeId = id
-      persist()
-      openGarage()
-    },
-    onScores: () => openScores(recordEnvId(), currentMode().id),
-    onCup: startCup,
-    onDuel: startDuel,
-    parts: PARTS.map((p) => ({ ...p, owned: p.price === 0 || tuningEnabled() || save.unlocked.includes(`part:${p.id}`), on: (save.parts?.[vehicle.id] ?? 'none') === p.id })),
-    onPart: (id) => {
-      const p = PARTS.find((x) => x.id === id)
-      if (!p) return
-      if (p.price > 0 && !tuningEnabled() && !save.unlocked.includes(`part:${p.id}`)) {
+      })),
+      vehicle: { id: vehicle.id, name: vehicle.name, blurb: vehicle.blurb, preview: (c) => drawVehiclePreview(c, applyUpgrades(vehicle.base, vehicle.full, levels)) },
+      upgrades: vehicle.upgrades,
+      levels,
+      parts: PARTS.map((p) => ({ ...p, owned: p.price === 0 || save.unlocked.includes(`part:${p.id}`), on: (save.parts?.[vehicle.id] ?? 'none') === p.id })),
+      justBought,
+      onPick: (id) => pick('vehicle', id),
+      onBuy: buy,
+      onPart: (id) => fitPart(vehicle.id, id),
+    })
+  } else if (menu === 'tracks') {
+    showTracks(garageEl, {
+      ...common,
+      tracks: ENVIRONMENTS.map((e) => ({
+        id: e.id, name: e.name, blurb: e.blurb, price: e.price,
+        owned: owned(e.id, e.price), selected: !daily && e.id === currentEnv().id,
+        note: `Rekord ${Math.floor(save.best[e.id] ?? 0)} m · ★ ${starsFor(e).filter((s) => save.unlocked.includes(s.id)).length}/3`,
+        preview: (c: HTMLCanvasElement) => drawEnvironmentPreview(c, e, heightFor(e)),
+      })),
+      modes: MODES.map((m) => ({ id: m.id, name: m.name, on: !daily && m.id === currentMode().id })),
+      onPick: (id) => pick('env', id),
+      onMode: (id: string) => {
+        daily = null
+        save.modeId = id
+        persist()
+        openGarage()
+      },
+    })
+  } else if (menu === 'daily') {
+    const d = today()
+    showDaily(garageEl, {
+      coins: save.coins,
+      canDrive,
+      title: dailyTitle(),
+      track: (c) => drawEnvironmentPreview(c, d.env, heightFor(d.env)),
+      events: (['race', 'endless'] as const).map((id) => {
+        const v = vehicleEntry(d[id].vehicle)
+        const key = recordKey(d.id, id === 'race' ? 'race500' : 'endless')
+        const results = PLAYERS.map((p) => ({ name: p.name, t: playerTime(save, p.name, key), m: playerBest(save, p.name, d.id) }))
+        const leader = id === 'race' ? results.filter((r) => r.t < Infinity).sort((a, b) => a.t - b.t)[0] : results.filter((r) => r.m > 0).sort((a, b) => b.m - a.m)[0]
+        return {
+          id,
+          name: id === 'race' ? 'Dagens lopp · 500 m' : 'Dagens oändliga',
+          blurb: `${v.name}, trimmad lika för alla`,
+          note: leader ? `Bäst i dag: ${leader.name} ${id === 'race' ? formatTime(leader.t) : `${Math.floor(leader.m)} m`}` : 'Ingen har kört än',
+          on: daily === id,
+          preview: (c: HTMLCanvasElement) => drawVehiclePreview(c, v.base),
+        }
+      }),
+      onGo: (id) => {
+        daily = id
+        startRound()
+      },
+      onHome: goHome,
+    })
+  } else if (menu === 'missions') {
+    showMissions(garageEl, {
+      ...common,
+      players: save.players.map((p) => ({
+        name: p,
+        colour: playerColour(p),
+        items: missionsFor(p).map((m) => ({ text: describe(m, (id) => environment(id).name), reward: m.reward })),
+      })),
+    })
+  } else {
+    const env = currentEnv()
+    const levels = levelsFor(save, vehicle.id)
+    const avg = vehicle.upgrades.reduce((sum, u) => sum + levels[u.id], 0) / vehicle.upgrades.length
+    const part = PARTS.find((p) => p.id === partFor(vehicle.id))
+    showHome(garageEl, {
+      coins: save.coins,
+      testMode: tuningEnabled(),
+      players: PLAYERS.map((p) => ({ name: p.name, colour: p.colour, on: save.players.includes(p.name) })),
+      onTogglePlayer: togglePlayer,
+      vehicle: {
+        id: vehicle.id,
+        name: vehicle.name,
+        detail: `Uppgraderad ${avg.toFixed(1).replace('.', ',').replace(',0', '')}/${MAX_LEVEL}${part && part.id !== 'none' ? ` · ${part.name}` : ''}`,
+        preview: (c) => drawVehiclePreview(c, applyUpgrades(vehicle.base, vehicle.full, levels)),
+      },
+      track: {
+        id: env.id,
+        name: daily ? (daily === 'race' ? 'Dagens lopp' : 'Dagens oändliga') : env.name,
+        detail: daily ? dailyTitle() : currentMode().name,
+        note: daily ? 'Byt bana ›' : `Rekord ${Math.floor(playerBest(save, currentPlayer(), env.id))} m · ★ ${starsFor(env).filter((s) => save.unlocked.includes(s.id)).length}/3`,
+        preview: (c) => drawEnvironmentPreview(c, env, heightFor(env)),
+      },
+      daily: { title: 'Dagens utmaning', detail: today().env.name, on: !!daily },
+      missions: save.players.reduce((n, p) => n + missionsFor(p).length, 0),
+      onDrive: startRound,
+      onMenu: openMenu,
+      onCup: startCup,
+      onDuel: startDuel,
+      onOutfit: () => openOutfit(save.players[0] ?? PLAYERS[0].name),
+      onScores: () => openScores(recordEnvId(), currentMode().id),
+      onSettings: openSettings,
+      onTune: openTuning,
+    })
+  }
+  show('garage')
+}
+
+/** Fit a part to a vehicle, buying it first (after asking) if the family does not have it. */
+function fitPart(vehicleId: string, id: string): void {
+  const p = PARTS.find((x) => x.id === id)
+  if (!p) return
+  const fit = () => {
+    save.parts = { ...save.parts, [vehicleId]: p.id }
+    persist()
+    run = newRun()
+    openGarage()
+  }
+  if (p.price > 0 && !save.unlocked.includes(`part:${p.id}`)) {
+    if (save.coins < p.price) return
+    confirmPurchase({
+      title: `Köpa ${p.name}?`,
+      detail: `${p.blurb} Delen kan sättas på alla fordon, en åt gången.`,
+      price: p.price,
+      coins: save.coins,
+      onYes: () => {
         if (!spend(save, p.price)) return
         save.unlocked.push(`part:${p.id}`)
-      }
-      save.parts = { ...save.parts, [vehicle.id]: p.id }
-      persist()
-      run = newRun()
-      openGarage()
-    },
-    onOutfit: () => openOutfit(save.players[0] ?? PLAYERS[0].name),
-    missions: save.players.map((p) => ({
-      name: p,
-      colour: playerColour(p),
-      items: missionsFor(p).map((m) => ({ text: describe(m, (id) => environment(id).name), reward: m.reward })),
-    })),
-    onDrive: startRound,
-    onTune: openTuning,
-    onSettings: openSettings,
-    justBought,
-  })
-  show('garage')
+        sound.fanfare()
+        fit()
+      },
+    })
+    return
+  }
+  fit()
 }
 
 /** Tick or untick a player for the next round; turns go in the PLAYERS order. */
@@ -445,35 +534,61 @@ function openScores(envId: string, modeId: string): void {
   show('scores')
 }
 
-/** Select a vehicle or environment, buying it first if it is locked and affordable. */
+/** Select a vehicle or environment, buying it first (after asking) if it is locked and affordable. */
 function pick(kind: 'vehicle' | 'env', id: string): void {
   const item = kind === 'vehicle' ? vehicleEntry(id) : environment(id)
+  const select = () => {
+    if (kind === 'vehicle') save.vehicleId = item.id
+    else {
+      save.envId = item.id
+      daily = null
+    }
+    persist()
+    run = newRun()
+    prev = next = run.sim.state()
+    renderer.resetCamera(next)
+    openGarage()
+  }
   if (!owned(item.id, item.price)) {
-    if (!spend(save, item.price)) return
-    save.unlocked.push(item.id)
+    if (save.coins < item.price) return
+    confirmPurchase({
+      title: `Låsa upp ${item.name}?`,
+      detail: item.blurb,
+      price: item.price,
+      coins: save.coins,
+      onYes: () => {
+        if (!spend(save, item.price)) return
+        save.unlocked.push(item.id)
+        sound.fanfare()
+        select()
+      },
+    })
+    return
   }
-  if (kind === 'vehicle') save.vehicleId = item.id
-  else {
-    save.envId = item.id
-    daily = null
-  }
-  persist()
-  run = newRun()
-  prev = next = run.sim.state()
-  renderer.resetCamera(next)
-  openGarage()
+  select()
 }
 
+/** Buy the next level of an upgrade for the selected vehicle, after asking. */
 function buy(id: UpgradeId): void {
-  const VEHICLE_ID = currentVehicle().id
-  const levels = levelsFor(save, VEHICLE_ID)
+  const vehicle = currentVehicle()
+  const levels = levelsFor(save, vehicle.id)
   if (levels[id] >= MAX_LEVEL) return
   const cost = price(levels[id] + 1)
-  if (!spend(save, cost)) return
-  save.levels[VEHICLE_ID] = { ...levels, [id]: levels[id] + 1 }
-  persist()
-  sound.fanfare()
-  openGarage(id)
+  if (save.coins < cost) return
+  const info = vehicle.upgrades.find((u) => u.id === id)
+  confirmPurchase({
+    title: `${info?.name ?? 'Uppgradering'} nivå ${levels[id] + 1}?`,
+    detail: `${vehicle.name}: ${info?.blurb ?? ''}`,
+    price: cost,
+    coins: save.coins,
+    onYes: () => {
+      if (!spend(save, cost)) return
+      save.levels[vehicle.id] = { ...levels, [id]: levels[id] + 1 }
+      persist()
+      sound.fanfare()
+      openGarage(id)
+    },
+  })
 }
 
 function openSettings(): void {
@@ -494,7 +609,7 @@ function openSettings(): void {
       prev = next = run.sim.state()
       renderer.resetCamera(next)
     },
-    openGarage,
+    goHome,
     cloud,
     () => {
       // A fresh highscore board: bests, times, scores and ghosts go; coins and upgrades stay.
@@ -510,19 +625,32 @@ function openSettings(): void {
 }
 
 function openTuning(): void {
-  showTuning(tuneEl, tuning, driveAs, (d) => {
-    driveAs = d
-    startRun()
-  }, openGarage)
+  showTuning(tuneEl, {
+    sandbox,
+    vehicles: VEHICLES.map((v) => ({ id: v.id, name: v.name, upgrades: v.upgrades, preview: (c: HTMLCanvasElement) => drawVehiclePreview(c, v.base) })),
+    tracks: ENVIRONMENTS.map((e) => ({ id: e.id, name: e.name })),
+    modes: MODES.map((m) => ({ id: m.id, name: m.name })),
+    ownLevels: (id) => levelsFor(save, id),
+    onChange: () => saveSandbox(sandbox),
+    onDrive: startSandbox,
+    onBack: goHome,
+  })
   show('tuning')
+}
+
+/** A test drive from Trimning: any vehicle, track and tuning; nothing about it counts. */
+function startSandbox(): void {
+  sandboxRun = true
+  daily = null
+  cup = null
+  startRun()
 }
 
 /** Start a round with the ticked players, first player first. */
 function startRound(): void {
   if (!save.players.length) return
-  // A round from the garage always drives with the family's own upgrades; the Tuning screen's
-  // "Drive as" choice only applies to its own test drives.
-  driveAs = 'mine'
+  // A round from the menus always drives the family's own vehicles and upgrades.
+  sandboxRun = false
   // Same track and mode as the round before: keep everyone's latest run from it as a ghost.
   round = nextRound(round, save.players, currentKey())
   // With several players, first show who starts, the order, and let them pick a vehicle.
@@ -627,9 +755,9 @@ function finishRun(): void {
   const best = playerBest(save, me, envId)
   const time = run.finishTime ?? undefined
   const bestTime = playerTime(save, me, key)
-  earn(save, total)
-  // Runs in test mode (everything unlocked) do not count: no bests, highscores or ghosts.
-  const counts = !tuningEnabled()
+  // Test drives from Trimning never count: no coins, bests, highscores, ghosts or missions.
+  const counts = !sandboxRun
+  if (counts) earn(save, total)
   if (counts) {
     save.best[envId] = Math.max(save.best[envId] ?? 0, distance)
     save.playerBest[me] = { ...save.playerBest[me], [envId]: Math.max(best, distance) }
@@ -651,8 +779,9 @@ function finishRun(): void {
     turnGhost = ghost
   }
   const newBest = counts && (race.length ? time !== undefined && time < bestTime : distance > best)
-  recordTurn(round, { name: me, vehicle: driveVehicle().name, distance, time, newBest }, turnGhost)
-  const nextPlayer = nextPlayerOf(round)
+  // A test drive is not a turn in the round.
+  if (counts) recordTurn(round, { name: me, vehicle: driveVehicle().name, distance, time, newBest }, turnGhost)
+  const nextPlayer = counts ? nextPlayerOf(round) : undefined
   showResults(resultsEl, {
     status: run.status === 'running' ? 'ended' : run.status,
     distance,
@@ -664,9 +793,10 @@ function finishRun(): void {
     player: { name: me, colour: playerColour(me) },
     missions: missionsDone,
     next: nextPlayer,
-    roundOver: roundOver(round),
-    onGarage: openGarage,
-    onAgain: startRound,
+    roundOver: counts && roundOver(round),
+    sandbox: !counts,
+    onGarage: counts ? goHome : openTuning,
+    onAgain: counts ? startRound : startSandbox,
     onNext: () => {
       advance(round)
       openTurn()
@@ -698,7 +828,7 @@ function openStandings(): void {
     cup: cupView(),
     onHome: () => {
       cup = null
-      openGarage()
+      goHome()
     },
     onAgain: () => (cup ? startCup() : startRound()),
     onNextTrack: () => {
@@ -718,7 +848,7 @@ function outfitFor(name: string): Outfit {
 /** Utstyrsel: pick (and buy) each player's helmet pattern and hat. */
 function openOutfit(name: string): void {
   const mine = outfitFor(name)
-  const has = (kind: string, id: string, price: number) => price === 0 || tuningEnabled() || save.unlocked.includes(`${kind}:${id}`)
+  const has = (kind: string, id: string, price: number) => price === 0 || save.unlocked.includes(`${kind}:${id}`)
   showOutfit(scoresEl, {
     coins: save.coins,
     players: PLAYERS.map((p) => ({ name: p.name, colour: p.colour, on: p.name === name })),
@@ -777,8 +907,8 @@ function foundStar(id: string, x: number, y: number): void {
   sound.coin()
   renderer.cheer()
   renderer.sparkle(x, y, '#ffd23f')
-  // Test mode finds nothing for real.
-  if (tuningEnabled() || save.unlocked.includes(id)) {
+  // A test drive finds nothing for real.
+  if (sandboxRun || save.unlocked.includes(id)) {
     popups.push({ text: '★ Stjärna!', age: 0 })
     return
   }
@@ -842,7 +972,7 @@ function startDuel(): void {
   if (save.players.length < 2) return
   daily = null
   cup = null
-  driveAs = 'mine'
+  sandboxRun = false
   const names = save.players.slice(0, 2)
   round = emptyRound(names)
   const sides = names.map((player, i) => {
@@ -946,7 +1076,7 @@ function finishDuel(): void {
   const envId = currentEnv().id
   const race = currentMode()
   const key = currentKey()
-  const counts = !tuningEnabled()
+  // A duel always counts (test drives only come from Trimning).
   const results = d.sides.map((side, i) => {
     round.turn = i
     const r = side.run
@@ -954,13 +1084,11 @@ function finishDuel(): void {
     const distance = r.endDistance ?? side.next.distance
     const time = r.finishTime ?? undefined
     earn(save, r.totalCoins)
-    const newBest = counts && (race.length ? time !== undefined && time < playerTime(save, side.player, key) : distance > playerBest(save, side.player, envId))
-    if (counts) {
-      save.best[envId] = Math.max(save.best[envId] ?? 0, distance)
-      save.playerBest[side.player] = { ...save.playerBest[side.player], [envId]: Math.max(playerBest(save, side.player, envId), distance) }
-      if (time !== undefined) save.playerTimes[side.player] = { ...save.playerTimes[side.player], [key]: Math.min(playerTime(save, side.player, key), time) }
-      addScore(save, { name: side.player, vehicle: driveVehicle().id, env: envId, distance, mode: race.id, time })
-    }
+    const newBest = (race.length ? time !== undefined && time < playerTime(save, side.player, key) : distance > playerBest(save, side.player, envId))
+    save.best[envId] = Math.max(save.best[envId] ?? 0, distance)
+    save.playerBest[side.player] = { ...save.playerBest[side.player], [envId]: Math.max(playerBest(save, side.player, envId), distance) }
+    if (time !== undefined) save.playerTimes[side.player] = { ...save.playerTimes[side.player], [key]: Math.min(playerTime(save, side.player, key), time) }
+    addScore(save, { name: side.player, vehicle: driveVehicle().id, env: envId, distance, mode: race.id, time })
     return { name: side.player, vehicle: driveVehicle().name, distance, time, newBest, coins: r.totalCoins }
   })
   round.turn = 0
@@ -978,7 +1106,7 @@ function finishDuel(): void {
       newBest: r.newBest,
       result: r.time !== undefined ? formatTime(r.time) : race.length ? `Ej i mål · ${Math.floor(r.distance)} m` : `${Math.floor(r.distance)} m`,
     })),
-    onHome: () => openGarage(),
+    onHome: goHome,
     onAgain: startDuel,
   })
 }
@@ -1203,7 +1331,7 @@ function frame(now: number): void {
     showPedals: mode === 'driving',
     swapPedals: settings.swapPedals,
     driver: { lean: run.sway.lean, ragdoll: run.ragdoll?.poses() ?? null },
-    player: mode === 'replay' && replay ? { name: replay.player, colour: playerColour(replay.player) } : mode === 'driving' || mode === 'ending' ? { name: currentPlayer(), colour: playerColour(currentPlayer()) } : undefined,
+    player: mode === 'replay' && replay ? { name: replay.player, colour: playerColour(replay.player) } : mode === 'driving' || mode === 'ending' ? { name: sandboxRun ? `${currentPlayer()} · 🔧 test` : currentPlayer(), colour: playerColour(currentPlayer()) } : undefined,
     outfit: outfitFor(mode === 'replay' && replay ? replay.player : currentPlayer()),
     ghosts: mode === 'driving' || mode === 'ending' ? ghostPoses() : [],
     puddles: puddlesFor(currentEnv()),
