@@ -422,33 +422,34 @@ vehicle.
 
 All prices and upgrade ranges live in `src/data/` and are tuned by playtest.
 
-### Sync between devices
+### Cloud backups
 
-Progress (coins, upgrades, unlocks, bests and highscores) can be shared between the
-family's iPhones and iPads through a free Firebase Realtime Database
-(`src/save/cloud.ts`, set `CLOUD_DB_URL`). In Settings, the first device taps **Start**
-and gets a family code; the others tap **Join with code**. Each device then syncs when
-the game opens, comes back to the front, and shortly after every run or purchase.
+Each device can keep a backup of its whole progress (coins, upgrades, unlocks, records,
+highscores, ghosts, colours and settings) in a free Firebase Realtime Database
+(`src/save/backup.ts`, set `CLOUD_DB_URL` in `src/save/cloud.ts`). Nothing is synced or
+merged: each device has its own backup, and you choose which one to load.
 
-Merging keeps the best of both: upgrade levels and unlocks at their highest, bests at their
-best, highscore boards combined. Coins are kept as earned and spent per device, so two
-devices playing at the same time never lose or double-count coins. Writes use Firebase's
-ETag check, so simultaneous syncs retry instead of overwriting each other.
+In Settings, **Säkerhetskopior i molnet**: the first device taps **Starta** and gets a code
+(12 random characters); other devices tap **Använd kod från en annan enhet**. Each device
+gets a name you can change ("iPad Alva"). A device backs up shortly after every run or
+purchase, when the game goes to the background, and with **Spara nu**.
 
-Ghosts sync too: a small index in the cloud lists each player's best and last ghost per
-track and mode, and only ghosts that are missing or beaten are sent either way (a better
-best wins; for "last", the most recent run wins). Who is playing and the chosen vehicle,
-map and mode stay on each device. Resetting progress on a
-device also stops it syncing.
+**Läs in framsteg…** lists every device's backup under the code: name, time, coins,
+Klurbanor done and best distance. **Läs in** (confirmed with **Ersätt mina framsteg**)
+replaces this device's progress with that backup and restarts the game. The device keeps its
+own name and backup slot, so loading never overwrites the backup it came from. This also
+brings progress back after the home-screen icon was removed (which deletes the app's storage
+on iPhone and iPad): add the icon again, type the code, and load the old backup.
 
 Database rules (Firebase console, Realtime Database, Rules):
 
 ```json
-{ "rules": { "families": { "$code": { ".read": true, ".write": true } } } }
+{ "rules": { "backups": { "$code": { ".read": true, ".write": true } } } }
 ```
 
-The family code (12 random characters) is the only key to a family's progress, and the
-whole list of families cannot be read.
+The code is the only key to a family's backups, and the whole list cannot be read. (An
+older merge-sync, `CloudSync` in `src/save/cloud.ts`, is kept in the code but no longer
+shown.)
 
 ### Menus and buying
 

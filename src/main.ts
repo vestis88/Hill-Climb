@@ -24,7 +24,7 @@ import { GameRenderer, type Popup } from './render/game'
 import { drawEnvironmentPreview, drawVehiclePreview } from './render/preview'
 import { addScore, drivenLevels, earn, emptySave, levelsFor, loadSave, setDrivenLevel, playerBest, playerTime, spend, writeSave } from './save/save'
 import { clearGhosts, poseToState, roundGhosts, GhostRecorder, GhostTrack, loadGhost, storeGhost, storeVehicleBest, vehicleKey, type Ghost } from './save/ghosts'
-import { CloudSync } from './save/cloud'
+import { CloudBackup } from './save/backup'
 import { COLOURS, PLAYERS, playerColour, setPlayerColours } from './data/players'
 import { formatTime, gameMode, MODES, recordKey, type Mode as GameMode } from './data/modes'
 import { Run, RULES } from './sim/run'
@@ -132,12 +132,12 @@ function pruneOldDailies(): void {
     // Storage unavailable.
   }
 }
-// Shares progress between the family's devices (see save/cloud.ts); off until set up.
-const cloud = new CloudSync(save)
-/** Save locally, and sync to the family's other devices shortly after. */
+// Backs this device's progress up to the cloud (see save/backup.ts); off until set up.
+const backup = new CloudBackup()
+/** Save locally, and back up to the cloud shortly after. */
 function persist(): void {
   writeSave(save)
-  cloud.soon()
+  backup.soon()
 }
 /** Trimning's sandbox (game/sandbox.ts), and whether the run in progress is one of its test drives (never counts). */
 const sandbox = loadSandbox()
@@ -737,7 +737,6 @@ function openSettings(): void {
       applyMusic()
     },
     () => {
-      cloud.leave()
       Object.assign(save, emptySave())
       writeSave(save)
       clearGhosts()
@@ -746,7 +745,7 @@ function openSettings(): void {
       renderer.resetCamera(next)
     },
     goHome,
-    cloud,
+    backup,
     () => {
       // A fresh highscore board: bests, times, scores and ghosts go; coins and upgrades stay.
       save.scores = []
@@ -756,6 +755,8 @@ function openSettings(): void {
       writeSave(save)
       clearGhosts()
     },
+    // A backup was loaded: start again from it.
+    () => location.reload(),
   )
   show('settings')
 }
@@ -1538,15 +1539,11 @@ function ghostPoses() {
   })
 }
 
-// Sync on start and whenever the game comes back to the front; refresh the garage when another
-// device's progress arrives.
-cloud.onMerged = () => {
-  if (mode === 'garage') openGarage()
-}
-void cloud.syncNow()
+// Back up when the game goes to the background (the home button, another app), and once on start.
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) void cloud.syncNow()
+  if (document.hidden) void backup.backupNow()
 })
+backup.soon(5000)
 
 // Development only: lets screenshot scripts trigger effects without playing to them.
 if (import.meta.env.DEV) (window as unknown as { __game: unknown }).__game = { renderer, get run() { return run }, set atmosphere(a: Atmosphere) { atmosphere = a } }
