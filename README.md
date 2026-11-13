@@ -254,12 +254,16 @@ runs at that length. Round standings rank finishers by time, then DNFs by how fa
 - **Familjen (in Topplista):** every round with several players has a winner, and every cup too;
   the table shows each player's round wins, cups and wins this week, and Veckans vinnare (most
   round wins in the last seven days).
-- **Duell (two at once):** with two or more players ticked, "⚔ Duell: två samtidigt" in the garage
-  splits the screen: the first ticked player drives on the top half and the second on the bottom
-  half, each with their own vehicle and their own pedals at the edges of their half, on the same
-  track and mode, from the same countdown. When both are done, the further (or faster) wins; coins,
-  bests and highscores count as usual (no ghosts are recorded). The engine heard is the top
-  player's. Made for the iPad.
+- **Duell (two at once):** with two or more players ticked, the Duell tile splits the screen
+  between the first two ticked players, each with their own vehicle and pedals (brake on the
+  left and gas on the right of their own half), on the same track and mode, from the same
+  countdown. Two layouts, switched during the countdown, in the pause menu or in Settings:
+  **Bredvid varandra** (default, landscape): player 1 on the left half, player 2 on the right,
+  for sitting next to each other. **Mot varandra** (portrait, forced even if the iPad lies flat
+  and reports landscape): player 2 on the bottom half and player 1 on the top half turned upside
+  down, for sitting either side of the iPad. When both are done, the further (or faster) wins;
+  coins, bests and highscores count as usual (no ghosts are recorded). The engine heard is player
+  1's. Made for the iPad.
 - **Tävling (tournament):** with two or more players ticked, the garage's "🏆 Tävling: 3 banor"
   starts a cup on three of the family's maps (different ones when three are owned) in the chosen
   mode. Each track is a round; placings give 5, 3, 2 and 1 points (ties share), the table shows

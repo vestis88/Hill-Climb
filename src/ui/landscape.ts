@@ -35,18 +35,21 @@ export function requestLandscapeLock(): void {
 }
 
 /**
- * Keep the page turned while driving in portrait. Call every frame with whether a run is on.
- * Returns true when the turn changed (the canvas size changes with it).
+ * Keep the page in the wanted orientation: 'landscape' while driving (turned back if the device
+ * is in portrait), 'portrait' for a duel with the players opposite each other (turned if the
+ * device reports landscape, e.g. lying flat on a table), or null (follow the device).
+ * Call every frame. Returns true when the turn changed.
  */
-export function updateLandscape(driving: boolean): boolean {
+export function updateTurn(want: 'landscape' | 'portrait' | null): boolean {
   if (!portrait()) {
     const a = deviceAngle()
     if (a === 90 || a === -90) lastLandscape = a
   }
-  // Turned left (90): the game's "up" was the device's right edge, so turn the page clockwise.
-  const want: Turn = driving && portrait() ? lastLandscape : 0
-  if (want === turn) return false
-  turn = want
+  // Landscape wanted, device in portrait: turned left (90) means the game's "up" was the
+  // device's right edge, so turn the page clockwise. Portrait wanted in landscape: the other way.
+  const next: Turn = want === 'landscape' && portrait() ? lastLandscape : want === 'portrait' && !portrait() ? (-lastLandscape as Turn) : 0
+  if (next === turn) return false
+  turn = next
   const body = document.body
   // The turned page is as wide as the screen is tall, and as tall as it is wide.
   document.documentElement.style.setProperty('--turn-w', `${window.innerHeight}px`)
@@ -57,8 +60,15 @@ export function updateLandscape(driving: boolean): boolean {
   return true
 }
 
-/** A touch's position along the game's own horizontal axis, and that axis's length. */
-export function gameX(e: { clientX: number; clientY: number }): { x: number; width: number } {
+/** Kept for callers that only care about driving: landscape while driving. */
+export const updateLandscape = (driving: boolean) => updateTurn(driving ? 'landscape' : null)
+
+/**
+ * A touch's position across an element in the element's own frame (offsetX accounts for CSS
+ * turns of the page or of the element itself), and the element's width.
+ */
+export function localX(e: PointerEvent, el: HTMLElement): { x: number; width: number } {
+  if (typeof e.offsetX === 'number' && el.clientWidth > 0) return { x: e.offsetX, width: el.clientWidth }
   if (turn === 90) return { x: e.clientY, width: window.innerHeight }
   if (turn === -90) return { x: window.innerHeight - e.clientY, width: window.innerHeight }
   return { x: e.clientX, width: window.innerWidth }

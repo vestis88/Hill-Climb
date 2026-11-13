@@ -37,7 +37,7 @@ import { confirmPurchase } from './ui/confirm'
 import { loadSandbox, saveSandbox, sandboxSpec } from './game/sandbox'
 import { loadSettings, saveSettings, showSettings } from './ui/settings'
 import { trackViewport, updateViewport } from './ui/viewport'
-import { requestLandscapeLock, updateLandscape } from './ui/landscape'
+import { requestLandscapeLock, updateTurn } from './ui/landscape'
 import { showTuning, tuningEnabled } from './ui/tuning'
 
 trackViewport()
@@ -51,6 +51,27 @@ const settingsEl = $('settings')
 const endRunBtn = $('endRun')
 const pauseBtn = $('pauseBtn')
 const restartBtn = $('restart')
+const duelLayoutBtn = $('duelLayout')
+/** Duel layout: side by side (left/right) or opposite each other (top/bottom, portrait). */
+function applyDuelLayout(): void {
+  const opposite = settings.duelLayout === 'opposite'
+  document.body.classList.toggle('beside', !opposite)
+  document.body.classList.toggle('opposite', opposite)
+  const label = opposite ? '⇆ Sitt bredvid varandra' : '⇅ Sitt mot varandra'
+  duelLayoutBtn.textContent = label
+  const inPause = pausedEl.querySelector<HTMLElement>('[data-act="layout"]')
+  if (inPause) inPause.textContent = label
+}
+/** Switch the duel between side by side and opposite each other. */
+function toggleDuelLayout(): void {
+  settings.duelLayout = settings.duelLayout === 'opposite' ? 'beside' : 'opposite'
+  saveSettings(settings)
+  applyDuelLayout()
+  controls.reset()
+  controls2.reset()
+  duelLayoutBtn.blur()
+}
+duelLayoutBtn.addEventListener('click', toggleDuelLayout)
 const pausedEl = $('paused')
 const updateBtn = $('update')
 const hornBtn = $('horn')
@@ -293,6 +314,9 @@ function show(m: Mode): void {
   settingsEl.classList.toggle('hidden', m !== 'settings')
   endRunBtn.classList.toggle('hidden', m !== 'driving' && m !== 'duel')
   document.body.classList.toggle('duel', m === 'duel')
+  applyDuelLayout()
+  // The layout switch shows during the duel's countdown (and is in the pause menu).
+  duelLayoutBtn.classList.toggle('hidden', m !== 'duel')
   canvas2.classList.toggle('hidden', m !== 'duel')
   pauseBtn.classList.toggle('hidden', m !== 'driving' && m !== 'duel')
   restartBtn.classList.toggle('hidden', m !== 'driving' || !puzzle)
@@ -303,7 +327,7 @@ function show(m: Mode): void {
   setBoost(false)
   pausedEl.classList.add('hidden')
   paused = false
-  document.body.classList.toggle('playing', m === 'driving' || m === 'ending')
+  document.body.classList.toggle('playing', m === 'driving' || m === 'ending' || m === 'duel')
   controls.reset()
   showUpdateIfReady()
   applyMusic()
@@ -354,6 +378,7 @@ hornBtn.addEventListener('pointerdown', (e) => {
 pausedEl.addEventListener('click', (e) => {
   const act = (e.target as HTMLElement).closest('button')?.dataset.act
   if (act === 'resume') resume()
+  else if (act === 'layout') toggleDuelLayout()
   else if (act === 'end') {
     resume()
     if (mode === 'duel') finishDuel()
@@ -1127,6 +1152,7 @@ function stepDuel(dt: number): void {
     for (const side of d.sides) side.revs.free(side.input.gas, dt)
     if (d.countdown <= 0) {
       sound.beep(true)
+      duelLayoutBtn.classList.add('hidden')
       for (const side of d.sides) side.renderer.launch(side.run.launch(side.revs.revs))
     } else if (Math.ceil(d.countdown / LAUNCH.beat) !== beat) sound.beep(false)
     return
@@ -1362,7 +1388,8 @@ let last = performance.now()
 let accumulator = 0
 
 function frame(now: number): void {
-  updateLandscape(mode === 'driving' || mode === 'ending' || mode === 'duel')
+  // Landscape while driving; a duel opposite each other is portrait (ui/landscape.ts).
+  updateTurn(mode === 'duel' ? (settings.duelLayout === 'opposite' ? 'portrait' : 'landscape') : mode === 'driving' || mode === 'ending' ? 'landscape' : null)
   updateViewport()
   const dt = Math.min(0.1, (now - last) / 1000)
   last = now

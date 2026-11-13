@@ -312,7 +312,9 @@ export class GameRenderer {
 
     // Camera: looks ahead, and pulls back as speed builds.
     const speed = Math.abs(next.speed)
-    this.viewWidth = lerp(this.viewWidth, Math.min(34, 22 + speed * 0.55), 0.03)
+    // A tall, narrow view (a duel side by side) shows less width, so the vehicle stays a good size.
+    const narrow = this.height > this.width
+    this.viewWidth = lerp(this.viewWidth, narrow ? Math.min(22, 14 + speed * 0.4) : Math.min(34, 22 + speed * 0.55), 0.03)
     const scale = width / this.viewWidth
     this.camX = chassis.x + this.viewWidth * 0.2
     this.camY = lerp(this.camY, chassis.y + 1, 0.18)
