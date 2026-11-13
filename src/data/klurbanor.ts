@@ -19,6 +19,8 @@ export interface PuzzleLevel {
   start: { x: number; y: number }
   gems: { x: number; y: number }[]
   goal: { x: number; y: number }
+  /** The goal only counts with a wheel on the ground (landing on it, not flying past). */
+  goalOnGround?: boolean
   /** Look: an existing map's theme. */
   theme: string
   /**
@@ -81,6 +83,11 @@ export function pillar(x0: number, x1: number, y: number, bottom = -40, kick?: {
 /** A floating block (a ledge or a ceiling piece) from (x0, y0) to (x1, y1). */
 export function block(x0: number, y0: number, x1: number, y1: number): Pt[] {
   return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]
+}
+
+/** A pointed rock rising from below to a tip at `top` (nothing can rest on it). */
+export function spike(x0: number, x1: number, top: number, bottom = -40): Pt[] {
+  return [[x0, bottom], [x1, bottom], [x1, top - 0.6], [(x0 + x1) / 2, top], [x0, top - 0.6]]
 }
 
 const WALL = 30
@@ -280,7 +287,110 @@ const fonstret: PuzzleLevel = {
   plan: [{ x: 30, speed: 12 }, { x: 57.5, speed: 2 }, { x: 76, speed: 12 }, { x: 101, speed: 13 }, { x: 126, speed: 4 }],
 }
 
-const LEVELS_RAW: PuzzleLevel[] = [tvaVagar, stopp, lagtITak, gungan, loopenEllerGropen, trappan, fonstret]
+/**
+ * 8 · Nålsögat. Three kickers over three gaps. Over the first two, a gem hangs in a narrow eye
+ * between a rock above and a rock below, placed on the measured arc of one speed: too fast and
+ * your helmet hits the top rock, too slow and you hit the bottom one. The last jump has to land
+ * on a small island with the goal flag.
+ */
+const nalsogat: PuzzleLevel = {
+  id: 'k8',
+  name: 'Nålsögat',
+  hint: 'Två smala nålsögon i luften och en liten ö att landa på. Rätt fart, varje gång.',
+  theme: 'crater',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], ...pillar(-12, 25, 0, -40, { len: 4, h: 1.3 }).slice(0, -1), [-14, -40]],
+      // Eye 1, over the first gap: for 11 m/s (the arc passes 3.3 m up here).
+      block(32.6, 4.85, 33.4, 14),
+      spike(32.6, 33.4, 2.2),
+      pillar(36, 62, -2, -40, { len: 3, h: 1.8 }),
+      // Eye 2: for 10 m/s off the steep kicker (2.6 m up here; it changes fast with speed).
+      block(65.6, 4.35, 66.4, 14),
+      spike(65.6, 66.4, 1.45),
+      pillar(67, 96, -1, -40, { len: 5, h: 1.0 }),
+      // The goal island: land on it.
+      pillar(108.5, 112.5, -4),
+      ground([[128, WALL], [132, WALL]], -40),
+    ],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 33, y: 3.3 }, { x: 66, y: 2.65 }, { x: 80, y: 0 }],
+  goal: { x: 110.5, y: -3 },
+  goalOnGround: true,
+  plan: [{ x: 25, speed: 10.5 }, { x: 62, speed: 10.25 }, { x: 96, speed: 11 }, { x: 110.5, speed: 1 }],
+}
+
+/**
+ * 9 · Avsatserna. Up a cliff in three jumps, each onto a ledge with a low roof hanging over its
+ * front: the arc has to slip in under the roof's edge and still clear the ledge's lip. Each
+ * ledge is short, so you land, set your speed and jump again almost at once.
+ */
+const avsatserna: PuzzleLevel = {
+  id: 'k9',
+  name: 'Avsatserna',
+  hint: 'Uppför i tre hopp, in under taken. För högt och du slår i huvudet.',
+  theme: 'frost',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], ...pillar(-12, 25, 0, -40, { len: 4, h: 1.6 }).slice(0, -1), [-14, -40]],
+      // Ledge 1, its roof over the landing.
+      pillar(31, 42, 2.5, -40, { len: 3, h: 1.4 }),
+      block(30, 5.6, 36, 8),
+      // Ledge 2.
+      pillar(47, 58, 4.8, -40, { len: 3, h: 1.4 }),
+      block(46, 7.9, 52, 10),
+      // The top, with the goal.
+      ground([[63.5, 7], [92, 7], [92, WALL], [96, WALL]], -40),
+      block(62.5, 10.1, 68.5, 12.5),
+    ],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 37, y: 3.5 }, { x: 53, y: 5.8 }, { x: 78, y: 8 }],
+  goal: { x: 86, y: 8 },
+  plan: [{ x: 25, speed: 10 }, { x: 42, speed: 12 }, { x: 58, speed: 12 }, { x: 86, speed: 6 }],
+}
+
+/** Level 10's long floor: flat, with rollers under the tunnel roof (x 94 to 112). */
+const masterFloor = (x: number) => -4 + (x > 94 && x < 112.5 ? 0.45 * Math.sin((Math.PI * (x - 94)) / 4.5) ** 2 : 0)
+
+/**
+ * 10 · Mästarprovet. Everything at once: the stepping stones, down to a loop with a gem at its
+ * top, a tunnel of rollers where you must ease off, then out over a kicker through a needle's
+ * eye (a gem between two rocks) and down onto the goal island.
+ */
+const mastarprovet: PuzzleLevel = {
+  id: 'k10',
+  name: 'Mästarprovet',
+  hint: 'Allt på en gång: stenar, loop, tunnel, nålsöga och ön.',
+  theme: 'stunt',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], ...pillar(-12, 20, 0, -40, { len: 4, h: 1.2 }).slice(0, -1), [-14, -40]],
+      pillar(27, 34, 0.5, -40, { len: 3, h: 1 }),
+      pillar(41, 49, -2, -40, { len: 3, h: 1 }),
+      // The long floor: landing, the loop, the tunnel and a kicker at its end.
+      [[55, -4], ...curve(55, 124, masterFloor).slice(1), ...kicker(124, -4, 4, 1.2).slice(1), [128, -40], [55, -40]],
+      roof(curve(94, 112.5, (x) => masterFloor(x) + 2.75), 4),
+      // The needle's eye after the kicker, then the goal island.
+      block(135.6, -0.27, 136.4, 14),
+      spike(135.6, 136.4, -3.07),
+      pillar(139, 143.3, -6.5),
+      ground([[162, WALL], [166, WALL]], -40),
+    ],
+    loops: [{ cx: 78, cy: -0.6, r: 3.4 }],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 78, y: 1.9 }, { x: 103, y: -3.1 }, { x: 136, y: -1.9 }],
+  goal: { x: 141.3, y: -5.5 },
+  goalOnGround: true,
+  plan: [{ x: 20, speed: 9.5 }, { x: 34, speed: 11 }, { x: 49, speed: 11 }, { x: 88, speed: 14 }, { x: 113, speed: 3.5 }, { x: 128, speed: 10 }, { x: 141.3, speed: 1 }],
+}
+
+const LEVELS_RAW: PuzzleLevel[] = [tvaVagar, stopp, lagtITak, gungan, loopenEllerGropen, trappan, fonstret, nalsogat, avsatserna, mastarprovet]
 
 export const LEVELS = LEVELS_RAW
 
