@@ -26,7 +26,7 @@ export function puzzleRun(level: PuzzleLevel, vehicle: VehicleSpec, assist = fal
     pickups: fixedPickups([]),
     bestDistance: 1e9,
     assist,
-    level: { geom: level.geom, start: level.start, gems: level.gems, goal: level.goal },
+    level: { geom: level.geom, start: level.start, gems: level.gems, goal: level.goal, goalOnGround: level.goalOnGround },
   })
 }
 

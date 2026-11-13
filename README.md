@@ -118,6 +118,16 @@ Each level opens when the one before is finished; the first time the family fini
   slower falls short, faster hits your helmet), a drop into a low cave for a gem, out over a
   pit, and a full-speed upward jump through a narrow window between two rocks.
 
+- **8 · Nålsögat** (tough): over the first two gaps a gem hangs in a narrow eye between a rock
+  above and a pointed rock below, placed on the measured arc of one speed (10-11 m/s, then
+  9.5-10.75 m/s): too fast and your helmet hits the top rock, too slow and you hit the bottom
+  one. Then land on a small island with the goal flag, which only counts once you have landed.
+- **9 · Avsatserna** (tough): up a cliff in three jumps, each onto a short ledge with a low roof
+  over its front; the first jump only works between about 9.75 and 10.75 m/s.
+- **10 · Mästarprovet** (hardest): the stepping stones, a loop with a gem at its top, a tunnel of
+  rollers (ease off: rushing it bangs your head), then a kicker through a needle's eye (about
+  10-10.25 m/s) down onto the goal island.
+
 Klurbanor show the speed in km/h under the gem counter, for learning what each jump needs, and
 after finishing one a **Nästa: …** button goes straight on to the next level.
 
@@ -128,7 +138,7 @@ ground below a point). Loops are the same physics loops as Stuntbanan's. Each le
 `plan` for a scripted driver (`src/game/klurbot.ts`); `tests/klurbanor.test.ts` drives every
 level to the goal with it, and checks that the wrong approach fails (too fast on level 1, too
 slow on level 2, rushing level 3, driving straight at the wall on level 4, and the speed windows
-of levels 6 and 7).
+of levels 6 to 10).
 
 ### The run
 

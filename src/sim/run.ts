@@ -111,7 +111,7 @@ export interface RunOptions {
    * A Klurbana: its solids, gems and goal. There is no fuel; every gem must be picked up, then
    * touching the goal flag finishes the run (timed). Falling out of the level ends it.
    */
-  level?: { geom: LevelGeom; start: { x: number; y: number }; gems: { x: number; y: number }[]; goal: { x: number; y: number } }
+  level?: { geom: LevelGeom; start: { x: number; y: number }; gems: { x: number; y: number }[]; goal: { x: number; y: number }; goalOnGround?: boolean }
 }
 
 const TAU = Math.PI * 2
@@ -323,6 +323,8 @@ export class Run {
       this.gemsLeft = this.gemsLeft.filter((x) => x !== g)
       this.events.push({ kind: 'gem', x: g.x, y: g.y, left: this.gemsLeft.length })
     }
+    // Some levels only count the flag once you have landed by it (not flying past it).
+    if (level.goalOnGround && !this.sim.vehicle.wheelContacts().some(Boolean)) return false
     return this.gemsLeft.length === 0 && near(level.goal, 1.4)
   }
 
