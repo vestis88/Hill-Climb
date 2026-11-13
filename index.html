@@ -202,6 +202,11 @@
         button.choice .price { font-size: 12px; }
         canvas.thumb { height: 30px; width: 64px; margin: 0; }
       }
+      /* Driving with the device turned to portrait: the page is turned back to landscape
+         (ui/landscape.ts), so the game stays put relative to the device. */
+      body.turned { position: fixed; top: 0; left: 0; width: var(--turn-w); height: var(--turn-h); overflow: hidden; transform-origin: 0 0; }
+      body.turn-cw { transform: translateX(var(--turn-h)) rotate(90deg); }
+      body.turn-ccw { transform: translateY(var(--turn-w)) rotate(-90deg); }
       #rotate {
         display: none; position: fixed; top: 0; left: 0; width: 100%; height: var(--app-h, 100dvh); z-index: 10;
         background: #1b2330; align-items: center; justify-content: center;

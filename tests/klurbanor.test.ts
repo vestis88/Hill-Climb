@@ -43,4 +43,25 @@ describe('Klurbanor', () => {
     const { run } = drivePlan(withPlan('k4', [{ x: 60, speed: 16 }]), 'runabout', 40)
     expect(run.status).not.toBe('finished')
   }, 60000)
+
+  it('6 · Trappan: the first jump only works between 9 and 10 m/s', () => {
+    const rest = puzzleLevel('k6')!.plan.slice(1)
+    for (const [speed, ok] of [[8.5, false], [9.5, true], [11, false]] as const) {
+      const { run } = drivePlan(withPlan('k6', [{ x: 20, speed }, ...rest]))
+      expect(run.status === 'finished', `${speed} m/s`).toBe(ok)
+    }
+  }, 60000)
+
+  it('7 · Fönstret: the jump under the rock only works between 11 and 12.5 m/s', () => {
+    const rest = puzzleLevel('k7')!.plan.slice(1)
+    for (const [speed, ok] of [[10.5, false], [12, true], [14, false]] as const) {
+      const { run } = drivePlan(withPlan('k7', [{ x: 30, speed }, ...rest]))
+      expect(run.status === 'finished', `${speed} m/s`).toBe(ok)
+    }
+  }, 60000)
+
+  it('7 · Fönstret: the window needs full speed; short of it you drop onto the lower rock', () => {
+    const plan = puzzleLevel('k7')!.plan.map((p) => (p.x === 101 ? { ...p, speed: 10 } : p))
+    expect(drivePlan(withPlan('k7', plan)).run.status).toBe('crashed')
+  }, 60000)
 })

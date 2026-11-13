@@ -1,3 +1,4 @@
+import { gameX } from '../ui/landscape'
 import type { Input } from '../sim/types'
 
 export interface InputController {
@@ -28,7 +29,9 @@ export function createInput(target: HTMLElement, swapped: () => boolean = () => 
 
   const down = (e: PointerEvent) => {
     e.preventDefault()
-    const rightHalf = e.clientX >= window.innerWidth / 2
+    // Along the game's own width (the page may be turned to stay landscape: ui/landscape.ts).
+    const g = gameX(e)
+    const rightHalf = g.x >= g.width / 2
     touches.set(e.pointerId, rightHalf !== swapped() ? 'gas' : 'brake')
     refresh()
   }

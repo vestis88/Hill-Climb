@@ -111,6 +111,15 @@ Each level opens when the one before is finished; the first time the family fini
 - **5 · Loopen eller gropen**: the fork again, but now you need both roads: the cave first
   (slowly), up the climb to the high road, round the loop (a gem at its top) and the jump to
   the goal island.
+- **6 · Trappan** (tough): stepping stones over a gorge, each at its own height and distance,
+  with only a few metres to change speed between jumps. The first jump only works between
+  9 and 10 m/s (about 33-36 km/h); land too far along a stone and there is no room for the next.
+- **7 · Fönstret** (tough): a jump under a hanging rock (only 11-12.5 m/s, about 40-45 km/h:
+  slower falls short, faster hits your helmet), a drop into a low cave for a gem, out over a
+  pit, and a full-speed upward jump through a narrow window between two rocks.
+
+Klurbanor show the speed in km/h under the gem counter, for learning what each jump needs, and
+after finishing one a **Nästa: …** button goes straight on to the next level.
 
 How it is built: levels are solid polygons (`src/data/klurbanor.ts`, with helpers for ground,
 roofs, ramps, kickers and arcs) rather than a height function, so they can have ledges,
@@ -118,7 +127,8 @@ overhangs, ceilings and tunnels (`src/sim/level.ts`: head crashes against the po
 ground below a point). Loops are the same physics loops as Stuntbanan's. Each level carries a
 `plan` for a scripted driver (`src/game/klurbot.ts`); `tests/klurbanor.test.ts` drives every
 level to the goal with it, and checks that the wrong approach fails (too fast on level 1, too
-slow on level 2, rushing level 3, driving straight at the wall on level 4).
+slow on level 2, rushing level 3, driving straight at the wall on level 4, and the speed windows
+of levels 6 and 7).
 
 ### The run
 
@@ -410,6 +420,14 @@ Trimning in test mode; settings are behind ⚙. Each sub-menu has ‹ Hem and it
 Every purchase (vehicle, track, upgrade level, part) asks first in a box showing the price and
 what is left after; its Köp button only works after a short moment, so a quick double tap
 never buys by mistake.
+
+### Landscape while driving
+
+The installed app asks for landscape, and during a run the browser is asked to lock it where it
+can (Android). iPhone and iPad do not let a web page lock rotation, so there, if the device is
+turned to portrait during a run, the game turns itself back (the page is rotated with CSS and
+touches are mapped to match), staying exactly as it was in the last landscape position
+(`src/ui/landscape.ts`). The menus are not locked: there the "turn the device" prompt shows.
 
 ### Pause, ghosts setting and updates
 

@@ -1,3 +1,4 @@
+import { currentTurn } from './landscape'
 /**
  * Keeps the CSS variable --app-h equal to the height the game should fill.
  *
@@ -30,8 +31,9 @@ function largeViewport(): number {
 }
 
 export function updateViewport(): void {
-  let h = Math.round(Math.max(window.innerHeight, window.visualViewport?.height ?? 0))
-  if (standalone()) {
+  // Turned to stay landscape while driving (ui/landscape.ts): the game is as tall as the screen is wide.
+  let h = currentTurn() ? window.innerWidth : Math.round(Math.max(window.innerHeight, window.visualViewport?.height ?? 0))
+  if (standalone() && !currentTurn()) {
     const lvh = largeViewport()
     if (lvh > h && lvh - h <= 90) h = lvh
   }
