@@ -42,9 +42,22 @@
         top: 0; left: 0;
         width: 100%; height: var(--app-h, 100dvh);
       }
-      /* Duel: two players at once, the top half and the bottom half of the screen. */
-      #game2 { display: block; position: fixed; z-index: 0; left: 0; width: 100%; top: calc(var(--app-h, 100dvh) / 2); height: calc(var(--app-h, 100dvh) / 2); }
-      body.duel #game { height: calc(var(--app-h, 100dvh) / 2); border-bottom: 3px solid #1d2433; box-sizing: border-box; }
+      /* Duel: two players at once. Side by side (landscape): player 1 left, player 2 right, for
+         sitting next to each other. Opposite (portrait): player 2 at the bottom and player 1 at
+         the top turned upside down, for sitting either side of the iPad. */
+      #game2 { display: block; position: fixed; z-index: 0; }
+      body.duel.beside #game { width: 50%; height: var(--app-h, 100dvh); border-right: 3px solid #1d2433; box-sizing: border-box; }
+      body.duel.beside #game2 { top: 0; left: 50%; width: 50%; height: var(--app-h, 100dvh); }
+      body.duel.opposite #game { height: calc(var(--app-h, 100dvh) / 2); transform: rotate(180deg); border-top: 3px solid #1d2433; box-sizing: border-box; }
+      body.duel.opposite #game2 { top: calc(var(--app-h, 100dvh) / 2); left: 0; width: 100%; height: calc(var(--app-h, 100dvh) / 2); }
+      #duelLayout {
+        position: fixed; z-index: 5; left: 50%; transform: translateX(-50%); top: max(12px, var(--safe-top));
+        border: 0; border-radius: 999px; padding: 8px 14px; background: rgba(16, 21, 28, 0.6); color: #fff;
+        font: 800 14px ui-rounded, system-ui, sans-serif;
+      }
+      body.duel.opposite #duelLayout { top: calc(var(--app-h, 100dvh) / 2 - 18px); }
+      #paused .duel-only { display: none; }
+      body.duel #paused .duel-only { display: inline-block; }
       #endRun {
         position: fixed; z-index: 5;
         top: max(12px, var(--safe-top)); right: max(12px, var(--safe-right));
@@ -438,10 +451,11 @@
     <canvas id="game2" class="hidden"></canvas>
     <button id="pauseBtn" class="hidden" aria-label="Paus">❚❚</button>
     <button id="restart" class="hidden" aria-label="Börja om">↻</button>
+    <button id="duelLayout" class="hidden"></button>
     <button id="endRun" class="hidden">Avsluta</button>
     <button id="horn" class="hidden" aria-label="Tuta">TUT</button>
     <button id="boost" class="hidden" aria-label="Raketer">BOOST</button>
-    <div id="paused" class="screen hidden"><h2>Paus</h2><div class="actions"><button class="big blue" data-act="end">Avsluta åket</button><button class="big" data-act="resume">Fortsätt</button></div></div>
+    <div id="paused" class="screen hidden"><h2>Paus</h2><div class="actions"><button class="big blue" data-act="end">Avsluta åket</button><button class="big" data-act="resume">Fortsätt</button></div><button class="small duel-only" data-act="layout"></button></div>
     <div id="replayBar" class="hidden"><span></span><button class="small" data-act="back">Tillbaka</button></div>
     <button id="update" class="hidden">Ny version finns · tryck för att uppdatera</button>
     <div id="garage" class="screen hidden"></div>

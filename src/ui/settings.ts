@@ -10,12 +10,14 @@ export interface Settings {
   help: string[]
   /** Background music on or off. */
   music: boolean
+  /** Duel: side by side (landscape, left and right) or opposite each other (portrait, top and bottom). */
+  duelLayout: 'beside' | 'opposite'
 }
 
 const KEY = 'ridgeline.settings'
 
 export function loadSettings(): Settings {
-  const defaults: Settings = { sound: true, volume: 0.7, swapPedals: false, ghosts: 'all', help: [], music: true }
+  const defaults: Settings = { sound: true, volume: 0.7, swapPedals: false, ghosts: 'all', help: [], music: true, duelLayout: 'beside' }
   try {
     const raw = localStorage.getItem(KEY)
     return raw ? { ...defaults, ...JSON.parse(raw) } : defaults
@@ -72,6 +74,7 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
         ${syncRows(cloud, joining, joinError)}
         <div><span>Spöken</span><span class="seg"><button data-ghosts="all" class="${s.ghosts === 'all' ? 'on' : ''}">Alla</button><button data-ghosts="records" class="${s.ghosts === 'records' ? 'on' : ''}">Bara rekord</button><button data-ghosts="off" class="${s.ghosts === 'off' ? 'on' : ''}">Av</button></span></div>
         <div><span>Hjälp<br><small style="opacity:.7">Mer bränsle, snällare start och välter inte lika lätt</small></span><span class="seg">${PLAYERS.map((p) => `<button data-help="${p.name}" class="${s.help.includes(p.name) ? 'on' : ''}">${p.name}</button>`).join('')}</span></div>
+        <div><span>Duell<br><small style="opacity:.7">Bredvid: vänster och höger halva. Mot varandra: iPaden står på höjden mellan er</small></span><span class="seg"><button data-duel="beside" class="${s.duelLayout === 'opposite' ? '' : 'on'}">Bredvid varandra</button><button data-duel="opposite" class="${s.duelLayout === 'opposite' ? 'on' : ''}">Mot varandra</button></span></div>
         <div><span>Pedaler</span><span class="seg"><button data-pedals="normal" class="${s.swapPedals ? '' : 'on'}">Broms vänster</button><button data-pedals="swap" class="${s.swapPedals ? 'on' : ''}">Gas vänster</button></span></div>
       </div>
       <div class="screeninfo">${screenInfo()}</div>
@@ -97,6 +100,7 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
     if (b.dataset.sound) s.sound = b.dataset.sound === 'on'
     else if (b.dataset.pedals) s.swapPedals = b.dataset.pedals === 'swap'
     else if (b.dataset.music) s.music = b.dataset.music === 'on'
+    else if (b.dataset.duel) s.duelLayout = b.dataset.duel as Settings['duelLayout']
     else if (b.dataset.ghosts) s.ghosts = b.dataset.ghosts as Settings['ghosts']
     else if (b.dataset.help) {
       const n = b.dataset.help

@@ -1,4 +1,4 @@
-import { gameX } from '../ui/landscape'
+import { localX } from '../ui/landscape'
 import type { Input } from '../sim/types'
 
 export interface InputController {
@@ -8,7 +8,7 @@ export interface InputController {
 }
 
 /**
- * Two-pedal input. Touch: left half of the screen is brake, right half is gas,
+ * Two-pedal input. Touch: left half of the target (the game's canvas) is brake, right half is gas,
  * and both can be held at once. Keyboard: arrow keys or A/D.
  */
 export function createInput(target: HTMLElement, swapped: () => boolean = () => false): InputController {
@@ -29,8 +29,9 @@ export function createInput(target: HTMLElement, swapped: () => boolean = () => 
 
   const down = (e: PointerEvent) => {
     e.preventDefault()
-    // Along the game's own width (the page may be turned to stay landscape: ui/landscape.ts).
-    const g = gameX(e)
+    // Across this game's own canvas: its left half brakes, its right half is gas (the page or the
+    // canvas may be turned: ui/landscape.ts; in a duel each player has their own canvas).
+    const g = localX(e, target)
     const rightHalf = g.x >= g.width / 2
     touches.set(e.pointerId, rightHalf !== swapped() ? 'gas' : 'brake')
     refresh()
