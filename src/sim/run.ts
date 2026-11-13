@@ -111,7 +111,7 @@ export interface RunOptions {
    * A Klurbana: its solids, gems and goal. There is no fuel; every gem must be picked up, then
    * touching the goal flag finishes the run (timed). Falling out of the level ends it.
    */
-  level?: { geom: LevelGeom; start: { x: number; y: number }; gems: { x: number; y: number }[]; goal: { x: number; y: number }; goalOnGround?: boolean }
+  level?: { geom: LevelGeom; start: { x: number; y: number }; gems: { x: number; y: number }[]; goal: { x: number; y: number }; goalOnGround?: boolean; goalStill?: boolean }
 }
 
 const TAU = Math.PI * 2
@@ -325,9 +325,13 @@ export class Run {
       if (!near(g, 1.3)) continue
       this.gemsLeft = this.gemsLeft.filter((x) => x !== g)
       this.events.push({ kind: 'gem', x: g.x, y: g.y, left: this.gemsLeft.length })
+      // A key gem opens its doors.
+      const index = level.gems.findIndex((q) => q.x === g.x && q.y === g.y)
+      level.geom.doors?.forEach((d, i) => d.key === index && this.sim.openDoor(i))
     }
     // Some levels only count the flag once you have landed by it (not flying past it).
     if (level.goalOnGround && !this.sim.vehicle.wheelContacts().some(Boolean)) return false
+    if (level.goalStill && Math.abs(s.speed) > 1) return false
     return this.gemsLeft.length === 0 && near(level.goal, 1.4)
   }
 
@@ -365,9 +369,26 @@ export class Run {
     }
   }
 
+  /** Klurbanor: the closed doors and the crumbling planks where they are now (the head hits them too). */
+  private solidPieces(): [number, number][][] {
+    const geom = this.options.level?.geom
+    if (!geom?.doors && !geom?.crumbles) return []
+    const p = this.sim.pieces()
+    const out: [number, number][][] = (geom.doors ?? []).filter((_, i) => p.doors[i]).map((d) => d.poly)
+    geom.crumbles?.forEach((c, i) => {
+      const q = p.crumbles[i]
+      if (!q) return
+      const hw = (c.x1 - c.x0) / 2
+      const cos = Math.cos(q.angle)
+      const sin = Math.sin(q.angle)
+      out.push(([[-hw, 0.225], [hw, 0.225], [hw, -0.225], [-hw, -0.225]] as const).map(([lx, ly]) => [q.x + lx * cos - ly * sin, q.y + lx * sin + ly * cos]))
+    })
+    return out
+  }
+
   headOnGround(): boolean {
     const head = this.sim.vehicle.headPosition()
-    if (this.options.level) return circleHits(this.options.level.geom, head.x, head.y, this.options.vehicle.driver.headRadius)
+    if (this.options.level) return circleHits(this.options.level.geom, head.x, head.y, this.options.vehicle.driver.headRadius, this.solidPieces())
     return head.y - this.options.vehicle.driver.headRadius < this.options.height(head.x)
   }
 

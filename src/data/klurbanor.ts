@@ -1,8 +1,11 @@
-import { GENERATED } from './klurbanor-gen'
 import type { LevelGeom, Pt } from '../sim/level'
 
 /**
  * Klurbanor (puzzle tracks): hand-made levels where the route matters more than top speed.
+ * (Levels 13 on have ids n13... : k13 to k42 were earlier generated levels, so old records and
+ * "done" marks for those ids do not carry over.)
+ * From 13 on they use special pieces too (sim/level.ts): trampolines, speed strips, ice, doors
+ * opened by a key gem, and planks that crumble after you touch them.
  * Pick up every gem, then touch the goal flag; the time counts. Speed decides the route:
  * too fast and a loop or a kicker throws you onto the wrong path (or into a pit); too slow and
  * a gap or a climb stops you. Each level is proven to be completable by a scripted driver in
@@ -22,15 +25,18 @@ export interface PuzzleLevel {
   goal: { x: number; y: number }
   /** The goal only counts with a wheel on the ground (landing on it, not flying past). */
   goalOnGround?: boolean
+  /** The goal only counts once you have stopped by it (under 1 m/s). */
+  goalStill?: boolean
   /** Look: an existing map's theme. */
   theme: string
   /**
    * The scripted driver's route (tests): in order, drive towards `x` at `speed` m/s (negative
    * to reverse) until the vehicle passes it; `air` keeps the nose at that angle when airborne;
    * `pump` rocks back and forth (gas going forwards, brake to roll back) for up to that many
-   * seconds while trying to get past x.
+   * seconds while trying to get past x; `coast` touches neither pedal (on the ground); `below`
+   * also ends the step once the vehicle has dropped below that height.
    */
-  plan: { x: number; speed: number; air?: number; pump?: number }[]
+  plan: { x: number; speed: number; air?: number; pump?: number; coast?: boolean; below?: number }[]
 }
 
 /** A surface from left to right, filled down to `bottom`. */
@@ -452,9 +458,333 @@ const dubbelloopen: PuzzleLevel = {
   plan: [{ x: 70, speed: 14 }, { x: 74, speed: 11 }, { x: 89, speed: 0.5 }],
 }
 
-const LEVELS_RAW: PuzzleLevel[] = [tvaVagar, stopp, lagtITak, gungan, loopenEllerGropen, trappan, fonstret, nalsogat, avsatserna, mastarprovet, gungbradan, dubbelloopen]
+/**
+ * 13 · Studsmattan. Trampolines throw you straight up; how far you go sideways is the speed you
+ * bring. The first lifts you onto a ledge. The second is a small one down a deep pit:
+ * come off the ledge too slowly and you drop past it, too fast and you fly over it, and
+ * you need enough to clear the far wall after the bounce. The last one sends you up to the goal on a high perch.
+ */
+const studsmattan: PuzzleLevel = {
+  id: 'n13',
+  name: 'Studsmattan',
+  hint: 'Studsmattan kastar dig rakt upp. Farten du har med dig avgör var du landar.',
+  theme: 'meadow',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [20, 0], [20, -6], [30, -6], [30, 4], [50, 4], [50, -40], [-14, -40]],
+      // Down in the second pit: the trampoline, with nothing either side of it.
+      pillar(56, 62, -8),
+      [[66, -40], [66, 2], [99, 2], [99, WALL], [103, WALL], [103, -40]],
+      // The perch with the goal, high over the last trampoline.
+      block(92, 11, 96, 12),
+    ],
+    pads: [
+      { kind: 'bounce', x0: 21, x1: 29, y: -6, power: 16 },
+      { kind: 'bounce', x0: 56.2, x1: 61.8, y: -8, power: 16 },
+      { kind: 'bounce', x0: 84, x1: 88, y: 2, power: 16 },
+    ],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 25, y: 5 }, { x: 65.5, y: 5 }, { x: 87, y: 13 }],
+  goal: { x: 94, y: 13 },
+  goalOnGround: true,
+  plan: [{ x: 20, speed: 4 }, { x: 30, speed: 4 }, { x: 50, speed: 5.5 }, { x: 89, speed: 4.75 }, { x: 94, speed: 0.5 }],
+}
 
-/** The hand-made levels, then the generated ones (scripts/levelgen.sim.ts), in order of difficulty. */
-export const LEVELS = [...LEVELS_RAW, ...GENERATED]
+/**
+ * 14 · Nyckeln. Doors open when you take the gem of their colour. The yellow key is behind you:
+ * back up the slope onto the ledge, gently, or you fly off its far end. Through the yellow door,
+ * a trampoline lifts you onto a shelf with the blue key; back off the shelf and drive under it
+ * to the blue door.
+ */
+const nyckeln: PuzzleLevel = {
+  id: 'n14',
+  name: 'Nyckeln',
+  hint: 'Dörrarna öppnas av stenen i samma färg. Ibland ligger den bakom dig.',
+  theme: 'woods',
+  geom: {
+    bottom: -30,
+    polygons: [
+      // The ledge behind the start (a ramp up to it), with a pit beyond it.
+      [[-30, -40], [-30, 4], [-22, 4], ...ramp(-22, 4, -8, 0).slice(1), [50, 0], [50, -40]],
+      [[-44, WALL], [-40, WALL], [-40, -40], [-44, -40]],
+      // The tunnel with the yellow door, then the shelf, then the wall with the blue door.
+      block(16, 3, 40, WALL),
+      block(64, 4, 80, 6),
+      [[50, -40], [50, 0], [110, 0], [110, WALL], [114, WALL], [114, -40]],
+      block(80, 2.8, 90, WALL),
+    ],
+    pads: [{ kind: 'bounce', x0: 50, x1: 55, y: 0, power: 15 }],
+    doors: [{ poly: block(27, 0, 28, 3), key: 0 }, { poly: block(84, 0, 85, 2.8), key: 1 }],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: -26, y: 5 }, { x: 72, y: 7 }, { x: 54, y: 12 }],
+  goal: { x: 100, y: 1 },
+  plan: [{ x: -26, speed: -3 }, { x: 45, speed: 7 }, { x: 73, speed: 7 }, { x: 61, speed: -2 }, { x: 100, speed: 5 }],
+}
+
+/**
+ * 15 · Isbanan. On ice there is no grip: you cannot speed up or brake, so the speed you take
+ * onto it is the speed you have. Off the edge and down an icy valley, then up and over a pit:
+ * too slow and you fall short, too fast and you fly off the edge into the rock hanging over the
+ * slope. Choose the speed before the ice. Then, on the grit, the speed for an
+ * icy hump with the goal on a little patch of gravel at its very top, where you must stop:
+ * too slow and you slide back, too fast and you slide over it and down the far side.
+ */
+const isbanan: PuzzleLevel = {
+  id: 'n15',
+  name: 'Isbanan',
+  hint: 'Ingen fart att vinna eller bromsa på isen. Bestäm farten innan.',
+  theme: 'frost',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 4], [20, 4], [20, -40], [-14, -40]],
+      // The landing: a stretch of grit before the ice hump.
+      [[73, -40], [73, -4], [94, -4], [94, -40]],
+      // The gravel patch on top of the hump, with the goal.
+      [[108, -40], [108, 1], [112, 1], [112, -40]],
+      // The rock over the jump.
+      block(29, 3, 33, 14),
+    ],
+    ice: [
+      [[20, 4], ...ramp(20, 4, 40, -6).slice(1), [48, -6], [52, -5.6], [67, -1.5], [67, -40], [20, -40]],
+      [[94, -4], ...ramp(94, -4, 108, 1).slice(1), [108, -40], [94, -40]],
+      [[112, 1], ...ramp(112, 1, 126, -8).slice(1), [126, -40], [112, -40]],
+    ],
+  },
+  start: { x: 0, y: 4 },
+  gems: [{ x: 45, y: -5 }, { x: 70, y: 0 }, { x: 101, y: -0.5 }],
+  goal: { x: 110, y: 2 },
+  goalStill: true,
+  plan: [{ x: 20, speed: 8 }, { x: 73, speed: 6, coast: true }, { x: 94, speed: 11 }, { x: 108, speed: 9, coast: true }, { x: 110, speed: 0 }],
+}
+
+/** Crumbling planks side by side from x0, each `w` long. */
+function planks(x0: number, n: number, y: number, delay: number, w = 4): { x0: number; x1: number; y: number; delay: number }[] {
+  return Array.from({ length: n }, (_, i) => ({ x0: x0 + i * w, x1: x0 + (i + 1) * w, y, delay }))
+}
+
+/**
+ * 16 · Rasbron. Wooden planks fall a moment after you first touch them. Across the first bridge
+ * without stopping. The second bridge holds a little longer: the gem is on the floor beneath
+ * it, so stop on it and ride a plank down. Down there a trampoline throws you back up, and the
+ * last bridge falls fast: full speed all the way to the goal.
+ */
+const rasbron: PuzzleLevel = {
+  id: 'n16',
+  name: 'Rasbron',
+  hint: 'Plankorna rasar strax efter att du kört på dem. Ibland vill du att de rasar.',
+  theme: 'canyon',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [20, 0], [20, -40], [-14, -40]],
+      // Between the first and second bridge; under the second, the lower floor.
+      [[44, -40], [44, 0], [60, 0], [60, -8], [101, -8], [101, 0], [114, 0], [114, -40]],
+      // Past the second bridge, on top: a short ledge, and a pit before the trampoline's ledge.
+      block(80, -2, 88, 0),
+      // After the last bridge: the goal and an end wall.
+      ground([[142, 0], [164, 0], [164, WALL], [168, WALL]], -40),
+    ],
+    crumbles: [...planks(20, 6, 0, 0.45), ...planks(60, 5, 0, 1.2), ...planks(114, 7, 0, 0.3)],
+    pads: [{ kind: 'bounce', x0: 94, x1: 99, y: -8, power: 15 }],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 32, y: 1.5 }, { x: 72, y: -7 }, { x: 128, y: 1.5 }],
+  goal: { x: 150, y: 1 },
+  plan: [{ x: 20, speed: 10 }, { x: 44, speed: 10 }, { x: 64, speed: 3 }, { x: 999, speed: 0, below: -5 }, { x: 110, speed: 5 }, { x: 150, speed: 14 }],
+}
+
+/**
+ * 17 · Turbo. Yellow strips throw you up to their speed. The first one is far too fast for the
+ * needle's eye over the canyon: brake down to the right speed on the short runway after it.
+ * The second gets you round the big loop. The last lies just before a cliff with the goal at
+ * its edge: hit it and you can never stop in time, so hop over it off the little kicker and stop
+ * by the flag.
+ */
+const turbo: PuzzleLevel = {
+  id: 'n17',
+  name: 'Turbo',
+  hint: 'Gula remsor ger fart. För mycket fart är också ett problem.',
+  theme: 'stunt',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [30, 0], ...kicker(30, 0, 4, 1.2).slice(1), [34, -40], [-14, -40]],
+      // The needle's eye over the canyon.
+      block(45.6, 6.1, 46.4, 14),
+      spike(45.6, 46.4, 3.45),
+      // The far side: the loop, then the hop over the last strip, and the cliff.
+      [[58, -40], [58, -4], [144, -4], ...kicker(144, -4, 4, 0.9).slice(1), [148, -3.1], [148, -4], [170, -4], [170, -40]],
+    ],
+    loops: [{ cx: 120, cy: 1, r: 5 }],
+    pads: [
+      { kind: 'boost', x0: 10, x1: 18, y: 0, power: 20 },
+      { kind: 'boost', x0: 98, x1: 106, y: -4, power: 18 },
+      { kind: 'boost', x0: 150, x1: 156, y: -4, power: 22 },
+    ],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 46, y: 4.55 }, { x: 120, y: 4.6 }, { x: 160, y: -3 }],
+  goal: { x: 165, y: -3 },
+  goalStill: true,
+  plan: [{ x: 18, speed: 20 }, { x: 34, speed: 16.25 }, { x: 98, speed: 8 }, { x: 130, speed: 20 }, { x: 148, speed: 11 }, { x: 163.8, speed: 3 }, { x: 999, speed: 0 }],
+}
+
+/**
+ * 18 · Gruvan. The door ahead needs the yellow key, deep in the mine below. Drop through the
+ * hole, back all the way through the mine to the key and on to the trampoline at its far end:
+ * backwards, it throws you up onto the ledge behind. From there, forwards: off the ledge's
+ * kicker onto the mine roof, over the hole this time, and through the door.
+ */
+const gruvan: PuzzleLevel = {
+  id: 'n18',
+  name: 'Gruvan',
+  hint: 'Nyckeln ligger nere i gruvan. Hitta vägen upp igen.',
+  theme: 'canyon',
+  geom: {
+    bottom: -30,
+    polygons: [
+      // The ledge at the top left (a kicker at its edge), the mine floor below.
+      [[-48, WALL], [-44, WALL], [-44, -2], [-30, -2], ...kicker(-30, -2, 4, 0.8).slice(1), [-26, -40], [-48, -40]],
+      [[-26, -40], [-26, -13], [42, -13], [42, -40]],
+      // The mine roof you start on, with a kicker over the hole at its end.
+      [[-16, -4], [32, -4], ...kicker(32, -4, 4, 0.8).slice(1), [36, -5], [-16, -5]],
+      // Past the hole: the tunnel with the door, and the goal.
+      [[42, -40], [42, -4], [100, -4], [100, WALL], [104, WALL], [104, -40]],
+      block(52, -1, 70, WALL),
+    ],
+    pads: [{ kind: 'bounce', x0: -24, x1: -19, y: -13, power: 16 }],
+    doors: [{ poly: block(60, -4, 61, -1), key: 0 }],
+  },
+  start: { x: 10, y: -4 },
+  gems: [{ x: 20, y: -12 }, { x: -38, y: -1 }, { x: 39, y: -2 }],
+  goal: { x: 90, y: -3 },
+  plan: [{ x: 37, speed: 3 }, { x: -40, speed: -5 }, { x: 90, speed: 10 }],
+}
+
+/**
+ * 19 · Raset. Down through two floors of crumbling planks, standing on the one that will carry
+ * you down. On the top floor there is nothing beneath the first planks and they fall fast: rush
+ * over them and stop further on. On the next floor it is the other way round: only the first
+ * planks have a floor beneath them, so creep on and stop at once. At the bottom, the goal is
+ * back the way you came.
+ */
+const raset: PuzzleLevel = {
+  id: 'n19',
+  name: 'Raset',
+  hint: 'Stanna på rätt planka, så tar den dig ner en våning.',
+  theme: 'woods',
+  geom: {
+    bottom: -45,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [20, 0], [20, -60], [-14, -60]],
+      // The middle floor, a slab under the top floor's last planks.
+      block(36, -9, 56, -8),
+      // The bottom floor, under the middle floor and its first plank.
+      [[36, -60], [36, -16], [60, -16], [60, -60]],
+      [[32, -60], [32, -9], [36, -9], [36, -60]],
+      // A wall at the end of the top planks.
+      block(44, 0, 47, WALL),
+    ],
+    crumbles: [...planks(20, 6, 0, 0.45), ...planks(56, 6, -8, 0.5)],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 28, y: 1.5 }, { x: 48, y: -7 }, { x: 57, y: -7 }, { x: 50, y: -15 }],
+  goal: { x: 40, y: -15 },
+  plan: [{ x: 36, speed: 13 }, { x: 999, speed: 0, below: -4 }, { x: 55, speed: 4 }, { x: 999, speed: 0, below: -12 }, { x: 40, speed: -4 }],
+}
+
+/** Level 20's hills: [start x, height] of each; icy up, grit down. */
+const HILLS: [number, number][] = [[20, 3], [52, 5.5], [86, 3.5], [118, 6]]
+const hillDown = (x: number, h: number) => ramp(x + 14, h, x + 24, 0)
+/** Each hill's icy front: curving up like a kicker (in three straight pieces), steepest at the top. */
+const hillFace = (x: number, h: number): Pt[] => [[x, 0], [x + 6, 0.25 * h], [x + 9, 0.5625 * h], [x + 12, h]]
+
+/**
+ * 20 · Berg-och-dal. Hills with icy fronts: you cannot speed up on the way up, so you must reach
+ * each one with the right speed from the grit in the valley before it. Too slow and you slide
+ * back down; too fast and you fly off the top into the rock hanging over it. Every hill is a
+ * different height.
+ */
+const bergOchDal: PuzzleLevel = {
+  id: 'n20',
+  name: 'Berg-och-dal',
+  hint: 'Isen uppför ger ingen fart. Ta rätt fart i dalen före varje backe.',
+  theme: 'frost',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], ...HILLS.flatMap(([x, h]): Pt[] => [...hillFace(x, h), [x + 14, h], ...hillDown(x, h)]), [164, 0], [164, WALL], [168, WALL], [164, -40], [-14, -40]],
+      // A rock over each top.
+      ...HILLS.map(([x, h]) => block(x + 11, h + 2.6, x + 19, h + 12)),
+    ],
+    // Ice up each front.
+    pads: HILLS.flatMap(([x, h]) => {
+      const f = hillFace(x, h)
+      return [0, 1, 2].map((i) => {
+        const [x0, y0] = f[i]
+        const [x1, y1] = f[i + 1]
+        const k = (y1 - y0) / (x1 - x0)
+        return { kind: 'ice' as const, x0: x0 + 0.3, x1: x1 - 0.3, y: y0 + 0.3 * k, y1: y1 - 0.3 * k }
+      })
+    }),
+  },
+  start: { x: 0, y: 0 },
+  gems: HILLS.map(([x, h]) => ({ x: x + 13, y: h + 1.5 })),
+  goal: { x: 150, y: 1 },
+  plan: [{ x: 20, speed: 10 }, { x: 52, speed: 14 }, { x: 86, speed: 10 }, { x: 118, speed: 16 }, { x: 154, speed: 5 }],
+}
+
+/**
+ * 21 · Mästarverket. Everything new at once: the speed strip and a needle's eye over the
+ * canyon, landing on a bridge that crumbles behind you, an icy hump with a rock over its top,
+ * a trampoline up to the yellow key, the yellow door, and last an icy slope down to a little
+ * patch of gravel at the cliff edge, where you have to stop by the flag.
+ */
+const mastarverket: PuzzleLevel = {
+  id: 'n21',
+  name: 'Mästarverket',
+  hint: 'Allt på en gång. Lycka till!',
+  theme: 'crater',
+  geom: {
+    bottom: -40,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [30, 0], ...kicker(30, 0, 4, 1.2).slice(1), [34, -60], [-14, -60]],
+      block(45.6, 6.1, 46.4, 14),
+      spike(45.6, 46.4, 3.45, -60),
+      // After the crumbling bridge: grit, the icy hump (a rock over its top), grit down, the
+      // trampoline, the door, and the icy slope down to the gravel patch at the cliff edge.
+      [[82, -60], [82, -4], [96, -4], [102, -3], [105, -1.75], [108, 0], [110, 0], ...ramp(110, 0, 120, -4).slice(1), [176, -4], [188, -8], [194, -8], [194, -60]],
+      block(107, 2.6, 115, 12),
+      // The high ledge with the key, over the trampoline's right.
+      block(136, 6.5, 150, 8),
+      // The yellow door's frame: a wall with a gap at the bottom.
+      block(158, -1, 161, WALL),
+    ],
+    pads: [
+      { kind: 'boost', x0: 10, x1: 18, y: 0, power: 20 },
+      { kind: 'ice', x0: 96.3, x1: 101.7, y: -3.95, y1: -3.05 },
+      { kind: 'ice', x0: 102.3, x1: 104.7, y: -2.88, y1: -1.88 },
+      { kind: 'ice', x0: 105.3, x1: 107.7, y: -1.57, y1: -0.18 },
+      { kind: 'bounce', x0: 128, x1: 132, y: -4, power: 16 },
+      { kind: 'ice', x0: 176.3, x1: 187.7, y: -4.1, y1: -7.9 },
+    ],
+    doors: [{ poly: block(159, -4, 160, -1), key: 2 }],
+    crumbles: planks(58, 6, -4, 0.6),
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 46, y: 4.55 }, { x: 109, y: 1.5 }, { x: 142, y: 9 }],
+  goal: { x: 191.5, y: -7 },
+  goalStill: true,
+  plan: [{ x: 18, speed: 20 }, { x: 34, speed: 16.25 }, { x: 96, speed: 12 }, { x: 128, speed: 5 }, { x: 150, speed: 4 }, { x: 176, speed: 2 }, { x: 188, speed: 2, coast: true }, { x: 999, speed: 0 }],
+}
+
+const LEVELS_RAW: PuzzleLevel[] = [tvaVagar, stopp, lagtITak, gungan, loopenEllerGropen, trappan, fonstret, nalsogat, avsatserna, mastarprovet, gungbradan, dubbelloopen, studsmattan, nyckeln, isbanan, rasbron, turbo, gruvan, raset, bergOchDal, mastarverket]
+
+/** Every Klurbana, in order (each one opens when the one before is done). */
+export const LEVELS: PuzzleLevel[] = [...LEVELS_RAW]
 
 export const puzzleLevel = (id: string) => LEVELS.find((l) => l.id === id)

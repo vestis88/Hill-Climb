@@ -136,15 +136,43 @@ Each level opens when the one before is finished; the first time the family fini
   shelf at a cliff edge with the goal flag (counts once landed): lose speed before the kicker
   and you drop into the pit.
 
-- **13-42** (generated, easiest first): made by `npm run levelgen` (`scripts/levelgen.sim.ts`)
-  from tested modules: jumps (air gems on the arc), jumps under a rock, needle's eyes, loops,
-  roller tunnels, seesaw gaps and ledges with roofs, ending in a jump onto a goal island. Each
-  module is driven on its own at a range of speeds to measure its speed window, and drawn again
-  until the window suits the level's difficulty (wide early on, about 1 m/s at the end); rocks,
-  eyes and air gems sit on the arc measured at the chosen speed. Every level is then driven
-  start to finish (exactly the rounded data that is saved) before it is kept, levels grow from
-  3 modules to 7, and they are sorted by measured difficulty. `tests/klurbanor-gen.test.ts`
-  drives each one to the goal; after a physics change, regenerate.
+From 13 on, each level is built around a new piece (drawn so you can tell them apart):
+
+- **Studsmatta** (red and white, on springs): throws you straight up at a set speed; how far you
+  go sideways is the speed you bring.
+- **Fartremsa** (yellow, arrows): speeds you up to its speed (some push backwards).
+- **Is** (pale blue): no grip, so you can neither speed up nor brake on it.
+- **Dörr och nyckel**: a door opens when you take the gem of its colour.
+- **Rasplanka** (wood): falls a moment after a wheel first touches it, and breaks up soon after.
+- Some flags only count once you have **stopped** by them.
+
+The levels:
+
+- **13 · Studsmattan**: three trampolines: onto a ledge, out of a deep pit (about 3.5-7 m/s
+  off the ledge before it), and up to the goal on a high perch (4-5.5 m/s).
+- **14 · Nyckeln**: the yellow key is behind you: back up the slope onto its ledge (gently, or
+  you fly off the far end). Through the yellow door, a trampoline to a shelf with the blue key
+  (7-8 m/s), back off the shelf, and under it to the blue door.
+- **15 · Isbanan**: choose the speed before the ice: off the edge and down an icy valley and
+  over a pit (too fast hits the rock over the slope). Then an icy hump with the goal on a patch
+  of gravel at its top, where you must stop: only 10.5-11.5 m/s gets you there and no further.
+- **16 · Rasbron**: across the first crumbling bridge without stopping (10 m/s or more). The
+  gem is under the second: stop on it and ride a plank down. A trampoline back up, and the last
+  bridge falls fast (12 m/s or more).
+- **17 · Turbo**: the strip throws you to 20 m/s; brake to 16-16.5 for the needle's eye over the
+  canyon. A strip round the big loop. The last strip lies before a cliff with the goal at its
+  edge: hop over it off the kicker (9-11 m/s) and stop by the flag.
+- **18 · Gruvan**: the key is down in the mine. Drop through the hole, back through the mine to
+  the key and onto the trampoline, which throws you (backwards) up to the ledge; then forwards
+  off the ledge onto the mine roof, over the hole and through the door.
+- **19 · Raset**: two floors of crumbling planks. On the top floor only the far planks have a
+  floor under them: rush (8 m/s or more). On the next, only the first plank does: creep on and
+  stop. At the bottom, the goal is back the way you came.
+- **20 · Berg-och-dal**: four hills with icy fronts shaped like kickers and a rock over each top:
+  the low hills need 9-11 m/s (faster flies into the rock), the tall ones full speed.
+- **21 · Mästarverket**: everything at once: strip and needle's eye, crumbling bridge, icy
+  hump, trampoline to the key, the door, and an icy slope to a little gravel patch at the cliff
+  edge (roll onto the ice at 2 m/s or less, then stop by the flag).
 
 Klurbanor show the speed in km/h under the gem counter, for learning what each jump needs, and
 after finishing one a **Nästa: …** button goes straight on to the next level.
@@ -156,7 +184,10 @@ ground below a point). Loops are the same physics loops as Stuntbanan's. Each le
 `plan` for a scripted driver (`src/game/klurbot.ts`); `tests/klurbanor.test.ts` drives every
 level to the goal with it, and checks that the wrong approach fails (too fast on level 1, too
 slow on level 2, rushing level 3, driving straight at the wall on level 4, and the speed windows
-of levels 6 to 12).
+and wrong routes of levels 6 to 21). The special pieces are in `src/sim/level.ts` (pads, doors,
+crumbles, ice) and `src/sim/world.ts` (`levelPieces`, `openDoor`); the run opens a door when its
+key gem is taken. The plan can also `coast`, and wait to drop `below` a height (riding a plank
+down).
 
 ### The run
 
