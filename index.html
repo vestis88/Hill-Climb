@@ -178,6 +178,11 @@
       .sync .join { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
       .sync input { width: 150px; padding: 8px; border-radius: 10px; border: 0; font: 700 15px ui-monospace, monospace; text-transform: uppercase; }
       .sync .err { color: #ff8a8a; width: 100%; text-align: right; }
+      .sync input[data-act="devname"] { width: 140px; padding: 4px 8px; font: 600 14px system-ui, sans-serif; text-transform: none; margin-top: 4px; }
+      .backups { display: flex; flex-direction: column; gap: 6px; padding: 0 0 8px; }
+      .backup { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: rgba(255,255,255,.07); border-radius: 12px; padding: 8px 12px; }
+      .backup.mine { outline: 1px solid rgba(255,210,63,.5); }
+      .backup small { opacity: .75; }
       /* Maps in rows of three (six maps: two even rows). */
       .choices.envs, .choices.vehicles { grid-template-columns: repeat(3, 1fr); }
       .choices.daily { grid-template-columns: repeat(2, 1fr); }

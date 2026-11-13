@@ -35,34 +35,63 @@ export function saveSettings(s: Settings): void {
 }
 
 import { setTestMode, tuningEnabled } from './tuning'
-import { showCode, type CloudSync } from '../save/cloud'
+import { showCode } from '../save/cloud'
+import type { BackupEntry, CloudBackup } from '../save/backup'
 import { screenInfo } from './viewport'
 import { PLAYERS } from '../data/players'
 
-const when = (t: number | null) => (t ? new Date(t).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }) : '')
-
-/** The "Sync between devices" rows: off, start or join, or the family code and status. */
-function syncRows(cloud: CloudSync | undefined, joining: boolean, joinError: boolean): string {
-  if (!cloud?.available) return ''
-  const code = cloud.code
-  if (!code) {
-    return `<div class="sync"><span>Synka mellan enheter<br><small style="opacity:.7">Dela mynt, uppgraderingar och resultat med din andra iPhone eller iPad</small></span>
-      ${joining
-        ? `<span class="join"><input data-act="code" placeholder="XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="16">
-           <button class="small" data-act="join-go">Gå med</button><button class="small" data-act="join-no">Avbryt</button>
-           ${joinError ? '<small class="err">Koden fungerade inte</small>' : ''}</span>`
-        : '<span class="seg"><button data-act="sync-new">Starta</button><button data-act="join">Gå med med kod</button></span>'}</div>`
-  }
-  const status = { off: '', syncing: 'Synkar…', ok: `Synkad ${when(cloud.lastSync)}`, error: 'Når inte molnet, försöker igen' }[cloud.state]
-  return `<div class="sync"><span>Synka mellan enheter<br><small style="opacity:.7">Familjekod: <b class="code">${showCode(code)}</b><br>${status}</small></span>
-    <span class="seg"><button data-act="sync-now">Synka nu</button><button data-act="sync-leave">Sluta</button></span></div>`
+const when = (t: number | null) => {
+  if (!t) return ''
+  const d = new Date(t)
+  const today = new Date().toDateString() === d.toDateString()
+  return today ? d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleString('sv-SE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
-export function showSettings(el: HTMLElement, s: Settings, onChange: () => void, onReset: () => void, onBack: () => void, cloud?: CloudSync, onClearScores?: () => void): void {
+/** What the backup rows are showing: the normal rows, typing a code, or the list to load from. */
+interface BackupUi {
+  joining: boolean
+  joinError: boolean
+  list: BackupEntry[] | null | 'loading' | 'error'
+  confirm: BackupEntry | null
+}
+
+/** "Säkerhetskopior i molnet": start or use a code, this device's name and last backup, and loading a backup. */
+function backupRows(b: CloudBackup | undefined, ui: BackupUi): string {
+  if (!b?.available) return ''
+  const code = b.code
+  if (!code) {
+    return `<div class="sync"><span>Säkerhetskopior i molnet<br><small style="opacity:.7">Varje enhet sparar sina framsteg (mynt, rekord, spöken) i molnet. Du väljer själv vilken du vill läsa in, inget synkas.</small></span>
+      ${ui.joining
+        ? `<span class="join"><input data-act="code" placeholder="XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="16">
+           <button class="small" data-act="use-go">Använd</button><button class="small" data-act="use-no">Avbryt</button>
+           ${ui.joinError ? '<small class="err">Koden fungerade inte</small>' : ''}</span>`
+        : '<span class="seg"><button data-act="backup-start">Starta</button><button data-act="use">Använd kod från en annan enhet</button></span>'}</div>`
+  }
+  const status = { off: '', working: 'Sparar…', ok: `Sparad ${when(b.last)}`, error: 'Når inte molnet, försöker igen senare' }[b.state] || (b.last ? `Senast sparad ${when(b.last)}` : 'Inte sparad än')
+  let list = ''
+  if (ui.list === 'loading') list = '<div class="backups"><small>Hämtar…</small></div>'
+  else if (ui.list === 'error') list = '<div class="backups"><small class="err">Når inte molnet just nu</small></div>'
+  else if (ui.list) {
+    list = `<div class="backups">${ui.list.map((e) => {
+      const mine = e.device === b.device
+      const asking = ui.confirm?.device === e.device
+      return `<div class="backup ${mine ? 'mine' : ''}"><span><b>${e.name}</b>${mine ? ' <small>(den här enheten)</small>' : ''}<br>
+        <small>${when(e.at)} · ● ${e.summary.coins} · ${e.summary.klur} klurbanor · rekord ${e.summary.best} m${e.summary.players.length ? ` · ${e.summary.players.join(', ')}` : ''}</small></span>
+        ${asking
+          ? `<span class="seg"><button data-act="load-yes" data-device="${e.device}" style="background:#e5383b">Ersätt mina framsteg</button><button data-act="load-no">Avbryt</button></span>`
+          : `<button class="small" data-act="load" data-device="${e.device}">Läs in</button>`}</div>`
+    }).join('') || '<small>Inga säkerhetskopior än</small>'}</div>`
+  }
+  return `<div class="sync"><span>Säkerhetskopior i molnet<br><small style="opacity:.7">Kod: <b class="code">${showCode(code)}</b> · ${status}<br>
+      Den här enheten: <input data-act="devname" value="${b.name.replace(/"/g, '&quot;')}" maxlength="30" style="width:120px"></small></span>
+    <span class="seg"><button data-act="backup-now">Spara nu</button><button data-act="backup-list">Läs in framsteg…</button><button data-act="backup-stop">Sluta</button></span></div>
+    ${list}`
+}
+
+export function showSettings(el: HTMLElement, s: Settings, onChange: () => void, onReset: () => void, onBack: () => void, backup?: CloudBackup, onClearScores?: () => void, onRestored?: () => void): void {
   let confirming = false
   let clearing = false
-  let joining = false
-  let joinError = false
+  const ui: BackupUi = { joining: false, joinError: false, list: null, confirm: null }
   const render = () => {
     el.innerHTML = `
       <div class="bar"><h2>Inställningar</h2><button class="small" data-act="back">Tillbaka</button></div>
@@ -71,7 +100,7 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
         <div><span>Musik</span><span class="seg"><button data-music="on" class="${s.music ? 'on' : ''}">På</button><button data-music="off" class="${s.music ? '' : 'on'}">Av</button></span></div>
         <div><span>Volym</span><input type="range" min="0" max="1" step="0.05" value="${s.volume}" data-act="volume" style="width:55%"></div>
         <div><span>Testläge<br><small style="opacity:.7">Visar Trimning: provkör alla fordon och banor med valfri trimning. Räknas inte.</small></span><span class="seg"><button data-test="off" class="${tuningEnabled() ? '' : 'on'}">Av</button><button data-test="on" class="${tuningEnabled() ? 'on' : ''}">På</button></span></div>
-        ${syncRows(cloud, joining, joinError)}
+        ${backupRows(backup, ui)}
         <div><span>Spöken</span><span class="seg"><button data-ghosts="all" class="${s.ghosts === 'all' ? 'on' : ''}">Alla</button><button data-ghosts="records" class="${s.ghosts === 'records' ? 'on' : ''}">Bara rekord</button><button data-ghosts="off" class="${s.ghosts === 'off' ? 'on' : ''}">Av</button></span></div>
         <div><span>Hjälp<br><small style="opacity:.7">Mer bränsle, snällare start och välter inte lika lätt</small></span><span class="seg">${PLAYERS.map((p) => `<button data-help="${p.name}" class="${s.help.includes(p.name) ? 'on' : ''}">${p.name}</button>`).join('')}</span></div>
         <div><span>Duell<br><small style="opacity:.7">Bredvid: vänster och höger halva. Mot varandra: iPaden står på höjden mellan er</small></span><span class="seg"><button data-duel="beside" class="${s.duelLayout === 'opposite' ? '' : 'on'}">Bredvid varandra</button><button data-duel="opposite" class="${s.duelLayout === 'opposite' ? 'on' : ''}">Mot varandra</button></span></div>
@@ -80,7 +109,7 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
       <div class="screeninfo">${screenInfo()}</div>
       <div class="actions">
         ${confirming
-          ? `<span>Radera alla mynt, uppgraderingar och upplåsningar${cloud?.code ? ' på den här enheten (synkningen stoppas också)' : ''}?</span><button class="small" data-act="reset-yes" style="background:#e5383b">Ja, nollställ</button><button class="small" data-act="reset-no">Avbryt</button>`
+          ? `<span>Radera alla mynt, uppgraderingar och upplåsningar på den här enheten?</span><button class="small" data-act="reset-yes" style="background:#e5383b">Ja, nollställ</button><button class="small" data-act="reset-no">Avbryt</button>`
           : clearing
             ? '<span>Rensa alla topplistor, rekord och spöken? Mynt och uppgraderingar finns kvar.</span><button class="small" data-act="clear-yes" style="background:#e5383b">Ja, rensa</button><button class="small" data-act="clear-no">Avbryt</button>'
             : '<button class="small" data-act="clear">Rensa topplistor och spöken…</button><button class="small" data-act="reset">Nollställ framsteg…</button>'}
@@ -110,22 +139,47 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
     else if (b.dataset.act === 'back') return onBack()
     else if (b.dataset.act === 'reset') confirming = true
     else if (b.dataset.act === 'reset-no') confirming = false
-    else if (b.dataset.act === 'sync-new') void cloud?.createFamily()
-    else if (b.dataset.act === 'join') {
-      joining = true
-      joinError = false
-    } else if (b.dataset.act === 'join-no') joining = false
-    else if (b.dataset.act === 'join-go') {
+    else if (b.dataset.act === 'backup-start') void backup?.start().then(render)
+    else if (b.dataset.act === 'use') {
+      ui.joining = true
+      ui.joinError = false
+    } else if (b.dataset.act === 'use-no') ui.joining = false
+    else if (b.dataset.act === 'use-go') {
       const typed = el.querySelector<HTMLInputElement>('input[data-act="code"]')?.value ?? ''
-      void cloud?.join(typed).then((ok) => {
-        joinError = !ok
-        if (ok) joining = false
-        else cloud?.leave()
+      void backup?.use(typed).then((ok) => {
+        ui.joinError = !ok
+        if (ok) {
+          ui.joining = false
+          void backup.backupNow()
+        } else backup.stop()
         render()
       })
       return
-    } else if (b.dataset.act === 'sync-now') void cloud?.syncNow()
-    else if (b.dataset.act === 'sync-leave') cloud?.leave()
+    } else if (b.dataset.act === 'backup-now') void backup?.backupNow()
+    else if (b.dataset.act === 'backup-stop') {
+      backup?.stop()
+      ui.list = null
+    } else if (b.dataset.act === 'backup-list') {
+      ui.list = 'loading'
+      ui.confirm = null
+      void backup?.list().then((l) => {
+        ui.list = l ?? 'error'
+        render()
+      })
+    } else if (b.dataset.act === 'load' && Array.isArray(ui.list)) ui.confirm = ui.list.find((e) => e.device === b.dataset.device) ?? null
+    else if (b.dataset.act === 'load-no') ui.confirm = null
+    else if (b.dataset.act === 'load-yes' && b.dataset.device) {
+      ui.list = 'loading'
+      render()
+      void backup?.load(b.dataset.device).then((ok) => {
+        if (ok) onRestored?.()
+        else {
+          ui.list = 'error'
+          render()
+        }
+      })
+      return
+    }
     else if (b.dataset.act === 'clear') clearing = true
     else if (b.dataset.act === 'clear-no') clearing = false
     else if (b.dataset.act === 'clear-yes') {
@@ -138,6 +192,11 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
     onChange()
     render()
   }
-  // Re-draw as the sync status changes (only while this screen is showing).
-  if (cloud) cloud.onState = () => el.isConnected && !el.classList.contains('hidden') && !joining && render()
+  // The device name is saved as it is typed.
+  el.onchange = (e) => {
+    const t = e.target as HTMLInputElement
+    if (t.dataset.act === 'devname' && backup) backup.name = t.value
+  }
+  // Re-draw as the backup status changes (only while this screen is showing).
+  if (backup) backup.onState = () => el.isConnected && !el.classList.contains('hidden') && !ui.joining && document.activeElement?.getAttribute('data-act') !== 'devname' && render()
 }
