@@ -223,7 +223,13 @@ export class CloudBackup {
       if (!res.ok) return null
       const all = ((await res.json()) ?? {}) as Record<string, Omit<BackupEntry, 'device'>>
       return Object.entries(all)
-        .map(([device, e]) => ({ device, ...e }))
+        // Firebase drops empty arrays and zero-free objects, so fill in what may be missing.
+        .map(([device, e]) => ({
+          device,
+          name: e?.name || '?',
+          at: e?.at ?? 0,
+          summary: { coins: e?.summary?.coins ?? 0, klur: e?.summary?.klur ?? 0, players: e?.summary?.players ?? [], best: e?.summary?.best ?? 0 },
+        }))
         .sort((a, b) => b.at - a.at)
     } catch {
       return null

@@ -426,7 +426,7 @@ All prices and upgrade ranges live in `src/data/` and are tuned by playtest.
 
 Each device can keep a backup of its whole progress (coins, upgrades, unlocks, records,
 highscores, ghosts, colours and settings) in a free Firebase Realtime Database
-(`src/save/backup.ts`, set `CLOUD_DB_URL` in `src/save/cloud.ts`). Nothing is synced or
+(`src/save/backup.ts`; the address is `CLOUD_DB_URL` in `src/save/cloud.ts`). Nothing is synced or
 merged: each device has its own backup, and you choose which one to load.
 
 In Settings, **Säkerhetskopior i molnet**: the first device taps **Starta** and gets a code
