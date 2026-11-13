@@ -1,3 +1,4 @@
+import { GENERATED } from './klurbanor-gen'
 import type { LevelGeom, Pt } from '../sim/level'
 
 /**
@@ -453,6 +454,7 @@ const dubbelloopen: PuzzleLevel = {
 
 const LEVELS_RAW: PuzzleLevel[] = [tvaVagar, stopp, lagtITak, gungan, loopenEllerGropen, trappan, fonstret, nalsogat, avsatserna, mastarprovet, gungbradan, dubbelloopen]
 
-export const LEVELS = LEVELS_RAW
+/** The hand-made levels, then the generated ones (scripts/levelgen.sim.ts), in order of difficulty. */
+export const LEVELS = [...LEVELS_RAW, ...GENERATED]
 
 export const puzzleLevel = (id: string) => LEVELS.find((l) => l.id === id)
