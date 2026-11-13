@@ -21,6 +21,8 @@ export interface Environment {
    * `terrain`, which is then unused.
    */
   stunt?: boolean
+  /** Look of another map's theme (a Klurbana borrows one). Defaults to the id's own. */
+  theme?: string
   /** Puddles: one possible per `spacing` metres, present with `chance`, `length` metres long. */
   puddles?: { kind: Puddle['kind']; spacing: number; chance: number; length: [number, number]; drag: number; grip: number }
 }

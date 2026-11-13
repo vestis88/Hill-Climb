@@ -1,7 +1,9 @@
 import type { Environment } from '../data/environments'
 import type { VehicleSpec } from '../sim/types'
 import { drawVehicle, drawWheel } from './art'
-import { drawBackdrop, drawGround } from './scenery'
+import { drawBackdrop, drawGround, drawSolids } from './scenery'
+import type { PuzzleLevel } from '../data/klurbanor'
+import { levelBounds } from '../sim/level'
 
 /** Small pictures for the garage: a vehicle on its own, and an environment's scenery. */
 function prepare(canvas: HTMLCanvasElement): { ctx: CanvasRenderingContext2D; w: number; h: number } | null {
@@ -52,5 +54,42 @@ export function drawEnvironmentPreview(canvas: HTMLCanvasElement, env: Environme
   ctx.scale(scale, -scale)
   ctx.translate(-120, -height(120 + view / 2))
   drawGround(ctx, env, height, 120, 120 + view, -20, 10)
+  ctx.restore()
+}
+
+/** A Klurbana's whole layout in miniature: its solids, loops, gems and goal flag. */
+export function drawLevelPreview(canvas: HTMLCanvasElement, level: PuzzleLevel, env: Environment): void {
+  const p = prepare(canvas)
+  if (!p) return
+  const { ctx, w, h } = p
+  const b = levelBounds(level.geom)
+  // The walls reach high up; frame the playable part.
+  const minY = Math.max(b.minY, Math.min(level.start.y, level.goal.y, ...level.gems.map((g) => g.y)) - 6)
+  const maxY = Math.max(level.start.y, level.goal.y, ...level.gems.map((g) => g.y)) + 7
+  const scale = Math.min(w / (b.maxX - b.minX), h / (maxY - minY))
+  ctx.fillStyle = env.palette.skyBottom
+  ctx.fillRect(0, 0, w, h)
+  ctx.save()
+  ctx.translate((w - (b.maxX - b.minX) * scale) / 2, h)
+  ctx.scale(scale, -scale)
+  ctx.translate(-b.minX, -minY)
+  drawSolids(ctx, env, level.geom.polygons, b.minX, b.maxX)
+  ctx.lineWidth = 0.35
+  ctx.strokeStyle = '#59627a'
+  for (const l of level.geom.loops ?? []) {
+    ctx.beginPath()
+    ctx.arc(l.cx, l.cy, l.r + 0.2, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+  ctx.fillStyle = '#b44cff'
+  for (const g of level.gems) {
+    ctx.beginPath()
+    ctx.arc(g.x, g.y, 0.9, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(level.goal.x - 0.25, level.goal.y - 1, 0.5, 3)
+  ctx.fillStyle = '#e5383b'
+  ctx.fillRect(level.start.x - 0.8, level.start.y + 0.3, 1.6, 1)
   ctx.restore()
 }

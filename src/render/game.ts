@@ -11,7 +11,8 @@ import { formatTime } from '../data/modes'
 import { drawHead, drawnHubs, drawRagdollTorso, drawPickup, drawVehicle, drawWheel, EXHAUST, OUTLINE, setOutfit, setThrusting, type Mood } from './art'
 import type { Outfit } from '../data/outfits'
 import { Particles } from './particles'
-import { drawAtmosphere, drawBackdrop, drawForeground, drawGround, drawProps, drawWeather, themeFor } from './scenery'
+import { drawAtmosphere, drawBackdrop, drawForeground, drawGround, drawProps, drawSolids, drawWeather, themeFor } from './scenery'
+import { groundBelow, type LevelGeom } from '../sim/level'
 import type { Atmosphere } from '../data/weather'
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
@@ -68,6 +69,11 @@ export interface View {
   atmosphere?: Atmosphere
   /** Metres to the next fuel can, if there is one ahead. */
   nextFuel?: number | null
+  /**
+   * A Klurbana: its solids and loops, the gems still out there, the goal flag (lit once every
+   * gem is taken), and the clock for the HUD.
+   */
+  level?: { geom: LevelGeom; gems: { x: number; y: number }[]; total: number; goal: { x: number; y: number }; time: number }
   /** Stuntbanan: each seesaw's plank angle by id (from the sim; at rest when missing). */
   seesaws?: Map<string, number>
   /** Puddles on the track, to draw and splash through. */
@@ -327,12 +333,20 @@ export class GameRenderer {
     const right = this.camX + this.viewWidth / 2 + 1
     const bottom = this.camY - (h / scale) * 0.6
 
-    drawProps(ctx, env, height, left, right)
-    drawGround(ctx, env, height, left, right, bottom, this.camY + this.viewWidth, this.time)
-    this.drawPuddles(view, left, right)
-    if (env.stunt) this.drawStunts(view, height, left, right)
-    else this.drawSetPieces(view, height, left, right)
-    this.drawSigns(height, left, right)
+    if (view.level) {
+      const lv = view.level
+      for (const l of lv.geom.loops ?? []) if (l.cx + l.r > left && l.cx - l.r < right) this.drawLoop((x) => groundBelow(lv.geom, x, l.cy), l.cx, l.cy, l.r)
+      drawSolids(ctx, env, lv.geom.polygons, left, right)
+      this.drawGoal(lv.goal.x, lv.goal.y, lv.gems.length === 0)
+      for (const g of lv.gems) if (g.x > left - 1 && g.x < right + 1) this.drawGem(g.x, g.y)
+    } else {
+      drawProps(ctx, env, height, left, right)
+      drawGround(ctx, env, height, left, right, bottom, this.camY + this.viewWidth, this.time)
+      this.drawPuddles(view, left, right)
+      if (env.stunt) this.drawStunts(view, height, left, right)
+      else this.drawSetPieces(view, height, left, right)
+      this.drawSigns(height, left, right)
+    }
     if (view.race && view.race.length > left - 3 && view.race.length < right + 3) this.drawFinish(height, view.race.length)
     this.drawShadow(view, chassis)
     for (const p of view.pickups) if (!p.taken && p.x > left - 1 && p.x < right + 1) drawPickup(ctx, p, this.time)
@@ -459,35 +473,7 @@ export class GameRenderer {
     }
     for (const o of stuntObstacles(seed)(left - 10, right + 10)) {
       if (o.kind === 'loop') {
-        const { cx, cy, r } = o
-        // Legs from the sides of the ring down to the ground.
-        ctx.strokeStyle = '#59627a'
-        ctx.lineWidth = 0.16
-        for (const side of [-1, 1]) {
-          const lx = cx + side * (r + 0.15)
-          ctx.beginPath()
-          ctx.moveTo(lx, cy)
-          ctx.lineTo(cx + side * (r * 0.75), height(cx + side * r * 0.75))
-          ctx.stroke()
-        }
-        // The track band (outside the radius the car drives on), with a lit inner edge.
-        ctx.lineWidth = 0.42
-        ctx.strokeStyle = OUTLINE
-        ctx.beginPath()
-        ctx.arc(cx, cy, r + 0.22, 0, Math.PI * 2)
-        ctx.stroke()
-        ctx.lineWidth = 0.3
-        ctx.strokeStyle = '#8d97b0'
-        ctx.beginPath()
-        ctx.arc(cx, cy, r + 0.22, 0, Math.PI * 2)
-        ctx.stroke()
-        ctx.lineWidth = 0.08
-        ctx.strokeStyle = '#ffd23f'
-        ctx.setLineDash([0.5, 0.5])
-        ctx.beginPath()
-        ctx.arc(cx, cy, r + 0.12, 0, Math.PI * 2)
-        ctx.stroke()
-        ctx.setLineDash([])
+        this.drawLoop(height, o.cx, o.cy, o.r)
       } else {
         const angle = view.seesaws?.get(o.id) ?? 0.28
         const gy = height(o.x)
@@ -523,6 +509,99 @@ export class GameRenderer {
         ctx.fill()
       }
     }
+  }
+
+  /** A loop: a steel ring track on legs (the car rides on its inside). */
+  private drawLoop(height: HeightFn, cx: number, cy: number, r: number): void {
+    const { ctx } = this
+    // Legs from the sides of the ring down to the ground.
+    ctx.strokeStyle = '#59627a'
+    ctx.lineWidth = 0.16
+    for (const side of [-1, 1]) {
+      const lx = cx + side * (r + 0.15)
+      ctx.beginPath()
+      ctx.moveTo(lx, cy)
+      ctx.lineTo(cx + side * (r * 0.75), height(cx + side * r * 0.75))
+      ctx.stroke()
+    }
+    // The track band (outside the radius the car drives on), with a lit inner edge.
+    ctx.lineWidth = 0.42
+    ctx.strokeStyle = OUTLINE
+    ctx.beginPath()
+    ctx.arc(cx, cy, r + 0.22, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.lineWidth = 0.3
+    ctx.strokeStyle = '#8d97b0'
+    ctx.beginPath()
+    ctx.arc(cx, cy, r + 0.22, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.lineWidth = 0.08
+    ctx.strokeStyle = '#ffd23f'
+    ctx.setLineDash([0.5, 0.5])
+    ctx.beginPath()
+    ctx.arc(cx, cy, r + 0.12, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.setLineDash([])
+  }
+
+  /** A gem to pick up in a Klurbana: a purple crystal, turning and glowing. */
+  private drawGem(x: number, y: number): void {
+    const { ctx } = this
+    ctx.save()
+    ctx.translate(x, y + Math.sin(this.time * 2.2 + x) * 0.1)
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1.1)
+    g.addColorStop(0, 'rgba(200, 120, 255, 0.55)')
+    g.addColorStop(1, 'rgba(200, 120, 255, 0)')
+    ctx.fillStyle = g
+    ctx.fillRect(-1.1, -1.1, 2.2, 2.2)
+    ctx.scale(Math.abs(Math.cos(this.time * 1.6 + x)) * 0.55 + 0.45, 1)
+    ctx.beginPath()
+    ctx.moveTo(0, 0.5)
+    ctx.lineTo(0.38, 0.12)
+    ctx.lineTo(0, -0.5)
+    ctx.lineTo(-0.38, 0.12)
+    ctx.closePath()
+    ctx.fillStyle = '#b44cff'
+    ctx.fill()
+    ctx.lineWidth = 0.06
+    ctx.strokeStyle = OUTLINE
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(-0.38, 0.12)
+    ctx.lineTo(0.38, 0.12)
+    ctx.moveTo(0, 0.5)
+    ctx.lineTo(-0.1, 0.12)
+    ctx.lineTo(0, -0.5)
+    ctx.lineWidth = 0.035
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)'
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  /** The goal flag: chequered once every gem is taken, grey before. */
+  private drawGoal(x: number, y: number, open: boolean): void {
+    const { ctx } = this
+    const base = y - 0.9
+    if (open) {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, 2.2)
+      g.addColorStop(0, 'rgba(255, 230, 120, 0.5)')
+      g.addColorStop(1, 'rgba(255, 230, 120, 0)')
+      ctx.fillStyle = g
+      ctx.fillRect(x - 2.2, y - 2.2, 4.4, 4.4)
+    }
+    ctx.fillStyle = '#d7dce4'
+    ctx.fillRect(x - 0.06, base, 0.12, 2.6)
+    ctx.lineWidth = 0.04
+    ctx.strokeStyle = OUTLINE
+    ctx.strokeRect(x - 0.06, base, 0.12, 2.6)
+    const wave = Math.sin(this.time * 4) * 0.08
+    for (let i = 0; i < 4; i++) {
+      for (let j = 0; j < 3; j++) {
+        ctx.fillStyle = (i + j) % 2 ? (open ? '#1d2433' : '#7a808c') : open ? '#ffffff' : '#b9bec7'
+        ctx.fillRect(x + 0.06 + i * 0.28, base + 1.7 + j * 0.28 + wave * i * 0.5, 0.29, 0.29)
+      }
+    }
+    ctx.strokeRect(x + 0.06, base + 1.7, 1.12, 0.84)
   }
 
   /** The finish line: a chequered arch over the track and a chequered strip on the ground. */
@@ -1123,7 +1202,7 @@ export class GameRenderer {
     ctx.textBaseline = 'top'
     ctx.textAlign = 'left'
     // Endless: distance so far. Race: the clock, and how far is left to the finish.
-    const headline = view.race ? formatTime(view.race.time) : `${Math.floor(view.next.distance)} m`
+    const headline = view.level ? formatTime(view.level.time) : view.race ? formatTime(view.race.time) : `${Math.floor(view.next.distance)} m`
     this.outlinedText(headline, x0, y0, 20)
     if (view.race) {
       const left = Math.max(0, Math.ceil(view.race.length - view.next.distance))
@@ -1137,6 +1216,16 @@ export class GameRenderer {
       this.outlinedText(view.player.name, x0 + dx, y0 + 2, 17, view.player.colour)
     }
 
+    // A Klurbana: gems taken out of all, and the goal once they are; no fuel.
+    if (view.level) {
+      const lv = view.level
+      const got = lv.total - lv.gems.length
+      this.outlinedText(`◆ ${got}/${lv.total}`, x0, y0 + 30, 20, '#d9a2ff')
+      ctx.font = `800 20px ${FONT}`
+      const w = ctx.measureText(`◆ ${got}/${lv.total}`).width
+      this.outlinedText(lv.gems.length ? 'Ta alla stenar, sen målflaggan' : 'Till målflaggan!', x0 + w + 12, y0 + 33, 15, lv.gems.length ? '#ffffff' : '#ffd23f')
+      return
+    }
     // Fuel gauge with a small can icon
     const gx = x0 + 22
     const gy = y0 + 30

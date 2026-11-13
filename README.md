@@ -88,6 +88,36 @@ seesaws, the three stars sit at the top of the second to fourth loops, and it is
 daily challenge's base maps. `tests/stunt.test.ts` covers loops (fast and too slow), pits,
 seesaws and that most vehicles get through the first 400 m.
 
+### Klurbanor (puzzle levels)
+
+A mode of its own (tile on the home screen), in the spirit of route-finding bike games: hand-made,
+finite levels where **the route matters more than top speed**. Pick up every ◆ gem, then touch
+the goal flag; the time counts. There is no fuel, everyone drives at the same tuning (all
+upgrades at level 5, no parts) so it is about the driving, and ↻ starts the level again at once.
+Each level opens when the one before is finished; the first time the family finishes one pays
+600 coins. Records and ghosts are kept per level and player like any track.
+
+- **1 · Två vägar**: a kicker at the start. Fast, and you fly onto the high road, round a loop
+  and get shot down into the pit; gentle, and you roll down under the overhang where the gems
+  are, then need speed to jump the pit to the goal.
+- **2 · Lagom**: the goal is on a pillar just below a cliff edge: too slow drops you into the
+  gap before it, too fast sails you past it.
+- **3 · Lågt i tak**: a tunnel of rollers with the roof just above your helmet; rush it and you
+  bang your head. Then speed again for the hill to the goal.
+- **4 · Gungan**: you start at the bottom of a deep valley; the wall ahead is too steep to drive
+  up. Rock back and forth to swing up the slope behind you (the gem) and then over the lip.
+- **5 · Loopen eller gropen**: the fork again, but now you need both roads: the cave first
+  (slowly), up the climb to the high road, round the loop (a gem at its top) and the jump to
+  the goal island.
+
+How it is built: levels are solid polygons (`src/data/klurbanor.ts`, with helpers for ground,
+roofs, ramps, kickers and arcs) rather than a height function, so they can have ledges,
+overhangs, ceilings and tunnels (`src/sim/level.ts`: head crashes against the polygons, the
+ground below a point). Loops are the same physics loops as Stuntbanan's. Each level carries a
+`plan` for a scripted driver (`src/game/klurbot.ts`); `tests/klurbanor.test.ts` drives every
+level to the goal with it, and checks that the wrong approach fails (too fast on level 1, too
+slow on level 2, rushing level 3, driving straight at the wall on level 4).
+
 ### The run
 
 - **Fuel** drains while you drive, a little faster with the gas held. Fuel cans

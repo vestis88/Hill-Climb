@@ -199,7 +199,7 @@ THEMES.stunt = {
   dust: '#c9a27a',
 }
 
-export const themeFor = (env: Environment) => THEMES[env.id] ?? THEMES.meadow
+export const themeFor = (env: Environment) => THEMES[env.theme ?? env.id] ?? THEMES.meadow
 
 // ---------------------------------------------------------------------------------------
 // Backdrop (screen space)
@@ -585,7 +585,8 @@ const textures = new Map<string, CanvasPattern | null>()
 
 /** A tiling soil texture: specks, grit and small stones. Built once per environment. */
 function groundPattern(ctx: Ctx, env: Environment): CanvasPattern | null {
-  if (textures.has(env.id)) return textures.get(env.id)!
+  const key = env.theme ?? env.id
+  if (textures.has(key)) return textures.get(key)!
   const t = themeFor(env).ground
   const size = 256
   const c = document.createElement('canvas')
@@ -630,7 +631,7 @@ function groundPattern(ctx: Ctx, env: Environment): CanvasPattern | null {
     // 256 texture pixels span 7 metres of ground.
     pattern?.setTransform(new DOMMatrix().scale(7 / size))
   }
-  textures.set(env.id, pattern)
+  textures.set(key, pattern)
   return pattern
 }
 
@@ -1290,6 +1291,97 @@ export function drawAtmosphere(ctx: Ctx, a: Atmosphere, w: number, h: number, ca
       g.addColorStop(1, 'rgba(230, 236, 242, 0)')
       ctx.fillStyle = g
       ctx.fillRect(0, y - 70, w, 140)
+    }
+  }
+}
+
+/**
+ * A Klurbana's solids (closed polygons): filled with the map's ground, darker inside, with the
+ * map's surface (grass, dust, snow) along every edge that faces up, and a dark outline.
+ */
+export function drawSolids(ctx: Ctx, env: Environment, polygons: [number, number][][], left: number, right: number): void {
+  const t = themeFor(env)
+  const s = t.surface
+  const band = s.kind === 'snow' ? 0.6 : s.kind === 'grass' ? 0.5 : 0.42
+  ctx.lineJoin = 'round'
+  ctx.lineCap = 'round'
+  for (const poly of polygons) {
+    let minX = Infinity
+    let maxX = -Infinity
+    for (const [x] of poly) {
+      minX = Math.min(minX, x)
+      maxX = Math.max(maxX, x)
+    }
+    if (maxX < left - 2 || minX > right + 2) continue
+    const path = () => {
+      ctx.beginPath()
+      poly.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)))
+      ctx.closePath()
+    }
+    path()
+    ctx.fillStyle = groundPattern(ctx, env) ?? t.ground.top
+    ctx.fill()
+    // Darker towards the inside: the outline again, thick and translucent, clipped inside.
+    ctx.save()
+    path()
+    ctx.clip()
+    for (const [w, a] of [[2.4, 0.1], [5, 0.12], [9, 0.14]] as const) {
+      path()
+      ctx.lineWidth = w
+      ctx.strokeStyle = `rgba(0,0,0,${a})`
+      ctx.stroke()
+    }
+    ctx.restore()
+    path()
+    ctx.lineWidth = 0.08
+    ctx.strokeStyle = OUTLINE
+    ctx.stroke()
+    // Surface along the edges that face up (outward normal pointing up).
+    let area = 0
+    for (let i = 0; i < poly.length; i++) {
+      const [x1, y1] = poly[i]
+      const [x2, y2] = poly[(i + 1) % poly.length]
+      area += x1 * y2 - x2 * y1
+    }
+    const ccw = area > 0
+    const runs: [number, number][][] = []
+    let cur: [number, number][] = []
+    for (let i = 0; i <= poly.length; i++) {
+      const a = poly[i % poly.length]
+      const b = poly[(i + 1) % poly.length]
+      const dx = b[0] - a[0]
+      const dy = b[1] - a[1]
+      const len = Math.hypot(dx, dy) || 1
+      const ny = (ccw ? -dx : dx) / len
+      if (ny > 0.4 && i < poly.length) {
+        if (!cur.length) cur.push(a)
+        cur.push(b)
+      } else if (cur.length) {
+        runs.push(cur)
+        cur = []
+      }
+    }
+    for (const run of runs) {
+      const line = (offset: number) => {
+        ctx.beginPath()
+        run.forEach(([x, y], i) => (i ? ctx.lineTo(x, y + offset) : ctx.moveTo(x, y + offset)))
+      }
+      line(-band * 0.35)
+      ctx.lineWidth = band + 0.12
+      ctx.strokeStyle = OUTLINE
+      ctx.stroke()
+      line(-band * 0.35)
+      ctx.lineWidth = band
+      ctx.strokeStyle = s.dark
+      ctx.stroke()
+      line(-band * 0.2)
+      ctx.lineWidth = band * 0.62
+      ctx.strokeStyle = s.main
+      ctx.stroke()
+      line(0.02)
+      ctx.lineWidth = 0.09
+      ctx.strokeStyle = s.light
+      ctx.stroke()
     }
   }
 }
