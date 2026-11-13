@@ -136,6 +136,16 @@ Each level opens when the one before is finished; the first time the family fini
   shelf at a cliff edge with the goal flag (counts once landed): lose speed before the kicker
   and you drop into the pit.
 
+- **13-42** (generated, easiest first): made by `npm run levelgen` (`scripts/levelgen.sim.ts`)
+  from tested modules: jumps (air gems on the arc), jumps under a rock, needle's eyes, loops,
+  roller tunnels, seesaw gaps and ledges with roofs, ending in a jump onto a goal island. Each
+  module is driven on its own at a range of speeds to measure its speed window, and drawn again
+  until the window suits the level's difficulty (wide early on, about 1 m/s at the end); rocks,
+  eyes and air gems sit on the arc measured at the chosen speed. Every level is then driven
+  start to finish (exactly the rounded data that is saved) before it is kept, levels grow from
+  3 modules to 7, and they are sorted by measured difficulty. `tests/klurbanor-gen.test.ts`
+  drives each one to the goal; after a physics change, regenerate.
+
 Klurbanor show the speed in km/h under the gem counter, for learning what each jump needs, and
 after finishing one a **Nästa: …** button goes straight on to the next level.
 
