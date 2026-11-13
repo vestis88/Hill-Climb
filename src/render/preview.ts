@@ -81,6 +81,13 @@ export function drawLevelPreview(canvas: HTMLCanvasElement, level: PuzzleLevel, 
     ctx.arc(l.cx, l.cy, l.r + 0.2, 0, Math.PI * 2)
     ctx.stroke()
   }
+  ctx.strokeStyle = '#c08a52'
+  for (const w of level.geom.seesaws ?? []) {
+    ctx.beginPath()
+    ctx.moveTo(w.x - (w.length / 2) * Math.cos(0.28), w.y - (w.length / 2) * Math.sin(0.28))
+    ctx.lineTo(w.x + (w.length / 2) * Math.cos(0.28), w.y + (w.length / 2) * Math.sin(0.28))
+    ctx.stroke()
+  }
   ctx.fillStyle = '#b44cff'
   for (const g of level.gems) {
     ctx.beginPath()

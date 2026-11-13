@@ -338,6 +338,9 @@ export class GameRenderer {
     if (view.level) {
       const lv = view.level
       for (const l of lv.geom.loops ?? []) if (l.cx + l.r > left && l.cx - l.r < right) this.drawLoop((x) => groundBelow(lv.geom, x, l.cy), l.cx, l.cy, l.r)
+      ;(lv.geom.seesaws ?? []).forEach((w, i) => {
+        if (w.x + w.length > left && w.x - w.length < right) this.drawSeesaw(w.x, w.y, w.length, view.seesaws?.get(`seesaw${i}`) ?? 0.28, groundBelow(lv.geom, w.x, w.y - 0.3))
+      })
       drawSolids(ctx, env, lv.geom.polygons, left, right)
       this.drawGoal(lv.goal.x, lv.goal.y, lv.gems.length === 0)
       for (const g of lv.gems) if (g.x > left - 1 && g.x < right + 1) this.drawGem(g.x, g.y)
@@ -476,41 +479,41 @@ export class GameRenderer {
     for (const o of stuntObstacles(seed)(left - 10, right + 10)) {
       if (o.kind === 'loop') {
         this.drawLoop(height, o.cx, o.cy, o.r)
-      } else {
-        const angle = view.seesaws?.get(o.id) ?? 0.28
-        const gy = height(o.x)
-        // Trestle
-        ctx.fillStyle = '#7a5236'
-        ctx.strokeStyle = OUTLINE
-        ctx.lineWidth = 0.05
-        ctx.beginPath()
-        ctx.moveTo(o.x - 0.7, gy - 0.1)
-        ctx.lineTo(o.x + 0.7, gy - 0.1)
-        ctx.lineTo(o.x, o.y)
-        ctx.closePath()
-        ctx.fill()
-        ctx.stroke()
-        // Plank, with hazard ends
-        ctx.save()
-        ctx.translate(o.x, o.y)
-        ctx.rotate(angle)
-        const half = o.length / 2
-        ctx.fillStyle = '#c08a52'
-        ctx.fillRect(-half, -0.13, o.length, 0.26)
-        for (const end of [-half, half - 0.6]) {
-          for (let i = 0; i < 3; i++) {
-            ctx.fillStyle = i % 2 ? '#1d2433' : '#ffd23f'
-            ctx.fillRect(end + i * 0.2, -0.13, 0.2, 0.26)
-          }
-        }
-        ctx.strokeRect(-half, -0.13, o.length, 0.26)
-        ctx.restore()
-        ctx.fillStyle = '#59627a'
-        ctx.beginPath()
-        ctx.arc(o.x, o.y, 0.14, 0, Math.PI * 2)
-        ctx.fill()
+      } else this.drawSeesaw(o.x, o.y, o.length, view.seesaws?.get(o.id) ?? 0.28, height(o.x))
+    }
+  }
+
+  /** A seesaw: a plank on a trestle (the trestle stands on the ground at `gy`). */
+  private drawSeesaw(x: number, y: number, length: number, angle: number, gy: number): void {
+    const { ctx } = this
+    ctx.fillStyle = '#7a5236'
+    ctx.strokeStyle = OUTLINE
+    ctx.lineWidth = 0.05
+    ctx.beginPath()
+    ctx.moveTo(x - 0.7, gy - 0.1)
+    ctx.lineTo(x + 0.7, gy - 0.1)
+    ctx.lineTo(x, y)
+    ctx.closePath()
+    ctx.fill()
+    ctx.stroke()
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate(angle)
+    const half = length / 2
+    ctx.fillStyle = '#c08a52'
+    ctx.fillRect(-half, -0.13, length, 0.26)
+    for (const end of [-half, half - 0.6]) {
+      for (let i = 0; i < 3; i++) {
+        ctx.fillStyle = i % 2 ? '#1d2433' : '#ffd23f'
+        ctx.fillRect(end + i * 0.2, -0.13, 0.2, 0.26)
       }
     }
+    ctx.strokeRect(-half, -0.13, length, 0.26)
+    ctx.restore()
+    ctx.fillStyle = '#59627a'
+    ctx.beginPath()
+    ctx.arc(x, y, 0.14, 0, Math.PI * 2)
+    ctx.fill()
   }
 
   /** A loop: a steel ring track on legs (the car rides on its inside). */
