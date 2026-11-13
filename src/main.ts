@@ -25,6 +25,7 @@ import { drawEnvironmentPreview, drawVehiclePreview } from './render/preview'
 import { addScore, drivenLevels, earn, emptySave, levelsFor, loadSave, setDrivenLevel, playerBest, playerTime, spend, writeSave } from './save/save'
 import { clearGhosts, poseToState, roundGhosts, GhostRecorder, GhostTrack, loadGhost, storeGhost, storeVehicleBest, vehicleKey, type Ghost } from './save/ghosts'
 import { CloudBackup } from './save/backup'
+import { restoreProgress } from './save/restore'
 import { COLOURS, PLAYERS, playerColour, setPlayerColours } from './data/players'
 import { formatTime, gameMode, MODES, recordKey, type Mode as GameMode } from './data/modes'
 import { Run, RULES } from './sim/run'
@@ -757,6 +758,10 @@ function openSettings(): void {
     },
     // A backup was loaded: start again from it.
     () => location.reload(),
+    (r) => {
+      restoreProgress(save, r)
+      persist()
+    },
   )
   show('settings')
 }

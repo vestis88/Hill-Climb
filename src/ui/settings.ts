@@ -37,6 +37,7 @@ export function saveSettings(s: Settings): void {
 import { setTestMode, tuningEnabled } from './tuning'
 import { showCode } from '../save/cloud'
 import type { BackupEntry, CloudBackup } from '../save/backup'
+import type { Restore } from '../save/restore'
 import { screenInfo } from './viewport'
 import { PLAYERS } from '../data/players'
 
@@ -45,6 +46,21 @@ const when = (t: number | null) => {
   const d = new Date(t)
   const today = new Date().toDateString() === d.toDateString()
   return today ? d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleString('sv-SE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+
+/** "Återskapa framsteg": give back roughly what was lost (only adds, never takes away). */
+function restoreRows(state: 'closed' | 'form' | 'done', g: Restore): string {
+  const head = 'Återskapa framsteg<br><small style="opacity:.7">Ge tillbaka ungefär det som försvann: lägger bara till, tar aldrig bort.</small>'
+  if (state !== 'form') {
+    return `<div><span>${head}${state === 'done' ? '<br><small style="color:#7be37b">Tillagt!</small>' : ''}</span><button class="small" data-act="give-open">Lägg till…</button></div>`
+  }
+  const num = (k: string, v: number, max: number, w = 90) => `<input type="number" inputmode="numeric" min="0" max="${max}" value="${v}" data-give="${k}" style="width:${w}px">`
+  return `<div class="give"><span>${head}</span>
+    <label>Mynt att lägga till ${num('coins', g.coins, 10000000, 110)}</label>
+    <label>Klurbanor klarade (från första) ${num('klur', g.klur, 999)}</label>
+    <label>Uppgraderingar på alla fordon minst nivå ${num('level', g.level, 15, 70)}</label>
+    <label>Lås upp alla fordon och banor <input type="checkbox" data-give="unlockAll" ${g.unlockAll ? 'checked' : ''}></label>
+    <span class="seg"><button data-act="give-yes" style="background:#2b9348">Lägg till</button><button data-act="give-no">Avbryt</button></span></div>`
 }
 
 /** What the backup rows are showing: the normal rows, typing a code, or the list to load from. */
@@ -88,8 +104,11 @@ function backupRows(b: CloudBackup | undefined, ui: BackupUi): string {
     ${list}`
 }
 
-export function showSettings(el: HTMLElement, s: Settings, onChange: () => void, onReset: () => void, onBack: () => void, backup?: CloudBackup, onClearScores?: () => void, onRestored?: () => void): void {
+export function showSettings(el: HTMLElement, s: Settings, onChange: () => void, onReset: () => void, onBack: () => void, backup?: CloudBackup, onClearScores?: () => void, onRestored?: () => void, onRestore?: (r: Restore) => void): void {
   let confirming = false
+  // Giving back lost progress (test mode only): closed, the form, or just added.
+  let restoring: 'closed' | 'form' | 'done' = 'closed'
+  const give: Restore = { coins: 0, unlockAll: false, klur: 0, level: 1 }
   let clearing = false
   const ui: BackupUi = { joining: false, joinError: false, list: null, confirm: null }
   const render = () => {
@@ -100,6 +119,7 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
         <div><span>Musik</span><span class="seg"><button data-music="on" class="${s.music ? 'on' : ''}">På</button><button data-music="off" class="${s.music ? '' : 'on'}">Av</button></span></div>
         <div><span>Volym</span><input type="range" min="0" max="1" step="0.05" value="${s.volume}" data-act="volume" style="width:55%"></div>
         <div><span>Testläge<br><small style="opacity:.7">Visar Trimning: provkör alla fordon och banor med valfri trimning. Räknas inte.</small></span><span class="seg"><button data-test="off" class="${tuningEnabled() ? '' : 'on'}">Av</button><button data-test="on" class="${tuningEnabled() ? 'on' : ''}">På</button></span></div>
+        ${tuningEnabled() && onRestore ? restoreRows(restoring, give) : ''}
         ${backupRows(backup, ui)}
         <div><span>Spöken</span><span class="seg"><button data-ghosts="all" class="${s.ghosts === 'all' ? 'on' : ''}">Alla</button><button data-ghosts="records" class="${s.ghosts === 'records' ? 'on' : ''}">Bara rekord</button><button data-ghosts="off" class="${s.ghosts === 'off' ? 'on' : ''}">Av</button></span></div>
         <div><span>Hjälp<br><small style="opacity:.7">Mer bränsle, snällare start och välter inte lika lätt</small></span><span class="seg">${PLAYERS.map((p) => `<button data-help="${p.name}" class="${s.help.includes(p.name) ? 'on' : ''}">${p.name}</button>`).join('')}</span></div>
@@ -118,6 +138,12 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
   render()
   el.oninput = (e) => {
     const t = e.target as HTMLInputElement
+    if (t.dataset.give) {
+      const k = t.dataset.give as keyof Restore
+      if (k === 'unlockAll') give.unlockAll = t.checked
+      else give[k] = Math.max(0, Number(t.value) || 0)
+      return
+    }
     if (t.dataset.act === 'volume') {
       s.volume = Number(t.value)
       onChange()
@@ -126,7 +152,13 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
   el.onclick = (e) => {
     const b = (e.target as HTMLElement).closest('button')
     if (!b) return
-    if (b.dataset.sound) s.sound = b.dataset.sound === 'on'
+    if (b.dataset.act === 'give-open') restoring = 'form'
+    else if (b.dataset.act === 'give-no') restoring = 'closed'
+    else if (b.dataset.act === 'give-yes') {
+      onRestore?.({ ...give })
+      Object.assign(give, { coins: 0, unlockAll: false, klur: 0, level: 1 })
+      restoring = 'done'
+    } else if (b.dataset.sound) s.sound = b.dataset.sound === 'on'
     else if (b.dataset.pedals) s.swapPedals = b.dataset.pedals === 'swap'
     else if (b.dataset.music) s.music = b.dataset.music === 'on'
     else if (b.dataset.duel) s.duelLayout = b.dataset.duel as Settings['duelLayout']

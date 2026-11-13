@@ -441,6 +441,11 @@ own name and backup slot, so loading never overwrites the backup it came from. T
 brings progress back after the home-screen icon was removed (which deletes the app's storage
 on iPhone and iPad): add the icon again, type the code, and load the old backup.
 
+**Återskapa framsteg** (Settings, only with Testläge on) gives back roughly what was lost
+before backups existed: coins to add, how many Klurbanor were done (from the first), a
+minimum upgrade level for every vehicle, and unlocking every vehicle and map. It only adds,
+never takes anything away (`src/save/restore.ts`).
+
 Database rules (Firebase console, Realtime Database, Rules):
 
 ```json
