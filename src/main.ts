@@ -11,6 +11,10 @@ import { EngineRevs, LAUNCH } from './sim/launch'
 import { dailyFor, dateKey, oldDaily } from './data/daily'
 import { ENVIRONMENTS, environment, heightFor, puddlesFor } from './data/environments'
 import { stuntAvoid } from './sim/stunt'
+import { LEVELS, puzzleLevel, type PuzzleLevel } from './data/klurbanor'
+import { PUZZLE_GRAVITY, PUZZLE_GRIP, puzzleRun, puzzleSpec } from './game/klurbot'
+import { groundBelow } from './sim/level'
+import type { Environment } from './data/environments'
 import { PickupField } from './data/track'
 import { VEHICLES, vehicleEntry } from './data/vehicles'
 import { applyUpgrades, MAX_LEVEL, price, type UpgradeId } from './data/upgrades'
@@ -22,12 +26,13 @@ import { addScore, drivenLevels, earn, emptySave, levelsFor, loadSave, setDriven
 import { clearGhosts, poseToState, roundGhosts, GhostRecorder, GhostTrack, loadGhost, storeGhost, storeVehicleBest, vehicleKey, type Ghost } from './save/ghosts'
 import { CloudSync } from './save/cloud'
 import { PLAYERS, playerColour } from './data/players'
-import { formatTime, gameMode, MODES, recordKey } from './data/modes'
+import { formatTime, gameMode, MODES, recordKey, type Mode as GameMode } from './data/modes'
 import { Run, RULES } from './sim/run'
 import type { SimState } from './sim/types'
 import { STEP } from './sim/world'
 import { showOutfit, showResults, showScores, showStandings, showTurn } from './ui/screens'
-import { showDaily, showHome, showMissions, showTracks, showVehicles } from './ui/home'
+import { showDaily, showHome, showMissions, showPuzzles, showTracks, showVehicles } from './ui/home'
+import { drawLevelPreview } from './render/preview'
 import { confirmPurchase } from './ui/confirm'
 import { loadSandbox, saveSandbox, sandboxSpec } from './game/sandbox'
 import { loadSettings, saveSettings, showSettings } from './ui/settings'
@@ -44,6 +49,7 @@ const tuneEl = $('tune')
 const settingsEl = $('settings')
 const endRunBtn = $('endRun')
 const pauseBtn = $('pauseBtn')
+const restartBtn = $('restart')
 const pausedEl = $('paused')
 const updateBtn = $('update')
 const hornBtn = $('horn')
@@ -113,13 +119,34 @@ function persist(): void {
 const sandbox = loadSandbox()
 let sandboxRun = false
 /** Which menu the garage screen shows: home, or one of its sub-menus. */
-type Menu = 'home' | 'vehicles' | 'tracks' | 'daily' | 'missions'
+type Menu = 'home' | 'vehicles' | 'tracks' | 'daily' | 'missions' | 'puzzles'
 let menu: Menu = 'home'
 
 type Mode = 'garage' | 'driving' | 'ending' | 'results' | 'tuning' | 'settings' | 'scores' | 'replay' | 'duel'
 let mode: Mode = 'garage'
 /** Today's challenge, when one of its two events is picked in the garage (not saved). */
 let daily: 'race' | 'endless' | null = null
+/** A Klurbana being played (data/klurbanor.ts), or null. */
+let puzzle: PuzzleLevel | null = null
+/** Klurbanor are timed, with their own records per level. */
+const PUZZLE_MODE: GameMode = { id: 'klur', name: 'Klurbana' }
+/** Coins the first time the family finishes a Klurbana. */
+const PUZZLE_REWARD = 600
+const puzzleEnvs = new Map<string, Environment>()
+/** A Klurbana as an environment: its theme's look, the shared gravity and grip, its own records. */
+function puzzleEnv(level: PuzzleLevel): Environment {
+  let env = puzzleEnvs.get(level.id)
+  if (!env) {
+    const look = environment(level.theme)
+    env = { ...look, id: `klur-${level.id}`, name: level.name, theme: level.theme, price: 0, gravity: PUZZLE_GRAVITY, groundFriction: PUZZLE_GRIP, puddles: undefined, stunt: undefined }
+    puzzleEnvs.set(level.id, env)
+  }
+  return env
+}
+/** Whether a Klurbana can be played: the first always, the others once the one before is done. */
+function puzzleOpen(i: number): boolean {
+  return i === 0 || save.unlocked.includes(`klur:${LEVELS[i - 1].id}`)
+}
 /** A tournament in progress: three tracks, points per placing (src/game/cup.ts). */
 let cup: Cup | null = null
 /** A record being watched as a replay (from Topplista). */
@@ -155,6 +182,7 @@ const today = () => dailyFor(new Date())
 function currentEnv() {
   if (replay) return environment(replay.env)
   if (sandboxRun) return environment(sandbox.envId)
+  if (puzzle) return puzzleEnv(puzzle)
   return daily ? today().env : cup ? environment(cup.tracks[cup.index]) : environment(save.envId)
 }
 /** Where this track's records live: the map, or today's challenge ("daily-2026-11-12"). */
@@ -163,6 +191,7 @@ function recordEnvId(): string {
 }
 /** The track's name for screens: the map, or "Dagens lopp · Frostpasset". */
 function trackName(): string {
+  if (puzzle) return `Klurbana · ${puzzle.name}`
   if (cup) return `Tävling, bana ${cup.index + 1} av ${CUP_TRACKS} · ${currentEnv().name}${currentMode().length ? ` · ${currentMode().name}` : ''}`
   return daily ? `${daily === 'race' ? 'Dagens lopp' : 'Dagens oändliga'} · ${currentEnv().name}` : currentEnv().name
 }
@@ -183,6 +212,7 @@ function driveVehicle() {
 }
 function currentMode() {
   if (sandboxRun) return gameMode(sandbox.modeId)
+  if (puzzle) return PUZZLE_MODE
   if (daily) return gameMode(daily === 'race' ? 'race500' : 'endless')
   return gameMode(save.modeId)
 }
@@ -196,7 +226,7 @@ function currentPlayer(): string {
 
 /** The part fitted to a vehicle (none on the daily challenge, where all are tuned alike). */
 function partFor(vehicleId: string): PartId {
-  if (daily || sandboxRun) return 'none'
+  if (daily || sandboxRun || puzzle) return 'none'
   const id = save.parts?.[vehicleId] ?? 'none'
   return id === 'none' || save.unlocked.includes(`part:${id}`) ? id : 'none'
 }
@@ -212,12 +242,15 @@ function upgradedSpec() {
   const entry = driveVehicle()
   // A test drive from Trimning: its levels, hand-set values and every-vehicle factors.
   if (sandboxRun) return sandboxSpec(sandbox, entry.id, drivenLevels(save, entry.id))
+  // A Klurbana: everyone at the same tuning, so it is about the route and the driving.
+  if (puzzle) return puzzleSpec(entry.id)
   // Otherwise the family's own upgrades, at the levels they chose (or today's challenge's set tuning).
   const levels = daily ? today()[daily].levels : drivenLevels(save, entry.id)
   return applyUpgrades(entry.base, entry.full, levels)
 }
 
 function newRun(): Run {
+  if (puzzle) return puzzleRun(puzzle, vehicleSpec(), settings.help.includes(currentPlayer()))
   const env = currentEnv()
   const height = heightFor(env)
   return new Run({
@@ -248,6 +281,7 @@ function show(m: Mode): void {
   document.body.classList.toggle('duel', m === 'duel')
   canvas2.classList.toggle('hidden', m !== 'duel')
   pauseBtn.classList.toggle('hidden', m !== 'driving' && m !== 'duel')
+  restartBtn.classList.toggle('hidden', m !== 'driving' || !puzzle)
   replayBar.classList.toggle('hidden', m !== 'replay')
   hornBtn.classList.toggle('hidden', m !== 'driving')
   boostBtn.classList.toggle('hidden', m !== 'driving' || !driveVehicle().base.thrusters)
@@ -273,6 +307,7 @@ function pause(): void {
   paused = true
   pausedEl.classList.remove('hidden')
   pauseBtn.classList.add('hidden')
+  restartBtn.classList.add('hidden')
   endRunBtn.classList.add('hidden')
   hornBtn.classList.add('hidden')
   boostBtn.classList.add('hidden')
@@ -284,12 +319,19 @@ function resume(): void {
   paused = false
   pausedEl.classList.add('hidden')
   pauseBtn.classList.remove('hidden')
+  restartBtn.classList.toggle('hidden', !puzzle)
   endRunBtn.classList.remove('hidden')
   hornBtn.classList.remove('hidden')
   boostBtn.classList.toggle('hidden', !driveVehicle().base.thrusters)
   controls.reset()
 }
 pauseBtn.addEventListener('click', pause)
+// Klurbanor: try again from the start straight away (also right after a crash); it does not count.
+restartBtn.addEventListener('click', () => {
+  if (!puzzle || (mode !== 'driving' && mode !== 'ending')) return
+  restartBtn.blur()
+  startRun()
+})
 // The horn: just for fun, it changes nothing.
 hornBtn.addEventListener('pointerdown', (e) => {
   e.stopPropagation()
@@ -395,6 +437,7 @@ function openGarage(justBought?: UpgradeId): void {
       onPick: (id) => pick('env', id),
       onMode: (id: string) => {
         daily = null
+        puzzle = null
         save.modeId = id
         persist()
         openGarage()
@@ -423,6 +466,37 @@ function openGarage(justBought?: UpgradeId): void {
       }),
       onGo: (id) => {
         daily = id
+        puzzle = null
+        startRound()
+      },
+      onHome: goHome,
+    })
+  } else if (menu === 'puzzles') {
+    showPuzzles(garageEl, {
+      coins: save.coins,
+      levels: LEVELS.map((l, i) => {
+        const key = recordKey(puzzleEnv(l).id, PUZZLE_MODE.id)
+        const times = save.players.map((p) => ({ name: p, colour: playerColour(p), t: playerTime(save, p, key) })).filter((x) => x.t < Infinity)
+        return {
+          id: l.id,
+          number: i + 1,
+          name: l.name,
+          hint: l.hint,
+          gems: l.gems.length,
+          open: puzzleOpen(i),
+          done: save.unlocked.includes(`klur:${l.id}`),
+          times: times.map((x) => ({ name: x.name, colour: x.colour, time: formatTime(x.t) })),
+          preview: (c: HTMLCanvasElement) => drawLevelPreview(c, l, puzzleEnv(l)),
+        }
+      }),
+      canDrive,
+      reward: PUZZLE_REWARD,
+      onGo: (id) => {
+        const l = puzzleLevel(id)
+        if (!l) return
+        puzzle = l
+        daily = null
+        cup = null
         startRound()
       },
       onHome: goHome,
@@ -452,7 +526,16 @@ function openGarage(justBought?: UpgradeId): void {
         detail: `Uppgraderad ${avg.toFixed(1).replace('.', ',').replace(',0', '')}/${MAX_LEVEL}${part && part.id !== 'none' ? ` · ${part.name}` : ''}`,
         preview: (c) => drawVehiclePreview(c, applyUpgrades(vehicle.base, vehicle.full, levels)),
       },
-      track: {
+      track: puzzle ? {
+        id: env.id,
+        name: `Klurbana: ${puzzle.name}`,
+        detail: `${puzzle.gems.length} stenar, sen målflaggan`,
+        note: (() => {
+          const t = playerTime(save, currentPlayer(), currentKey())
+          return t < Infinity ? `Din bästa tid ${formatTime(t)}` : 'Byt bana ›'
+        })(),
+        preview: (c) => drawLevelPreview(c, puzzle!, env),
+      } : {
         id: env.id,
         name: daily ? (daily === 'race' ? 'Dagens lopp' : 'Dagens oändliga') : env.name,
         detail: daily ? dailyTitle() : currentMode().name,
@@ -460,6 +543,7 @@ function openGarage(justBought?: UpgradeId): void {
         preview: (c) => drawEnvironmentPreview(c, env, heightFor(env)),
       },
       daily: { title: 'Dagens utmaning', detail: today().env.name, on: !!daily },
+      puzzles: { done: LEVELS.filter((l) => save.unlocked.includes(`klur:${l.id}`)).length, total: LEVELS.length, on: !!puzzle },
       missions: save.players.reduce((n, p) => n + missionsFor(p).length, 0),
       onDrive: startRound,
       onMenu: openMenu,
@@ -550,6 +634,7 @@ function pick(kind: 'vehicle' | 'env', id: string): void {
     else {
       save.envId = item.id
       daily = null
+      puzzle = null
     }
     persist()
     run = newRun()
@@ -652,6 +737,7 @@ function openTuning(): void {
 function startSandbox(): void {
   sandboxRun = true
   daily = null
+  puzzle = null
   cup = null
   startRun()
 }
@@ -734,7 +820,7 @@ function collectGhosts(): void {
 
 function startRun(): void {
   // Time of day and weather come with today's challenge only (the date picks them).
-  atmosphere = daily ? today().atmosphere : undefined
+  atmosphere = daily && !puzzle ? today().atmosphere : undefined
   sound.setVehicle(driveVehicle().id)
   run = newRun()
   pickGhosts()
@@ -769,13 +855,22 @@ function finishRun(): void {
   const counts = !sandboxRun
   if (counts) earn(save, total)
   if (counts) {
-    save.best[envId] = Math.max(save.best[envId] ?? 0, distance)
-    save.playerBest[me] = { ...save.playerBest[me], [envId]: Math.max(best, distance) }
+    // A Klurbana counts its time only (distance means nothing there).
+    if (!puzzle) {
+      save.best[envId] = Math.max(save.best[envId] ?? 0, distance)
+      save.playerBest[me] = { ...save.playerBest[me], [envId]: Math.max(best, distance) }
+    }
     if (time !== undefined) save.playerTimes[me] = { ...save.playerTimes[me], [key]: Math.min(bestTime, time) }
     addScore(save, { name: me, vehicle: driveVehicle().id, env: envId, distance, mode: race.id, time })
   }
   // Missions done in this run pay their coins and make way for new ones.
-  const missionsDone = counts ? checkMissions(me, { ...run.stats, distance, env: currentEnv().id, coins: total }) : []
+  const missionsDone = counts && !puzzle ? checkMissions(me, { ...run.stats, distance, env: currentEnv().id, coins: total }) : []
+  // The first time the family finishes a Klurbana: coins, and the next one opens.
+  if (counts && puzzle && time !== undefined && !save.unlocked.includes(`klur:${puzzle.id}`)) {
+    save.unlocked.push(`klur:${puzzle.id}`)
+    earn(save, PUZZLE_REWARD)
+    missionsDone.push({ text: `${puzzle.name} klarad${LEVELS[LEVELS.indexOf(puzzle) + 1] ? ', nästa bana öppnad' : ''}`, reward: PUZZLE_REWARD })
+  }
   persist()
   // Every counting run is kept as the player's last ghost (and best, if it went further or faster).
   let turnGhost: Ghost | null = null
@@ -788,15 +883,17 @@ function finishRun(): void {
     // Raced by the players after this one in the round (a retake replaces the earlier run).
     turnGhost = ghost
   }
-  const newBest = counts && (race.length ? time !== undefined && time < bestTime : distance > best)
+  const timed = !!race.length || !!puzzle
+  const newBest = counts && (timed ? time !== undefined && time < bestTime : distance > best)
   // A test drive is not a turn in the round.
   if (counts) recordTurn(round, { name: me, vehicle: driveVehicle().name, distance, time, newBest }, turnGhost)
   const nextPlayer = counts ? nextPlayerOf(round) : undefined
   showResults(resultsEl, {
     status: run.status === 'running' ? 'ended' : run.status,
     distance,
-    newBest: counts && distance > best,
+    newBest: counts && !puzzle && distance > best,
     race: race.length ? { length: race.length, time, newBestTime: newBest } : undefined,
+    puzzle: puzzle ? { time, newBestTime: newBest, gems: puzzle.gems.length - run.gemsLeft.length, total: puzzle.gems.length } : undefined,
     coins: run.coins,
     total,
     bank: save.coins,
@@ -805,7 +902,7 @@ function finishRun(): void {
     next: nextPlayer,
     roundOver: counts && roundOver(round),
     sandbox: !counts,
-    onGarage: counts ? goHome : openTuning,
+    onGarage: !counts ? openTuning : puzzle ? () => openMenu('puzzles') : goHome,
     onAgain: counts ? startRound : startSandbox,
     onNext: () => {
       advance(round)
@@ -981,6 +1078,7 @@ let duel: { sides: DuelSide[]; countdown: number; acc: number; endTimer: number 
 function startDuel(): void {
   if (save.players.length < 2) return
   daily = null
+  puzzle = null
   cup = null
   sandboxRun = false
   const names = save.players.slice(0, 2)
@@ -1146,6 +1244,7 @@ function familyTable() {
 /** Start a tournament on three of the family's maps, with the ticked players. */
 function startCup(): void {
   daily = null
+  puzzle = null
   cup = newCup(ENVIRONMENTS.filter((e) => owned(e.id, e.price)).map((e) => e.id), save.players)
   startRound()
 }
@@ -1193,6 +1292,12 @@ function handleEvents(): void {
     if (e.kind === 'coin') sound.coin()
     else if (e.kind === 'fuel') sound.fuel()
     else if (e.kind === 'star') foundStar(e.id, e.x, e.y)
+    else if (e.kind === 'gem') {
+      sound.coin()
+      if (!e.left) sound.fanfare()
+      renderer.sparkle(e.x, e.y, '#c77dff')
+      popups.push({ text: e.left ? `◆ ${e.left} kvar` : 'Alla stenar! Till målflaggan!', at: { x: e.x, y: e.y }, age: 0 })
+    }
     else if (e.kind === 'turbo') {
       sound.turbo()
       popups.push({ text: 'Turbo!', at: { x: e.x, y: e.y }, age: 0 })
@@ -1320,7 +1425,7 @@ function frame(now: number): void {
     next,
     alpha: mode === 'driving' || mode === 'ending' ? accumulator / STEP : 1,
     spec: mode === 'replay' && replay ? replay.spec : run.options.vehicle,
-    height: run.options.height,
+    height: puzzle ? (x: number) => groundBelow(puzzle!.geom, x, next.chassis.y) : run.options.height,
     env: currentEnv(),
     dt,
     input: controls.input,
@@ -1346,6 +1451,7 @@ function frame(now: number): void {
     ghosts: mode === 'driving' || mode === 'ending' ? ghostPoses() : [],
     puddles: puddlesFor(currentEnv()),
     seesaws: currentEnv().stunt ? run.sim.seesawAngles() : undefined,
+    level: puzzle && run.options.level ? { geom: puzzle.geom, gems: run.gemsLeft, total: puzzle.gems.length, goal: puzzle.goal, time: run.finishTime ?? run.sim.steps * STEP } : undefined,
     race: currentMode().length ? { length: currentMode().length!, time: run.finishTime ?? run.sim.steps * STEP } : undefined,
     showHud: mode === 'driving' || mode === 'ending' || mode === 'results',
     revs: shownRevs,

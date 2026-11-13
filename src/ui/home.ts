@@ -86,9 +86,11 @@ export interface HomeView {
   vehicle: { id: string; name: string; detail: string; preview(c: HTMLCanvasElement): void }
   track: { id: string; name: string; detail: string; note: string; preview(c: HTMLCanvasElement): void }
   daily: { title: string; detail: string; on: boolean }
+  /** Klurbanor: how many the family has finished. */
+  puzzles: { done: number; total: number; on: boolean }
   missions: number
   onDrive(): void
-  onMenu(menu: 'vehicles' | 'tracks' | 'daily' | 'missions'): void
+  onMenu(menu: 'vehicles' | 'tracks' | 'daily' | 'missions' | 'puzzles'): void
   onCup(): void
   onDuel(): void
   onOutfit(): void
@@ -117,7 +119,7 @@ export function showHome(el: HTMLElement, v: HomeView): void {
         <span class="pk-change">Garaget ›</span>
       </button>
       <button class="pick-card ${v.daily.on ? 'daily-on' : ''}" data-act="tracks">
-        <span class="pk-label">${v.daily.on ? 'Dagens utmaning' : 'Bana'}</span>
+        <span class="pk-label">${v.daily.on ? 'Dagens utmaning' : v.puzzles.on ? 'Klurbana' : 'Bana'}</span>
         <canvas class="pk-thumb" data-thumb="home:track"></canvas>
         <span class="pk-name">${v.track.name}</span>
         <span class="pk-detail">${v.track.detail}</span>
@@ -130,6 +132,7 @@ export function showHome(el: HTMLElement, v: HomeView): void {
     </div>
     <div class="tiles">
       ${tile('daily', '☀️', 'Dagens utmaning', v.daily.detail, { cls: 'gold' })}
+      ${tile('puzzles', '🧩', 'Klurbanor', `${v.puzzles.done} av ${v.puzzles.total} klarade`, { cls: 'puzzle' })}
       ${tile('missions', '🎯', 'Uppdrag', v.missions ? `${v.missions} att klara` : 'Välj spelare')}
       ${tile('cup', '🏆', 'Tävling', two ? '3 banor, poäng' : 'Minst 2 spelare', { disabled: !two })}
       ${tile('duel', '⚔️', 'Duell', two ? 'Två samtidigt' : 'Minst 2 spelare', { disabled: !two })}
@@ -144,7 +147,7 @@ export function showHome(el: HTMLElement, v: HomeView): void {
     if (b.dataset.player) return v.onTogglePlayer(b.dataset.player)
     const act = b.dataset.act
     if (act === 'drive') v.onDrive()
-    else if (act === 'vehicles' || act === 'tracks' || act === 'daily' || act === 'missions') v.onMenu(act)
+    else if (act === 'vehicles' || act === 'tracks' || act === 'daily' || act === 'missions' || act === 'puzzles') v.onMenu(act)
     else if (act === 'cup') v.onCup()
     else if (act === 'duel') v.onDuel()
     else if (act === 'outfit') v.onOutfit()
@@ -316,5 +319,41 @@ export function showMissions(el: HTMLElement, v: MissionsView): void {
     if (!b || b.disabled) return
     if (b.dataset.act === 'home') v.onHome()
     else if (b.dataset.act === 'drive') v.onDrive()
+  }
+}
+
+// ---------------------------------------------------------------------------------------
+
+export interface PuzzlesView {
+  coins: number
+  canDrive: boolean
+  reward: number
+  levels: {
+    id: string; number: number; name: string; hint: string; gems: number; open: boolean; done: boolean
+    times: { name: string; colour: string; time: string }[]
+    preview(c: HTMLCanvasElement): void
+  }[]
+  onGo(id: string): void
+  onHome(): void
+}
+
+/** Klurbanor: the levels in order, each opening when the one before is finished. */
+export function showPuzzles(el: HTMLElement, v: PuzzlesView): void {
+  el.innerHTML = `
+    <div class="bar menu-bar"><button class="small back" data-act="home">‹ Hem</button><h2>Klurbanor</h2><span class="coins">● ${v.coins}</span></div>
+    <div class="hint">Ta alla <b style="color:#d9a2ff">◆ stenar</b> och kör sen till målflaggan, så fort du kan. Välj väg med farten: för fort kan vara lika illa som för sakta. Alla kör med samma trimning. Första gången en bana klaras: ● ${v.reward}.</div>
+    <div class="puzzles">${v.levels.map((l) => `
+      <button class="pzcard ${l.open ? '' : 'locked'} ${l.done ? 'done' : ''}" data-go="${l.id}" ${l.open && v.canDrive ? '' : 'disabled'}>
+        <canvas data-thumb="pz:${l.id}"></canvas>
+        <span class="pz-name"><b>${l.number}</b> ${l.name}${l.done ? ' <span class="tick">✓</span>' : ''}</span>
+        <span class="pz-hint">${l.open ? l.hint : '🔒 Klara banan före först'}</span>
+        <span class="pz-times">◆ ${l.gems}${l.times.map((t) => ` · <b style="color:${t.colour}">${t.name}</b> ${t.time}`).join('')}</span>
+      </button>`).join('')}</div>`
+  drawThumbs(el, Object.fromEntries(v.levels.map((l) => [`pz:${l.id}`, l.preview])))
+  el.onclick = (e) => {
+    const b = (e.target as HTMLElement).closest('button')
+    if (!b || b.disabled) return
+    if (b.dataset.go) v.onGo(b.dataset.go)
+    else if (b.dataset.act === 'home') v.onHome()
   }
 }

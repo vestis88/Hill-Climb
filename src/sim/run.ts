@@ -5,7 +5,8 @@ import type { Pickup, PickupSource } from '../data/track'
 import { DriverSway, Ragdoll } from './driver'
 import type { HeightFn, Input, SimState, VehicleSpec } from './types'
 import { Sim, STEP } from './world'
-import { featureNear, stuntFallLine, stuntObstacles } from './stunt'
+import { featureNear, stuntFallLine, stuntObstacles, type StuntObstacle } from './stunt'
+import { circleHits, groundBelow, type LevelGeom } from './level'
 
 /** Run rules, from README "The run". */
 export const RULES = {
@@ -80,6 +81,8 @@ export type RunEvent =
   | { kind: 'milestone'; value: number; distance: number }
   /** Stuntbanan: a loop driven all the way round, or a pit jumped. */
   | { kind: 'stunt'; what: 'loop' | 'gap'; value: number; x: number; y: number }
+  /** Klurbana: a gem picked up (left: how many are still out there). */
+  | { kind: 'gem'; x: number; y: number; left: number }
 
 export interface RunOptions {
   vehicle: VehicleSpec
@@ -104,6 +107,11 @@ export interface RunOptions {
   stars?: { id: string; x: number; y: number }[]
   /** Stuntbanan's seed: its loops and seesaws are built, and falling into a pit ends the run. */
   stunt?: number
+  /**
+   * A Klurbana: its solids, gems and goal. There is no fuel; every gem must be picked up, then
+   * touching the goal flag finishes the run (timed). Falling out of the level ends it.
+   */
+  level?: { geom: LevelGeom; start: { x: number; y: number }; gems: { x: number; y: number }[]; goal: { x: number; y: number } }
 }
 
 const TAU = Math.PI * 2
@@ -158,6 +166,8 @@ export class Run {
   private stuckSteps = 0
   private nextMilestone: number
   private loopsPaid = 0
+  /** Klurbana: gems not yet picked up (read by the renderer and HUD). */
+  gemsLeft: { x: number; y: number }[] = []
   /** Stuntbanan: steps spent stopped on the roof (a loop can drop a car on it without the head touching). */
   private roofSteps = 0
   private nextGap = 0
@@ -167,7 +177,15 @@ export class Run {
     this.thrustLeft = options.vehicle.thrusters?.seconds ?? 0
     const { vehicle, height, gravity, groundFriction, puddles } = options
     const stunt = options.stunt
-    this.sim = new Sim({ vehicle, height, gravity, groundFriction, puddles, obstacles: stunt === undefined ? undefined : stuntObstacles(stunt) })
+    const level = options.level
+    const loops: StuntObstacle[] = (level?.geom.loops ?? []).map((l, i) => ({ kind: 'loop', id: `loop${i}`, ...l }))
+    this.sim = new Sim({
+      vehicle, height, gravity, groundFriction, puddles,
+      obstacles: stunt !== undefined ? stuntObstacles(stunt) : loops.length ? () => loops : undefined,
+      level: level?.geom,
+      start: level?.start,
+    })
+    this.gemsLeft = level ? level.gems.map((g) => ({ ...g })) : []
     this.fallLine = stunt === undefined ? null : stuntFallLine(stunt)
     options.pickups.ensure(60)
     const every = RULES.milestoneEvery
@@ -247,7 +265,7 @@ export class Run {
       }
     }
     this.sim.step(input)
-    this.fuel -= (STEP / (input.gas ? RULES.fuelSecondsOnGas : RULES.fuelSecondsIdle)) * (this.options.vehicle.fuelUse ?? 1) / (this.options.assist ? RULES.assistFuel : 1) / partEffects(this.options.part).fuel
+    if (!this.options.level) this.fuel -= (STEP / (input.gas ? RULES.fuelSecondsOnGas : RULES.fuelSecondsIdle)) * (this.options.vehicle.fuelUse ?? 1) / (this.options.assist ? RULES.assistFuel : 1) / partEffects(this.options.part).fuel
     this.fuel = Math.max(0, this.fuel)
 
     const s = this.sim.state()
@@ -257,6 +275,12 @@ export class Run {
       this.status = 'crashed'
       this.endDistance = s.distance
       this.ragdoll = new Ragdoll(this.sim.world, this.sim.vehicle, this.sway.lean)
+      return
+    }
+    if (this.options.level && this.levelGoal(s)) {
+      this.status = 'finished'
+      this.endDistance = s.distance
+      this.finishTime = this.sim.steps * STEP
       return
     }
     this.stunts(s)
@@ -288,15 +312,30 @@ export class Run {
     }
   }
 
+  /** Klurbana: picks up gems; true once every gem is taken and the goal flag is touched. */
+  private levelGoal(s: SimState): boolean {
+    const level = this.options.level!
+    const head = this.sim.vehicle.headPosition()
+    const points = [s.chassis, head, ...s.wheels]
+    const near = (p: { x: number; y: number }, r: number) => points.some((q) => (p.x - q.x) ** 2 + (p.y - q.y) ** 2 < r * r)
+    for (const g of [...this.gemsLeft]) {
+      if (!near(g, 1.3)) continue
+      this.gemsLeft = this.gemsLeft.filter((x) => x !== g)
+      this.events.push({ kind: 'gem', x: g.x, y: g.y, left: this.gemsLeft.length })
+    }
+    return this.gemsLeft.length === 0 && near(level.goal, 1.4)
+  }
+
   /** Stuntbanan: fallen into a pit (below the line a jump can still make it out from). */
   private fellIn(s: SimState): boolean {
+    if (this.options.level) return s.chassis.y < this.options.level.geom.bottom
     const line = this.fallLine?.(s.chassis.x)
     return line !== null && line !== undefined && s.chassis.y < line
   }
 
-  /** Stuntbanan: lying still upside down for a second and a half ends the run. */
+  /** Stuntbanan and Klurbanor: lying still upside down for a second and a half ends the run. */
   private stuckOnRoof(s: SimState): boolean {
-    if (this.options.stunt === undefined) return false
+    if (this.options.stunt === undefined && !this.options.level) return false
     const upside = Math.abs(wrapAngle(s.chassis.angle - this.slopeAngle(s.chassis.x))) > 2.2
     this.roofSteps = upside && Math.abs(s.speed) < 1 ? this.roofSteps + 1 : 0
     return this.roofSteps * STEP > 1.5
@@ -323,6 +362,7 @@ export class Run {
 
   headOnGround(): boolean {
     const head = this.sim.vehicle.headPosition()
+    if (this.options.level) return circleHits(this.options.level.geom, head.x, head.y, this.options.vehicle.driver.headRadius)
     return head.y - this.options.vehicle.driver.headRadius < this.options.height(head.x)
   }
 
@@ -450,7 +490,10 @@ export class Run {
 
   /** Angle of the ground at x, radians (positive uphill). */
   private slopeAngle(x: number): number {
-    const h = this.options.height
+    const level = this.options.level
+    // A Klurbana: the ground under the vehicle (there may be ledges above and below).
+    const y = this.sim.vehicle.chassis.getPosition().y
+    const h = level ? (px: number) => groundBelow(level.geom, px, y) : this.options.height
     return Math.atan2(h(x + 0.5) - h(x - 0.5), 1)
   }
 

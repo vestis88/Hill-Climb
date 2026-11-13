@@ -20,6 +20,8 @@ export interface ResultsView {
   next?: string
   /** True after the last turn of a round with several players: show the standings next. */
   roundOver: boolean
+  /** A Klurbana: the time if the goal was reached, and the gems taken. */
+  puzzle?: { time?: number; newBestTime: boolean; gems: number; total: number }
   /** A test drive from Trimning: nothing counts, and Back goes to Trimning. */
   sandbox?: boolean
   onGarage(): void
@@ -45,7 +47,11 @@ export function showResults(el: HTMLElement, v: ResultsView): void {
     <h2>${TITLES[v.status]}</h2>
     ${v.sandbox ? '<div class="sandbox-note">🔧 Testkörning: räknas inte (inga mynt eller rekord)</div>' : ''}
     <div class="results-total"><b class="coin">●</b> <span data-count="${v.total}">0</span></div>
-    ${v.race
+    ${v.puzzle
+      ? v.puzzle.time !== undefined
+        ? `<div class="racetime">${formatTime(v.puzzle.time)} ${v.puzzle.newBestTime ? '<span class="newbest">Nytt rekord!</span>' : ''}</div>`
+        : `<div>Kom inte i mål · ◆ ${v.puzzle.gems} av ${v.puzzle.total} stenar</div>`
+      : v.race
       ? v.race.time !== undefined
         ? `<div class="racetime">${formatTime(v.race.time)} ${v.race.newBestTime ? '<span class="newbest">Nytt rekord!</span>' : ''}</div>`
         : `<div>Kom inte i mål: ${Math.floor(v.distance)} av ${v.race.length} m</div>`

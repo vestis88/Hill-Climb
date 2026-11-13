@@ -251,7 +251,7 @@ is confirmed. New vehicles get their own handling tests (as V1, V2) and a stage-
 
 Owner: no coin balance check needed (still balanced) and no App Store version. All of phase 6 is done.
 
-After phase 6: Stuntbanan, a timing track with loops, pits, seesaws, cliffs and whoops (done).
+After phase 6: Stuntbanan, a timing track with loops, pits, seesaws, cliffs and whoops (done). Klurbanor: five hand-made puzzle levels built from polygons, with gems, a goal flag and route choices (done).
 
 ## 6. How to run these tasks in the Claude app
 

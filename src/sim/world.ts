@@ -1,4 +1,5 @@
-import { Box, Edge, RevoluteJoint, Vec2, World, type Body, type Fixture } from 'planck'
+import { Box, Chain, Edge, RevoluteJoint, Vec2, World, type Body, type Fixture } from 'planck'
+import type { LevelGeom } from './level'
 import type { StuntObstacle } from './stunt'
 import { TerrainStreamer, TERRAIN_FRICTION } from './terrain'
 import type { HeightFn, Input, PuddleFn, SimState, VehicleSpec } from './types'
@@ -23,6 +24,11 @@ export interface SimOptions {
   puddles?: PuddleFn
   /** Track pieces built as bodies (Stuntbanan's loops and seesaws) between two distances. */
   obstacles?: (from: number, to: number) => StuntObstacle[]
+  /**
+   * A Klurbana (sim/level.ts): solid polygons instead of ground from `height`, built once.
+   * `start.y` is then the ground under the start; the vehicle is placed just above it.
+   */
+  level?: LevelGeom
 }
 
 /**
@@ -60,12 +66,18 @@ export class Sim {
     this.world = new World({ gravity: new Vec2(0, -(options.gravity ?? 10)) })
     this.terrain = new TerrainStreamer(this.world, options.height, options.groundFriction ?? TERRAIN_FRICTION)
     const startX = options.start?.x ?? 0
-    this.terrain.ensure(startX - BEHIND, startX + AHEAD)
     const ground = this.terrain.body
+    if (options.level) {
+      // Every solid of the level as a closed chain on the ground body (wheels and grip treat
+      // it as ground).
+      for (const poly of options.level.polygons) {
+        ground.createFixture(new Chain(poly.map(([px, py]) => new Vec2(px, py)), true), { friction: options.groundFriction ?? TERRAIN_FRICTION })
+      }
+    } else this.terrain.ensure(startX - BEHIND, startX + AHEAD)
 
     const x = options.start?.x ?? 0
     const lowestWheel = Math.min(...options.vehicle.wheels.map((w) => w.anchor.y - w.radius))
-    const y = options.start?.y ?? options.height(x) - lowestWheel + 0.05
+    const y = options.level ? (options.start?.y ?? 0) - lowestWheel + 0.05 : (options.start?.y ?? options.height(x) - lowestWheel + 0.05)
     this.vehicle = new Vehicle(this.world, options.vehicle, ground, { x, y })
     this.startX = x
     this.maxX = x
@@ -129,7 +141,7 @@ export class Sim {
 
   step(input: Input): void {
     const x = this.vehicle.chassis.getPosition().x
-    this.terrain.ensure(x - BEHIND, x + AHEAD)
+    if (!this.options.level) this.terrain.ensure(x - BEHIND, x + AHEAD)
     if (this.options.obstacles) this.updateObstacles(x)
     this.vehicle.applyInput(input)
     this.puddleDrag()
