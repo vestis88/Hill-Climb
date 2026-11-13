@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { environment, heightFor } from '../src/data/environments'
 import { fixedPickups, PickupField } from '../src/data/track'
-import { runabout, VEHICLES } from '../src/data/vehicles'
+import { runabout, runaboutFull, VEHICLES } from '../src/data/vehicles'
+import { applyUpgrades, BASE_LEVELS, type Levels } from '../src/data/upgrades'
 import { Run, type RunEvent } from '../src/sim/run'
 import { featureAt, stuntAvoid, stuntHeight, type StuntKind } from '../src/sim/stunt'
 import type { Input, VehicleSpec } from '../src/sim/types'
@@ -43,9 +44,10 @@ function drive(run: Run, seconds: number, gas: (t: number) => boolean = () => tr
 
 describe('Stuntbanan', () => {
   it('a loop taken at speed goes all the way round and pays', () => {
+    // The loops are big (6 m): a base vehicle right at the start lacks the speed; an upgraded one makes it.
     const seed = seedFirst('loop')
     const loop = featureAt(0, seed)
-    const run = stuntRun(seed)
+    const run = stuntRun(seed, runaboutFull)
     const events = drive(run, 20)
     expect(run.sim.state().chassis.x).toBeGreaterThan(loop.start + loop.length)
     expect(events.some((e) => e.kind === 'stunt' && e.what === 'loop')).toBe(true)
@@ -94,11 +96,12 @@ describe('Stuntbanan', () => {
     expect(run.status).toBe('running')
   })
 
-  it('most vehicles can drive the first 400 m at full gas with a little balancing', () => {
+  it('most half-upgraded vehicles can drive the first 400 m at full gas with a little balancing', () => {
     const env = environment('stunt')
+    const half = Object.fromEntries(Object.keys(BASE_LEVELS).map((k) => [k, 5])) as Levels
     let made = 0
     for (const v of VEHICLES) {
-      const run = new Run({ vehicle: v.base, height: heightFor(env), gravity: env.gravity, groundFriction: env.groundFriction, pickups: fixedPickups([]), bestDistance: 1e9, stunt: env.seed })
+      const run = new Run({ vehicle: applyUpgrades(v.base, v.full, half), height: heightFor(env), gravity: env.gravity, groundFriction: env.groundFriction, pickups: fixedPickups([]), bestDistance: 1e9, stunt: env.seed })
       drive(run, 60)
       if (run.sim.state().distance > 400) made++
     }

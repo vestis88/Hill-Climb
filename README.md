@@ -71,10 +71,12 @@ to ease off and balance the car in the air. Green Meadows has the most.
 **Stuntbanan** (`sim/stunt.ts`) is built differently: a gentle roll between stunt features,
 one every 78 m or so, in a fixed pattern picked by the seed and growing harder with distance:
 
-- **Loop** (r 3 to 3.8 m): a downhill run-up into a full loop. Too slow and you drop off at the
-  top. The ring is real physics: only the part of it the car should be on is solid at a time
-  (in at the bottom, up the right side, over the top, down the left), so you can drive in and
-  out. Each loop pays 200 coins and counts as a trick in a combo.
+- **Loop** (r 6 to 7.6 m, after a 20 m run-up dropping 4.5 m): a full loop. Too slow and you drop
+  off at the top. A loop only counts when ridden round on the ring: falling off at the top and
+  dropping through the middle does not. Base vehicles mostly make the first loop, half-upgraded
+  ones most loops; the ring is real physics: only the part of it the car should be on is solid
+  at a time (in at the bottom, up the right side, over the top, down the left), so you can drive
+  in and out. Each loop pays 200 coins and counts as a trick in a combo.
 - **Pit** (3.5 to 10 m wide): a lip and a deep pit. Too slow or too early off the gas and you
   fall in, which ends the run; clearing it pays 50 coins plus 15 per metre and is a trick too.
 - **Seesaw**: an 8 m plank on a pivot that rests on its near end and tips as you cross;
