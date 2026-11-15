@@ -324,10 +324,28 @@ export class GameRenderer {
     const speed = Math.abs(next.speed)
     // A tall, narrow view (a duel side by side) shows less width, so the vehicle stays a good size.
     const narrow = this.height > this.width
-    this.viewWidth = lerp(this.viewWidth, narrow ? Math.min(22, 14 + speed * 0.4) : Math.min(34, 22 + speed * 0.55), 0.03)
+    let wanted = narrow ? Math.min(22, 14 + speed * 0.4) : Math.min(34, 22 + speed * 0.55)
+    // In the air, keep the ground in sight (under the car and where it is heading), so you can
+    // judge how much time is left for a flip: pull back as far as the drop needs, and glide there.
+    const groundAt = (x: number) => (view.level ? groundBelow(view.level.geom, x, chassis.y) : height(x))
+    const ground = Math.min(groundAt(chassis.x), groundAt(chassis.x + Math.max(-12, Math.min(12, next.speed * 0.6))))
+    // (Capped: over a bottomless pit there is no ground worth zooming out for.)
+    const drop = next.airborne ? Math.min(24, Math.max(0, chassis.y - ground)) : 0
+    // The view's height in metres is viewWidth * h / width; it needs the drop plus room above
+    // the car and below the ground.
+    if (drop > 0) wanted = Math.max(wanted, Math.min(narrow ? 60 : 90, ((drop + 6) * width) / h))
+    this.viewWidth = lerp(this.viewWidth, wanted, wanted > this.viewWidth ? 0.05 : 0.025)
     const scale = width / this.viewWidth
     this.camX = chassis.x + this.viewWidth * 0.2
-    this.camY = lerp(this.camY, chassis.y + 1, 0.18)
+    // Normally centred a little above the car; in the air, lowered as needed so the ground shows
+    // near the bottom of the screen (while the car stays below the top).
+    let camTarget = chassis.y + 1
+    if (drop > 0) {
+      const below = (h * 0.42) / scale
+      const above = (h * 0.58) / scale
+      camTarget = Math.max(chassis.y + 2 - above, Math.min(camTarget, ground - 1.5 + below))
+    }
+    this.camY = lerp(this.camY, camTarget, 0.12)
 
     drawBackdrop(ctx, env, width, h, this.camX, this.camY, this.time)
 
