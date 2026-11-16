@@ -31,7 +31,7 @@ import { formatTime, gameMode, MODES, recordKey, type Mode as GameMode } from '.
 import { Run, RULES } from './sim/run'
 import type { SimState } from './sim/types'
 import { STEP } from './sim/world'
-import { showOutfit, showResults, showScores, showStandings, showTurn } from './ui/screens'
+import { showDuelPick, showOutfit, showResults, showScores, showStandings, showTurn } from './ui/screens'
 import { showDaily, showHome, showMissions, showPuzzles, showTracks, showVehicles } from './ui/home'
 import { drawLevelPreview } from './render/preview'
 import { confirmPurchase } from './ui/confirm'
@@ -608,7 +608,7 @@ function openGarage(justBought?: UpgradeId): void {
       onDrive: startRound,
       onMenu: openMenu,
       onCup: startCup,
-      onDuel: startDuel,
+      onDuel: openDuelPick,
       onOutfit: () => openOutfit(save.players[0] ?? PLAYERS[0].name),
       onScores: () => openScores(recordEnvId(), currentMode().id),
       onSettings: openSettings,
@@ -822,6 +822,33 @@ function startRound(): void {
   // With several players, first show who starts, the order, and let them pick a vehicle.
   if (!together(round)) return startRun()
   openTurn()
+}
+
+/** Before a duel: both players pick their vehicle, each in their own half (remembered per player). */
+function openDuelPick(): void {
+  if (save.players.length < 2) return
+  const names = save.players.slice(0, 2)
+  const owns = VEHICLES.filter((v) => owned(v.id, v.price))
+  showDuelPick(resultsEl, {
+    info: `${environment(save.envId).name} · ${gameMode(save.modeId).name}`,
+    opposite: settings.duelLayout === 'opposite',
+    players: names.map((name) => {
+      const mine = playerVehicle(name)
+      return {
+        name,
+        colour: playerColour(name),
+        vehicles: owns.map((v) => ({ id: v.id, name: v.name, selected: v.id === mine.id, preview: (c: HTMLCanvasElement) => drawVehiclePreview(c, v.base, playerColour(name)) })),
+      }
+    }),
+    onVehicle: (i, id) => {
+      save.playerVehicles = { ...save.playerVehicles, [names[i]]: id }
+      writeSave(save)
+      openDuelPick()
+    },
+    onGo: startDuel,
+    onBack: goHome,
+  })
+  show('results')
 }
 
 /** Before a turn in a round with several players: whose turn it is and their vehicle. */
@@ -1336,7 +1363,7 @@ function finishDuel(): void {
       result: r.time !== undefined ? formatTime(r.time) : race.length ? `Ej i mål · ${Math.floor(r.distance)} m` : `${Math.floor(r.distance)} m`,
     })),
     onHome: goHome,
-    onAgain: startDuel,
+    onAgain: openDuelPick,
   })
 }
 

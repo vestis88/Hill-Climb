@@ -333,6 +333,8 @@ greyed out with their name, so two players never look alike. The choice is kept 
   Each player hears their own engine and has their own horn (side by side: player 1 on the left
   speaker, player 2 on the right). Each half also shows the other player, live, faded like a
   ghost, so you can see who is ahead. Pause and Avsluta sit on the split between the halves.
+  Before the start, each player picks their vehicle in their own half (remembered per player,
+  and also used for their turns in ordinary rounds); **Kör igen** after a duel comes back here.
   Made for the iPad.
 - **Tävling (tournament):** with two or more players ticked, the garage's "🏆 Tävling: 3 banor"
   starts a cup on three of the family's maps (different ones when three are owned) in the chosen
