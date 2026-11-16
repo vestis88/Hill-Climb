@@ -23,7 +23,7 @@ import { createInput } from './input/input'
 import { GameRenderer, type Popup } from './render/game'
 import { drawEnvironmentPreview, drawVehiclePreview } from './render/preview'
 import { addScore, drivenLevels, earn, emptySave, levelsFor, loadSave, setDrivenLevel, playerBest, playerTime, spend, writeSave } from './save/save'
-import { clearGhosts, poseToState, roundGhosts, GhostRecorder, GhostTrack, loadGhost, storeGhost, storeVehicleBest, vehicleKey, type Ghost } from './save/ghosts'
+import { clearGhosts, poseToState, roundGhosts, GhostRecorder, GhostTrack, loadGhost, storeGhost, storeVehicleBest, vehicleKey, type Ghost, type GhostPose } from './save/ghosts'
 import { CloudBackup } from './save/backup'
 import { restoreProgress } from './save/restore'
 import { COLOURS, PLAYERS, playerColour, setPlayerColours } from './data/players'
@@ -77,6 +77,8 @@ duelLayoutBtn.addEventListener('click', toggleDuelLayout)
 const pausedEl = $('paused')
 const updateBtn = $('update')
 const hornBtn = $('horn')
+/** The second player's horn in a duel. */
+const hornBtn2 = $('horn2')
 const replayBar = $('replayBar')
 replayBar.addEventListener('click', (e) => (e.target as HTMLElement).closest('button') && endReplay())
 const boostBtn = $('boost')
@@ -324,7 +326,8 @@ function show(m: Mode): void {
   pauseBtn.classList.toggle('hidden', m !== 'driving' && m !== 'duel')
   restartBtn.classList.toggle('hidden', m !== 'driving' || !puzzle)
   replayBar.classList.toggle('hidden', m !== 'replay')
-  hornBtn.classList.toggle('hidden', m !== 'driving')
+  hornBtn.classList.toggle('hidden', m !== 'driving' && m !== 'duel')
+  hornBtn2.classList.toggle('hidden', m !== 'duel')
   boostBtn.classList.toggle('hidden', m !== 'driving' || !driveVehicle().base.thrusters)
   document.body.classList.toggle('swapped', settings.swapPedals)
   setBoost(false)
@@ -351,6 +354,7 @@ function pause(): void {
   restartBtn.classList.add('hidden')
   endRunBtn.classList.add('hidden')
   hornBtn.classList.add('hidden')
+  hornBtn2.classList.add('hidden')
   boostBtn.classList.add('hidden')
   setBoost(false)
   controls.reset()
@@ -363,7 +367,8 @@ function resume(): void {
   restartBtn.classList.toggle('hidden', !puzzle)
   endRunBtn.classList.remove('hidden')
   hornBtn.classList.remove('hidden')
-  boostBtn.classList.toggle('hidden', !driveVehicle().base.thrusters)
+  hornBtn2.classList.toggle('hidden', mode !== 'duel')
+  boostBtn.classList.toggle('hidden', mode === 'duel' || !driveVehicle().base.thrusters)
   controls.reset()
 }
 pauseBtn.addEventListener('click', pause)
@@ -374,9 +379,22 @@ restartBtn.addEventListener('click', () => {
   startRun()
 })
 // The horn: just for fun, it changes nothing.
+// In a duel each player's horn is their own vehicle's, from their side (like their engine).
+function honk(player: number): void {
+  if (mode === 'duel' && duel) {
+    const side = duel.sides[player]
+    const voice = duel.voices[player]
+    if (voice) voice.horn(side.run.options.vehicle.id)
+    else sound.horn(side.run.options.vehicle.id)
+  } else sound.horn(driveVehicle().id)
+}
 hornBtn.addEventListener('pointerdown', (e) => {
   e.stopPropagation()
-  sound.horn(driveVehicle().id)
+  honk(0)
+})
+hornBtn2.addEventListener('pointerdown', (e) => {
+  e.stopPropagation()
+  honk(1)
 })
 pausedEl.addEventListener('click', (e) => {
   const act = (e.target as HTMLElement).closest('button')?.dataset.act
@@ -1137,6 +1155,8 @@ interface DuelSide {
   input: Input
   renderer: GameRenderer
   popups: Popup[]
+  /** Seconds since this player's run ended (their live ghost on the other half fades out). */
+  ended: number
 }
 let duel: { sides: DuelSide[]; countdown: number; acc: number; endTimer: number; voices: (Sound | null)[] } | null = null
 /** Duel engines: player 1 to the left and player 2 to the right when sitting side by side. */
@@ -1154,7 +1174,7 @@ function startDuel(): void {
     round.turn = i
     const r = newRun()
     const s = r.sim.state()
-    return { player, run: r, prev: s, next: s, revs: new EngineRevs(r.options.vehicle.engine.revTime), input: i === 0 ? controls.input : controls2.input, renderer: i === 0 ? renderer : renderer2, popups: [] as Popup[] }
+    return { player, run: r, prev: s, next: s, revs: new EngineRevs(r.options.vehicle.engine.revTime), input: i === 0 ? controls.input : controls2.input, renderer: i === 0 ? renderer : renderer2, popups: [] as Popup[], ended: 0 }
   })
   round.turn = 0
   sound.setVehicle(driveVehicle().id)
@@ -1218,7 +1238,9 @@ function drawDuel(dt: number): void {
     const shown = d.countdown > 0 ? side.revs.revs : side.revs.follow(side.next.revs, dt)
     d.voices[i]?.engine(shown, side.input.gas && side.run.fuel > 0 && !side.next.shifting, side.run.status === 'running' && side.run.fuel > 0 && !paused)
   })
+  for (const side of d.sides) if (side.run.status !== 'running') side.ended += dt
   for (const side of d.sides) {
+    const other = d.sides.find((o) => o !== side)!
     side.popups = side.popups.filter((p) => (p.age += dt) < (p.at ? 0.9 : 1.6))
     const r = side.run
     const revsNow = d.countdown > 0 ? side.revs.revs : side.next.revs
@@ -1242,13 +1264,35 @@ function drawDuel(dt: number): void {
       driver: { lean: r.sway.lean, ragdoll: r.ragdoll?.poses() ?? null },
       player: { name: side.player, colour: playerColour(side.player) },
       outfit: outfitFor(side.player),
-      ghosts: [],
+      // The other player, live, drawn like a ghost (fading near you, and away once their run ends).
+      ghosts: [{ label: other.player, colour: playerColour(other.player), spec: other.run.options.vehicle, pose: livePose(other.prev, other.next, d.countdown > 0 ? 1 : d.acc / STEP, Math.max(0, 1 - other.ended)), outfit: outfitFor(other.player) }],
+      coinX: 0.72,
       puddles: puddlesFor(currentEnv()),
       race: currentMode().length ? { length: currentMode().length!, time: r.finishTime ?? r.sim.steps * STEP } : undefined,
       showHud: true,
       revs: revsNow,
       countdown: d.countdown > 0 ? d.countdown : undefined,
     })
+  }
+}
+
+/** A vehicle's state as a ghost pose (wheel hubs in chassis coordinates), between two steps. */
+function livePose(a: SimState, b: SimState, alpha: number, fade: number): GhostPose {
+  const mix = (p: number, q: number) => p + (q - p) * alpha
+  const angle = mix(a.chassis.angle, b.chassis.angle)
+  const x = mix(a.chassis.x, b.chassis.x)
+  const y = mix(a.chassis.y, b.chassis.y)
+  const cos = Math.cos(angle)
+  const sin = Math.sin(angle)
+  return {
+    chassis: { x, y, angle },
+    hubs: b.wheels.map((w, i) => {
+      const dx = mix(a.wheels[i].x, w.x) - x
+      const dy = mix(a.wheels[i].y, w.y) - y
+      return [dx * cos + dy * sin, -dx * sin + dy * cos] as [number, number]
+    }),
+    wheelAngles: b.wheels.map((w, i) => mix(a.wheels[i].angle, w.angle)),
+    fade,
   }
 }
 
@@ -1342,7 +1386,7 @@ function cupView() {
 endRunBtn.addEventListener('click', () => (mode === 'duel' ? finishDuel() : finishRun()))
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyR' && mode === 'driving') startRun()
-  if (e.code === 'KeyH' && mode === 'driving') sound.horn(driveVehicle().id)
+  if (e.code === 'KeyH' && (mode === 'driving' || mode === 'duel')) honk(0)
   if ((e.code === 'Enter' || e.code === 'Space') && mode === 'garage') startRound()
 })
 // Bank the run's coins if the page is closed or hidden mid-run.

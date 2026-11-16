@@ -288,7 +288,9 @@ greyed out with their name, so two players never look alike. The choice is kept 
 - **Turbo:** now and then a blue turbo canister sits on the track in place of a coin row (fixed
   places per map, not in the first 100 m): 3 seconds of extra push while the gas is held, with a
   bar under the fuel gauge.
-- **Horn:** the TUT button (or H) honks; every vehicle has its own horn. It changes nothing.
+- **Horn:** the horn button (or H) honks; every vehicle has its own horn, synthesised like a real
+  one (two-tone car horns, the truck's sliding air-horn chord, bulb horns on the rover and kart, a
+  chirp on the moon lander). It changes nothing.
 - **Utstyrsel (outfit):** every player's Pip wears a helmet in their colour, with a pattern (Rand,
   Stjärnor, Rutor, Flammor) and a hat (Keps, Cowboyhatt, Tomteluva, Vikingahorn, Krona), all free to
   pick on the Utstyrsel screen; the Guldstjärnor pattern is earned by finding all three hidden
@@ -328,8 +330,10 @@ greyed out with their name, so two players never look alike. The choice is kept 
   and reports landscape): player 2 on the bottom half and player 1 on the top half turned upside
   down, for sitting either side of the iPad. When both are done, the further (or faster) wins;
   coins, bests and highscores count as usual (no ghosts are recorded).
-  Each player hears their own engine (side by side: player 1 on the left speaker, player 2 on
-  the right). Made for the iPad.
+  Each player hears their own engine and has their own horn (side by side: player 1 on the left
+  speaker, player 2 on the right). Each half also shows the other player, live, faded like a
+  ghost, so you can see who is ahead. Pause and Avsluta sit on the split between the halves.
+  Made for the iPad.
 - **Tävling (tournament):** with two or more players ticked, the garage's "🏆 Tävling: 3 banor"
   starts a cup on three of the family's maps (different ones when three are owned) in the chosen
   mode. Each track is a round; placings give 5, 3, 2 and 1 points (ties share), the table shows

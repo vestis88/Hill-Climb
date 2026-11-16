@@ -119,6 +119,49 @@ const ENGINES: Record<string, EngineVoice> = {
   monster: { idle: 40, top: 260, firing: 8, pulse: 0, grit: 2, cutoff: [320, 1500], sub: 0, noise: 0.14, waves: ['sawtooth', 'sawtooth'], volume: 1.2, kind: 'v8' },
 }
 
+/** One vehicle's horn (see Sound.horn). */
+interface HornSpec {
+  /** Note frequencies (Hz), sounded together. */
+  notes: number[]
+  wave: OscillatorType
+  /** Centre of the horn's resonance (Hz) and how sharp it is. */
+  formant: number
+  q: number
+  /** Overdrive (1 is clean). */
+  drive: number
+  gain: number
+  attack: number
+  /** Vibrato: rate (Hz) and depth (cents). */
+  wobble: [number, number]
+  /** Air horns start this much lower and slide up. */
+  slideFrom?: number
+  /** Bulb horns: squeeze up to this ratio and back. */
+  squeeze?: number
+  /** When each blast starts and how long it lasts (s). */
+  blasts: [number, number][]
+}
+
+const HORNS: Record<string, HornSpec> = {
+  // A small car: the classic two-tone "beep-beep" (a major third apart).
+  runabout: { notes: [415, 523], wave: 'sawtooth', formant: 900, q: 2.5, drive: 2.5, gain: 0.22, attack: 0.015, wobble: [7, 6], blasts: [[0, 0.17], [0.24, 0.22]] },
+  // A dirt bike: one thin, nasal, high beep, twice quickly.
+  scrambler: { notes: [622], wave: 'square', formant: 1700, q: 4, drive: 3, gain: 0.16, attack: 0.008, wobble: [9, 4], blasts: [[0, 0.1], [0.14, 0.12]] },
+  // The truck: a big chord air horn that slides up into pitch and holds.
+  hauler: { notes: [185, 233, 277], wave: 'sawtooth', formant: 520, q: 1.6, drive: 4, gain: 0.24, attack: 0.06, wobble: [4, 10], slideFrom: 0.85, blasts: [[0, 0.95]] },
+  // The marsh rover: a goose-like bulb honk.
+  rover: { notes: [311], wave: 'square', formant: 700, q: 5, drive: 2, gain: 0.2, attack: 0.02, wobble: [5, 8], squeeze: 1.18, blasts: [[0, 0.32]] },
+  // The tractor: an old, low, farm-machine two-tone, a little rough.
+  tractor: { notes: [147, 175], wave: 'square', formant: 420, q: 2, drive: 5, gain: 0.2, attack: 0.03, wobble: [3, 18], blasts: [[0, 0.6]] },
+  // The kart: a squeaky clown bulb horn, twice.
+  kart: { notes: [880], wave: 'triangle', formant: 1500, q: 6, drive: 2, gain: 0.22, attack: 0.01, wobble: [12, 6], squeeze: 1.35, blasts: [[0, 0.16], [0.22, 0.16]] },
+  // The snowmobile: a short, flat, mid two-tone.
+  snowmobile: { notes: [494, 587], wave: 'sawtooth', formant: 1100, q: 3, drive: 2.5, gain: 0.18, attack: 0.012, wobble: [6, 5], blasts: [[0, 0.3]] },
+  // The moon lander: a clean electronic chirp that slides up, twice.
+  lander: { notes: [1100, 1650], wave: 'sine', formant: 1400, q: 1, drive: 1.2, gain: 0.16, attack: 0.01, wobble: [18, 30], slideFrom: 0.6, blasts: [[0, 0.12], [0.16, 0.16]] },
+  // The monster truck: a deep diesel-truck air horn, long, wobbling.
+  monster: { notes: [131, 165, 196], wave: 'sawtooth', formant: 380, q: 1.4, drive: 5, gain: 0.26, attack: 0.08, wobble: [3, 14], slideFrom: 0.8, blasts: [[0, 1.2]] },
+}
+
 export class Sound {
   private ctx: BaseAudioContext | null = null
   private master: GainNode | null = null
@@ -726,24 +769,69 @@ export class Sound {
     this.tone(220, 0, 0.6, 'sawtooth', 0.08, 880)
   }
 
-  /** The horn: each vehicle has its own. */
+  /**
+   * The horn: each vehicle has its own, built like a real one. Car and truck horns are two or
+   * three notes a musical interval apart, each a buzzy (sawtooth) tone through a resonant filter
+   * and a little overdrive, with a quick swell and release; air horns slide up into pitch; bulb
+   * horns squeeze up and down; the moon lander chirps.
+   */
   horn(vehicle: string): void {
-    const notes: Record<string, [number[], number, OscillatorType, number]> = {
-      runabout: [[520, 660], 0.14, 'square', 0.1],
-      scrambler: [[880, 990], 0.12, 'square', 0.08],
-      hauler: [[220, 277], 0.45, 'sawtooth', 0.12],
-      rover: [[330], 0.25, 'triangle', 0.2],
-      tractor: [[175, 233], 0.5, 'square', 0.09],
-      kart: [[740, 880], 0.1, 'square', 0.08],
-      snowmobile: [[600], 0.3, 'triangle', 0.15],
-      lander: [[1200, 1500], 0.08, 'sine', 0.12],
-      monster: [[185, 233, 277], 0.7, 'sawtooth', 0.1],
+    const H = HORNS[vehicle] ?? HORNS.runabout
+    H.blasts.forEach(([at, length]) => this.hornBlast(H, at, length))
+  }
+
+  private hornBlast(h: HornSpec, start: number, length: number): void {
+    if (!this.ctx || !this.master) return
+    const ctx = this.ctx
+    const t = ctx.currentTime + start
+    // Shared tone colour: a resonant band-pass (the horn's trumpet), then soft clipping.
+    const band = ctx.createBiquadFilter()
+    band.type = 'bandpass'
+    band.frequency.value = h.formant
+    band.Q.value = h.q
+    const low = ctx.createBiquadFilter()
+    low.type = 'lowpass'
+    low.frequency.value = h.formant * 2.5
+    const shaper = ctx.createWaveShaper()
+    const curve = new Float32Array(256)
+    for (let i = 0; i < curve.length; i++) {
+      const x = (i / (curve.length - 1)) * 2 - 1
+      curve[i] = Math.tanh(x * h.drive) / Math.tanh(h.drive)
     }
-    const [freqs, length, wave, gain] = notes[vehicle] ?? notes.runabout
-    if (vehicle === 'runabout' || vehicle === 'scrambler') {
-      // Beep-beep.
-      for (const at of [0, length + 0.06]) freqs.forEach((f) => this.tone(f, at, length, wave, gain))
-    } else freqs.forEach((f) => this.tone(f, 0, length, wave, gain, vehicle === 'rover' ? f * 0.8 : undefined))
+    shaper.curve = curve
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(h.gain, t + h.attack)
+    g.gain.setValueAtTime(h.gain, t + Math.max(h.attack, length - 0.06))
+    g.gain.exponentialRampToValueAtTime(0.0001, t + length + 0.05)
+    // Mix the notes, plus a straight path past the band-pass so the body is not lost.
+    const mix = ctx.createGain()
+    mix.gain.value = 0.5
+    mix.connect(band).connect(shaper)
+    mix.connect(low).connect(shaper)
+    shaper.connect(g).connect(this.master)
+    // A slow wobble (a real horn's diaphragm is never perfectly steady).
+    const lfo = ctx.createOscillator()
+    const lfoGain = ctx.createGain()
+    lfo.frequency.value = h.wobble[0]
+    lfoGain.gain.value = h.wobble[1]
+    lfo.connect(lfoGain)
+    for (const f of h.notes) {
+      const osc = ctx.createOscillator()
+      osc.type = h.wave
+      osc.frequency.setValueAtTime(f * (h.slideFrom ?? 1), t)
+      if (h.slideFrom) osc.frequency.exponentialRampToValueAtTime(f, t + Math.min(0.25, length * 0.4))
+      if (h.squeeze) {
+        osc.frequency.exponentialRampToValueAtTime(f * h.squeeze, t + length * 0.5)
+        osc.frequency.exponentialRampToValueAtTime(f, t + length)
+      }
+      lfoGain.connect(osc.detune)
+      osc.connect(mix)
+      osc.start(t)
+      osc.stop(t + length + 0.1)
+    }
+    lfo.start(t)
+    lfo.stop(t + length + 0.1)
   }
 
   tap(): void {

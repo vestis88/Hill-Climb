@@ -55,7 +55,7 @@
         border: 0; border-radius: 999px; padding: 8px 14px; background: rgba(16, 21, 28, 0.6); color: #fff;
         font: 800 14px ui-rounded, system-ui, sans-serif;
       }
-      body.duel.opposite #duelLayout { top: calc(var(--app-h, 100dvh) / 2 - 18px); }
+      body.duel.opposite #duelLayout { top: calc(var(--app-h, 100dvh) / 2 + 36px); }
       #paused .duel-only { display: none; }
       body.duel #paused .duel-only { display: inline-block; }
       #endRun {
@@ -246,11 +246,23 @@
         position: fixed; z-index: 5; top: max(12px, var(--safe-top)); right: calc(max(12px, var(--safe-right)) + 160px);
         width: 44px; height: 40px; border: 0; border-radius: 12px; background: rgba(180, 76, 255, 0.55); color: #fff; font: 900 20px ui-rounded, system-ui, sans-serif;
       }
-      #horn {
+      .horn {
         position: fixed; z-index: 5; bottom: max(24px, calc(var(--safe-bottom) + 8px)); left: 50%; transform: translateX(-50%);
         width: 64px; height: 44px; border: 0; border-radius: 22px; background: rgba(16, 21, 28, 0.35); color: #ffd23f;
-        font: 900 15px ui-rounded, system-ui, sans-serif; touch-action: manipulation;
+        display: flex; align-items: center; justify-content: center; padding: 0; touch-action: manipulation;
       }
+      .horn.hidden { display: none !important; }
+      /* Duel: a horn for each player in the middle of their own half; pause and end on the
+         split between the halves, out of both players' way. */
+      body.duel.beside #horn { left: 25%; }
+      body.duel.beside #horn2 { left: 75%; }
+      body.duel.opposite #horn { bottom: auto; top: max(24px, calc(var(--safe-top) + 8px)); transform: translateX(-50%) rotate(180deg); }
+      body.duel.beside #pauseBtn, body.duel.beside #endRun { right: auto; left: 50%; transform: translateX(-50%); }
+      body.duel.beside #pauseBtn { top: calc(var(--app-h, 100dvh) / 2 - 48px); }
+      body.duel.beside #endRun { top: calc(var(--app-h, 100dvh) / 2 + 4px); background: rgba(16, 21, 28, 0.6); }
+      body.duel.opposite #pauseBtn, body.duel.opposite #endRun { right: auto; top: calc(var(--app-h, 100dvh) / 2 - 20px); transform: translateX(-50%); }
+      body.duel.opposite #pauseBtn { left: calc(50% - 60px); }
+      body.duel.opposite #endRun { left: calc(50% + 30px); background: rgba(16, 21, 28, 0.6); }
       #boost {
         position: fixed; z-index: 5; bottom: calc(max(24px, var(--safe-bottom)) + 170px); right: max(24px, var(--safe-right));
         width: 120px; height: 56px; border: 0; border-radius: 16px; background: rgba(255, 120, 40, 0.45); color: #fff;
@@ -258,7 +270,7 @@
       }
       #boost.on { background: rgba(255, 150, 60, 0.85); }
       body.swapped #boost { right: auto; left: max(24px, var(--safe-left)); }
-      #horn:active { background: rgba(255, 210, 63, 0.4); }
+      .horn:active { background: rgba(255, 210, 63, 0.4); }
       #paused h2 { font-size: 34px; margin: 0; }
       #update {
         position: fixed; z-index: 20; left: 50%; transform: translateX(-50%); bottom: max(12px, var(--safe-bottom));
@@ -481,7 +493,8 @@
     <button id="restart" class="hidden" aria-label="Börja om">↻</button>
     <button id="duelLayout" class="hidden"></button>
     <button id="endRun" class="hidden">Avsluta</button>
-    <button id="horn" class="hidden" aria-label="Tuta">TUT</button>
+    <button id="horn" class="hidden horn" aria-label="Tuta"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><path d="M4 13h4l9-6v18l-9-6H4z" fill="currentColor"/><path d="M21 11.5c1.6 1.2 2.5 2.8 2.5 4.5s-.9 3.3-2.5 4.5M24.5 8c2.6 2 4 4.8 4 8s-1.4 6-4 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
+    <button id="horn2" class="hidden horn" aria-label="Tuta"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><path d="M4 13h4l9-6v18l-9-6H4z" fill="currentColor"/><path d="M21 11.5c1.6 1.2 2.5 2.8 2.5 4.5s-.9 3.3-2.5 4.5M24.5 8c2.6 2 4 4.8 4 8s-1.4 6-4 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
     <button id="boost" class="hidden" aria-label="Raketer">BOOST</button>
     <div id="paused" class="screen hidden"><h2>Paus</h2><div class="actions"><button class="big blue" data-act="end">Avsluta åket</button><button class="big" data-act="resume">Fortsätt</button></div><button class="small duel-only" data-act="layout"></button></div>
     <div id="replayBar" class="hidden"><span></span><button class="small" data-act="back">Tillbaka</button></div>
