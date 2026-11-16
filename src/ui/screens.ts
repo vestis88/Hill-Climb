@@ -121,6 +121,50 @@ export function showTurn(el: HTMLElement, v: TurnView): void {
   }
 }
 
+export interface DuelPickView {
+  /** Track and mode, e.g. "Ängen · Oändlig". */
+  info: string
+  /** Opposite each other: the first player's half is turned upside down (they sit across). */
+  opposite: boolean
+  players: {
+    name: string
+    colour: string
+    vehicles: { id: string; name: string; selected: boolean; preview: (canvas: HTMLCanvasElement) => void }[]
+  }[]
+  onVehicle(player: number, id: string): void
+  onGo(): void
+  onBack(): void
+}
+
+/** Before a duel: each player picks their vehicle in their own half of the screen. */
+export function showDuelPick(el: HTMLElement, v: DuelPickView): void {
+  el.innerHTML = `
+    <div class="duel-pick ${v.opposite ? 'opposite' : ''}">
+      ${v.players.map((p, i) => `
+        <div class="duel-half" style="--c:${p.colour}">
+          <div class="who">${p.name}</div>
+          <div class="turn-vehicles">${p.vehicles.map((x) => `<button class="tveh ${x.selected ? 'on' : ''}" data-player="${i}" data-veh="${x.id}"><canvas data-dthumb="${i}:${x.id}"></canvas><span>${x.name}</span></button>`).join('')}</div>
+        </div>`).join('')}
+      <div class="duel-mid">
+        <div class="best">⚔ Duell · ${v.info}</div>
+        <button class="big" data-act="go">Kör!</button>
+        <button class="small" data-act="back">Tillbaka</button>
+      </div>
+    </div>`
+  v.players.forEach((p, i) => {
+    for (const x of p.vehicles) {
+      const c = el.querySelector<HTMLCanvasElement>(`canvas[data-dthumb="${i}:${x.id}"]`)
+      if (c) requestAnimationFrame(() => c.clientWidth && x.preview(c))
+    }
+  })
+  el.onclick = (e) => {
+    const b = (e.target as HTMLElement).closest('button')
+    if (b?.dataset.veh) v.onVehicle(Number(b.dataset.player), b.dataset.veh)
+    else if (b?.dataset.act === 'go') v.onGo()
+    else if (b?.dataset.act === 'back') v.onBack()
+  }
+}
+
 export interface OutfitView {
   coins: number
   players: { name: string; colour: string; on: boolean }[]
