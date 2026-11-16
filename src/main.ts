@@ -871,6 +871,11 @@ function openTurn(): void {
       openTurn()
     },
     onGo: () => startRun(),
+    // Leaving here drops the round (or the cup) that was about to be played.
+    onBack: () => {
+      cup = null
+      goHome()
+    },
   })
   show('results')
 }

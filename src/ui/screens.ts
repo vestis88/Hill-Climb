@@ -85,6 +85,10 @@ export function showResults(el: HTMLElement, v: ResultsView): void {
   }
 }
 
+/** The top bar every menu screen shares: a back button at the left and the title. */
+const backBar = (title: string, label = '‹ Tillbaka', extra = '') =>
+  `<div class="bar menu-bar"><button class="small back" data-act="back">${label}</button><h2>${title}</h2>${extra}</div>`
+
 export interface TurnView {
   /** The round's players in turn order, and whose turn it is now. */
   players: { name: string; colour: string }[]
@@ -95,6 +99,8 @@ export interface TurnView {
   vehicles: { id: string; name: string; selected: boolean; preview: (c: HTMLCanvasElement) => void }[]
   onVehicle(id: string): void
   onGo(): void
+  /** Leave (the round is not played). */
+  onBack(): void
 }
 
 /** Before each turn of a round with several players: whose turn, the order, and their vehicle. */
@@ -102,7 +108,7 @@ export function showTurn(el: HTMLElement, v: TurnView): void {
   const p = v.players[v.turn]
   const first = v.turn === 0
   el.innerHTML = `
-    <h2>${first ? 'Ny omgång' : 'Nästa tur'}</h2>
+    ${backBar(first ? 'Ny omgång' : 'Nästa tur', '‹ Hem')}
     <div class="best">${v.info}</div>
     <div class="who big-who" style="--c:${p.colour}">${first ? `${p.name} börjar!` : `${genitive(p.name)} tur!`}</div>
     <div class="order">${v.players.map((q, i) => `${i ? '<span class="arrow">→</span>' : ''}<span class="pchip ${i === v.turn ? 'on' : ''} ${i < v.turn ? 'done' : ''}" style="--c:${q.colour}"><b>${i + 1}</b> ${q.name}</span>`).join('')}</div>
@@ -118,6 +124,7 @@ export function showTurn(el: HTMLElement, v: TurnView): void {
     const b = (e.target as HTMLElement).closest('button')
     if (b?.dataset.veh) v.onVehicle(b.dataset.veh)
     else if (b?.dataset.act === 'go') v.onGo()
+    else if (b?.dataset.act === 'back') v.onBack()
   }
 }
 
@@ -139,6 +146,7 @@ export interface DuelPickView {
 /** Before a duel: each player picks their vehicle in their own half of the screen. */
 export function showDuelPick(el: HTMLElement, v: DuelPickView): void {
   el.innerHTML = `
+    ${backBar('Duell', '‹ Hem')}
     <div class="duel-pick ${v.opposite ? 'opposite' : ''}">
       ${v.players.map((p, i) => `
         <div class="duel-half" style="--c:${p.colour}">
@@ -148,7 +156,6 @@ export function showDuelPick(el: HTMLElement, v: DuelPickView): void {
       <div class="duel-mid">
         <div class="best">⚔ Duell · ${v.info}</div>
         <button class="big" data-act="go">Kör!</button>
-        <button class="small" data-act="back">Tillbaka</button>
       </div>
     </div>`
   v.players.forEach((p, i) => {
@@ -187,7 +194,7 @@ export function showOutfit(el: HTMLElement, v: OutfitView): void {
     `<button class="choice ${x.on ? 'on' : ''} ${x.owned ? '' : 'locked'}" data-item="${kind}:${x.id}" ${!x.owned && (x.price < 0 || x.price > v.coins) ? 'disabled' : ''}>
       <span class="name">${x.name}</span>${x.owned ? '' : x.price < 0 ? '<span class="price">Hitta alla ★ på en bana</span>' : `<span class="price">Köp ● ${x.price}</span>`}</button>`
   el.innerHTML = `
-    <div class="bar"><h2>Utstyrsel</h2><span class="coins">● ${v.coins}</span><button class="small" data-act="back">Tillbaka</button></div>
+    ${backBar('Utstyrsel', '‹ Tillbaka', `<span class="coins">● ${v.coins}</span>`)}
     <div class="players">${v.players.map((p) => `<button class="player ${p.on ? 'on' : ''}" data-player="${p.name}" style="--c:${p.colour}"><span class="tick">${p.on ? '✓' : ''}</span>${p.name}</button>`).join('')}</div>
     <canvas class="pip" width="360" height="300"></canvas>
     <div class="label">Färg (fordonet, hjälmen och spöket)</div>
@@ -270,7 +277,7 @@ export interface ScoresView {
 /** Highscore board: the best runs on a track, with who drove and in what. */
 export function showScores(el: HTMLElement, v: ScoresView): void {
   el.innerHTML = `
-    <h2>Topplista</h2>
+    ${backBar('Topplista')}
     <div class="seg">${v.tracks.map((t) => `<button class="${t.id === v.track ? 'on' : ''}" data-track="${t.id}">${t.name}</button>`).join('')}</div>
     <div class="seg">${v.modes.map((m) => `<button class="${m.id === v.mode ? 'on' : ''}" data-mode="${m.id}">${m.name}</button>`).join('')}</div>
     <div class="rows scores">
@@ -279,7 +286,7 @@ export function showScores(el: HTMLElement, v: ScoresView): void {
     <div class="bests">${v.bests.map((b) => `<span style="--c:${b.colour}"><b class="pname">${b.name}</b> bäst ${b.result}${b.replay ? `<button class="play" data-replay="${b.name}" aria-label="Se repris">▶</button>` : ''}</span>`).join('')}</div>
     <div class="family"><div><b>Familjen</b>${v.family.weekWinner ? ` · Veckans vinnare: <b class="week">🏅 ${v.family.weekWinner}</b>` : ''}</div>
       <div class="ftable">${v.family.rows.map((r) => `<span style="--c:${r.colour}"><b class="pname">${r.name}</b> ${r.rounds} omgångar${r.cups ? ` · ${r.cups} 🏆` : ''}${r.week ? ` · ${r.week} denna vecka` : ''}</span>`).join('')}</div></div>
-    <div class="actions"><button class="big blue" data-act="back">Tillbaka</button></div>`
+`
   el.onclick = (e) => {
     const b = (e.target as HTMLElement).closest('button')
     if (b?.dataset.replay) v.onReplay(b.dataset.replay)
