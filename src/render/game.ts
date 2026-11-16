@@ -96,6 +96,8 @@ export interface View {
   countdown?: number
   /** Ghost riders to race: a recorded pose, its vehicle and a name tag. */
   ghosts: { label: string; colour: string; spec: VehicleSpec; pose: GhostPose; outfit?: Outfit }[]
+  /** Where the coin counter sits across the screen (0 to 1; the middle by default). */
+  coinX?: number
   /** The driving player's outfit (helmet colour, pattern, hat). */
   outfit?: Outfit
 }
@@ -116,6 +118,9 @@ export class GameRenderer {
   private camX = 0
   private camY = 0
   private viewWidth = 24
+  /** Seconds in the air so far, and the smoothed drop to the ground the camera frames (see draw). */
+  private airFor = 0
+  private airDrop = 0
   private width = 0
   private height = 0
   private time = 0
@@ -174,6 +179,8 @@ export class GameRenderer {
   /** Snap the camera to the car and clear effects, e.g. at the start of a run. */
   resetCamera(state: SimState): void {
     this.viewWidth = 24
+    this.airFor = 0
+    this.airDrop = 0
     this.camX = state.chassis.x + this.viewWidth * 0.2
     this.camY = state.chassis.y + 1
     this.particles.clear()
@@ -327,14 +334,19 @@ export class GameRenderer {
     let wanted = narrow ? Math.min(22, 14 + speed * 0.4) : Math.min(34, 22 + speed * 0.55)
     // In the air, keep the ground in sight (under the car and where it is heading), so you can
     // judge how much time is left for a flip: pull back as far as the drop needs, and glide there.
+    // Only for real jumps: the little hops over bumps at speed must not move the camera, so it
+    // waits until the car has been in the air a moment, and the drop it frames is smoothed.
+    this.airFor = next.airborne ? this.airFor + view.dt : 0
     const groundAt = (x: number) => (view.level ? groundBelow(view.level.geom, x, chassis.y) : height(x))
     const ground = Math.min(groundAt(chassis.x), groundAt(chassis.x + Math.max(-12, Math.min(12, next.speed * 0.6))))
     // (Capped: over a bottomless pit there is no ground worth zooming out for.)
-    const drop = next.airborne ? Math.min(24, Math.max(0, chassis.y - ground)) : 0
+    const rawDrop = this.airFor > 0.35 ? Math.min(24, Math.max(0, chassis.y - ground)) : 0
+    this.airDrop = lerp(this.airDrop, rawDrop, 1 - Math.pow(rawDrop > this.airDrop ? 0.08 : 0.25, view.dt))
+    const drop = this.airDrop > 2 ? this.airDrop : 0
     // The view's height in metres is viewWidth * h / width; it needs the drop plus room above
     // the car and below the ground.
     if (drop > 0) wanted = Math.max(wanted, Math.min(narrow ? 60 : 90, ((drop + 6) * width) / h))
-    this.viewWidth = lerp(this.viewWidth, wanted, wanted > this.viewWidth ? 0.05 : 0.025)
+    this.viewWidth = lerp(this.viewWidth, wanted, 1 - Math.pow(wanted > this.viewWidth ? 0.1 : 0.25, view.dt))
     const scale = width / this.viewWidth
     this.camX = chassis.x + this.viewWidth * 0.2
     // Normally centred a little above the car; in the air, lowered as needed so the ground shows
@@ -343,7 +355,7 @@ export class GameRenderer {
     if (drop > 0) {
       const below = (h * 0.42) / scale
       const above = (h * 0.58) / scale
-      camTarget = Math.max(chassis.y + 2 - above, Math.min(camTarget, ground - 1.5 + below))
+      camTarget = Math.max(chassis.y + 2 - above, Math.min(camTarget, chassis.y - drop - 1.5 + below))
     }
     this.camY = lerp(this.camY, camTarget, 0.12)
 
@@ -1473,27 +1485,28 @@ export class GameRenderer {
 
     // Coins this run, in a pill at the top centre; it pops when a coin lands in it.
     ctx.save()
+    const cx = width * (view.coinX ?? 0.5)
     const pop = 1 + 0.18 * Math.sin(this.counterPop * Math.PI)
-    ctx.translate(width / 2, y0 + 12)
+    ctx.translate(cx, y0 + 12)
     ctx.scale(pop, pop)
-    ctx.translate(-width / 2, -(y0 + 12))
+    ctx.translate(-cx, -(y0 + 12))
     ctx.textAlign = 'center'
     const text = `${view.runCoins}`
     ctx.font = `800 22px ${FONT}`
     const tw = ctx.measureText(text).width
     const pw = tw + 48
     ctx.beginPath()
-    ctx.roundRect(width / 2 - pw / 2, y0 - 4, pw, 32, 16)
+    ctx.roundRect(cx - pw / 2, y0 - 4, pw, 32, 16)
     ctx.fillStyle = 'rgba(16, 21, 28, 0.45)'
     ctx.fill()
     ctx.beginPath()
-    ctx.arc(width / 2 - pw / 2 + 18, y0 + 12, 9, 0, Math.PI * 2)
+    ctx.arc(cx - pw / 2 + 18, y0 + 12, 9, 0, Math.PI * 2)
     ctx.fillStyle = '#ffcf33'
     ctx.fill()
     ctx.lineWidth = 2
     ctx.strokeStyle = '#c98a00'
     ctx.stroke()
-    this.outlinedText(text, width / 2 + 10, y0, 22, '#ffd23f')
+    this.outlinedText(text, cx + 10, y0, 22, '#ffd23f')
     ctx.restore()
 
     // Stunt and milestone pop-ups
