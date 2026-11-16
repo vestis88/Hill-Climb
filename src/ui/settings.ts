@@ -113,7 +113,7 @@ export function showSettings(el: HTMLElement, s: Settings, onChange: () => void,
   const ui: BackupUi = { joining: false, joinError: false, list: null, confirm: null }
   const render = () => {
     el.innerHTML = `
-      <div class="bar"><h2>Inställningar</h2><button class="small" data-act="back">Tillbaka</button></div>
+      <div class="bar menu-bar"><button class="small back" data-act="back">‹ Tillbaka</button><h2>Inställningar</h2></div>
       <div class="rows settings">
         <div><span>Ljud</span><span class="seg"><button data-sound="on" class="${s.sound ? 'on' : ''}">På</button><button data-sound="off" class="${s.sound ? '' : 'on'}">Av</button></span></div>
         <div><span>Musik</span><span class="seg"><button data-music="on" class="${s.music ? 'on' : ''}">På</button><button data-music="off" class="${s.music ? '' : 'on'}">Av</button></span></div>

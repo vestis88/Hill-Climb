@@ -341,6 +341,9 @@
       .home-bar h1 { margin-right: 4px; }
       button.small.icon { font-size: 20px; padding: 4px 10px; line-height: 1; }
       .menu-bar { justify-content: flex-start; max-width: 980px; }
+      /* A screen that starts with a back bar keeps it at the top and centres the rest below it. */
+      .screen > .menu-bar:first-child { width: 100%; margin-bottom: auto; flex: none; }
+      .screen > .menu-bar:first-child ~ :last-child { margin-bottom: auto; }
       .menu-bar h2 { margin-right: auto; }
       .menu-bar .coins { margin-left: 0; }
       button.small.back { padding: 8px 12px; }
