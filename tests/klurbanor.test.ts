@@ -68,7 +68,7 @@ describe('Klurbanor', () => {
   it('8 · Nålsögat: each eye has a narrow speed window; flying past the island flag does not count', () => {
     const plan = puzzleLevel('k8')!.plan
     const at = (i: number, speed: number) => plan.map((p, j) => (j === i ? { ...p, speed } : p))
-    for (const [i, speed, ok] of [[0, 9, false], [0, 10.5, true], [0, 12, false], [1, 9, false], [1, 11.5, false], [2, 13, false]] as const) {
+    for (const [i, speed, ok] of [[0, 9, false], [0, 10.5, true], [0, 12, false], [1, 9, false], [1, 11.5, false], [2, 14, false]] as const) {
       const { run } = drivePlan(withPlan('k8', at(i, speed)))
       expect(run.status === 'finished', `jump ${i + 1} at ${speed} m/s`).toBe(ok)
     }

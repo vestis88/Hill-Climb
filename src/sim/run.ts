@@ -170,6 +170,8 @@ export class Run {
   gemsLeft: { x: number; y: number }[] = []
   /** Stuntbanan: steps spent stopped on the roof (a loop can drop a car on it without the head touching). */
   private roofSteps = 0
+  /** Klurbanor: steps since a wheel last touched the ground. */
+  private groundSteps = 0
   private nextGap = 0
   private readonly fallLine: ((x: number) => number | null) | null
 
@@ -329,10 +331,30 @@ export class Run {
       const index = level.gems.findIndex((q) => q.x === g.x && q.y === g.y)
       level.geom.doors?.forEach((d, i) => d.key === index && this.sim.openDoor(i))
     }
-    // Some levels only count the flag once you have landed by it (not flying past it).
-    if (level.goalOnGround && !this.sim.vehicle.wheelContacts().some(Boolean)) return false
+    // Wheels down now or a moment ago (a bike bounces on landing).
+    this.groundSteps = this.sim.vehicle.wheelContacts().some(Boolean) ? 0 : this.groundSteps + 1
+    if (this.gemsLeft.length > 0) return false
+    // Some levels only count the flag once you have landed by it (not flying past it), or stopped.
+    if (level.goalOnGround && this.groundSteps * STEP > 0.1) return false
     if (level.goalStill && Math.abs(s.speed) > 1) return false
-    return this.gemsLeft.length === 0 && near(level.goal, 1.4)
+    return this.touchesFlag(level.goal)
+  }
+
+  /**
+   * Whether any part of the vehicle touches the goal flag as it is drawn: the pole and its flag
+   * (a box from just left of the pole to the flag's tip, from below the base to the top), grown
+   * a little so brushing it counts. The vehicle is its body outline, wheels and helmet.
+   */
+  private touchesFlag(goal: { x: number; y: number }): boolean {
+    const x0 = goal.x - 0.9
+    const x1 = goal.x + 1.2
+    const y0 = goal.y - 1.6
+    const y1 = goal.y + 2.2
+    const inBox = (p: { x: number; y: number }, r = 0) => p.x > x0 - r && p.x < x1 + r && p.y > y0 - r && p.y < y1 + r
+    const v = this.sim.vehicle
+    if (this.options.vehicle.chassis.polygon.some((q) => inBox(v.chassis.getWorldPoint(Vec2(q.x, q.y))))) return true
+    if (v.wheels.some((w) => inBox(w.getPosition()))) return true
+    return inBox(v.headPosition(), this.options.vehicle.driver.headRadius)
   }
 
   /** Stuntbanan: fallen into a pit (below the line a jump can still make it out from). */

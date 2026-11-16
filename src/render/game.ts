@@ -81,6 +81,8 @@ export interface View {
     total: number
     goal: { x: number; y: number }
     time: number
+    /** The flag only counts once landed by it, or stopped by it. */
+    rule?: 'ground' | 'still'
     /** Doors still shut, and where the crumbling planks are (sim.pieces()). */
     pieces?: { doors: boolean[]; crumbles: ({ x: number; y: number; angle: number; touched: boolean } | null)[] }
   }
@@ -1412,7 +1414,7 @@ export class GameRenderer {
       this.outlinedText(`◆ ${got}/${lv.total}`, x0, y0 + 30, 20, '#d9a2ff')
       ctx.font = `800 20px ${FONT}`
       const w = ctx.measureText(`◆ ${got}/${lv.total}`).width
-      this.outlinedText(lv.gems.length ? 'Ta alla stenar, sen målflaggan' : 'Till målflaggan!', x0 + w + 12, y0 + 33, 15, lv.gems.length ? '#ffffff' : '#ffd23f')
+      this.outlinedText(lv.gems.length ? `Ta alla stenar, sen målflaggan${lv.rule === 'still' ? ' (stanna där)' : lv.rule === 'ground' ? ' (landa där)' : ''}` : lv.rule === 'still' ? 'Stanna vid målflaggan!' : lv.rule === 'ground' ? 'Landa vid målflaggan!' : 'Till målflaggan!', x0 + w + 12, y0 + 33, 15, lv.gems.length ? '#ffffff' : '#ffd23f')
       // Speed, for learning what each jump needs.
       this.outlinedText(`${Math.round(Math.abs(view.next.speed) * 3.6)} km/h`, x0, y0 + 58, 17, '#ffffff')
       return
