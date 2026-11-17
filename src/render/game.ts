@@ -1526,8 +1526,8 @@ export class GameRenderer {
 
   private drawPedals(input: Input, swap: boolean): void {
     const { ctx, width, height: h, safe } = this
-    const pw = 78
-    const ph = 92
+    const pw = 98
+    const ph = 116
     const y = h - ph - 16 - safe.bottom
     const pedal = (x: number, active: boolean, colour: string, label: string) => {
       ctx.save()
@@ -1535,18 +1535,18 @@ export class GameRenderer {
       if (active) ctx.scale(0.94, 0.94)
       ctx.globalAlpha = active ? 0.6 : 0.28
       ctx.beginPath()
-      ctx.roundRect(-pw / 2, -ph / 2, pw, ph, 18)
+      ctx.roundRect(-pw / 2, -ph / 2, pw, ph, 22)
       ctx.fillStyle = '#2a2f38'
       ctx.fill()
       ctx.lineWidth = 3
       ctx.strokeStyle = OUTLINE
       ctx.stroke()
       ctx.fillStyle = '#3d4450'
-      for (let i = -2; i <= 2; i++) ctx.fillRect(-pw / 2 + 14, i * 16 - 3, pw - 28, 6)
+      for (let i = -2; i <= 2; i++) ctx.fillRect(-pw / 2 + 17, i * 20 - 14, pw - 34, 7)
       ctx.globalAlpha = 1
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      this.outlinedText(label, 0, ph / 2 - 16, 14, colour)
+      this.outlinedText(label, 0, ph / 2 - 18, 16, colour)
       ctx.restore()
     }
     const leftX = Math.max(20, safe.left)
