@@ -100,9 +100,15 @@ export interface VehicleSpec {
   /** The driver's head, for crash detection. The run ends if it touches the ground. */
   driver: { head: Vec2; headRadius: number }
   airControl: {
-    /** Spin rate the pedals steer towards in the air, rad/s. Gas is nose up, brake nose down. */
+    /**
+     * The air spin's typical rate, rad/s (gas nose up, brake nose down). Held, the pedal builds
+     * the spin up gradually and it eases off towards 1.5 times this (sim/vehicle.ts AIR_TOP).
+     */
     spinRate: number
-    /** How quickly the spin reaches spinRate in the air, 1/s. Higher feels more instant. */
+    /**
+     * How strongly the pedals turn the vehicle in the air: the angular acceleration is
+     * spinRate × spinResponse / 4 rad/s² (higher responds faster). Against the spin it brakes it.
+     */
     spinResponse: number
     /** Torque the pedals add to the chassis while wheels are on the ground. */
     groundTorque: number

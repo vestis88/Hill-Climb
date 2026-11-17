@@ -1,3 +1,4 @@
+import { airPedals } from '../src/sim/pilot'
 import { describe, expect, it } from 'vitest'
 import { environment, heightFor } from '../src/data/environments'
 import { fixedPickups, PickupField } from '../src/data/track'
@@ -34,7 +35,7 @@ function drive(run: Run, seconds: number, gas: (t: number) => boolean = () => tr
     const input: Input = run.sim.inLoop
       ? { gas: gas(i * STEP), brake: false }
       : s.airborne
-        ? { gas: a < slope - 0.15, brake: a > slope + 0.15 }
+        ? airPedals(a, run.sim.vehicle.chassis.getAngularVelocity(), slope)
         : { gas: gas(i * STEP) && a - slope < 0.35, brake: false }
     run.step(input)
     events.push(...run.events)

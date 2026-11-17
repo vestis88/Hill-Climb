@@ -4,6 +4,7 @@ import { vehicleEntry } from '../data/vehicles'
 import { fixedPickups } from '../data/track'
 import { Run } from '../sim/run'
 import type { Input, VehicleSpec } from '../sim/types'
+import { airPedals } from '../sim/pilot'
 import { STEP } from '../sim/world'
 
 /** Every Klurbana is driven at this tuning (all upgrades at level 5), so it is about skill. */
@@ -53,8 +54,7 @@ export function drivePlan(level: PuzzleLevel, vehicleId = 'runabout', limit = 12
     let input: Input
     if (run.sim.inLoop) input = { gas: true, brake: false }
     else if (s.airborne) {
-      const target = p.air ?? 0
-      input = { gas: a < target - 0.12, brake: a > target + 0.12 }
+      input = airPedals(a, run.sim.vehicle.chassis.getAngularVelocity(), p.air ?? 0)
     } else if (p.coast) {
       input = { gas: false, brake: false }
     } else if (p.pump && pumped < p.pump) {

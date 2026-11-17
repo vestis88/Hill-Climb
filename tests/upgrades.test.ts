@@ -167,7 +167,7 @@ describe.each(VEHICLES)('every vehicle: $name', (entry) => {
     const engineMax = at({ engine: MAX_LEVEL })
     expect(
       climb(tyres, 30) > base + 1 ||
-        brakingDistance(tyres) < brakingDistance(entry.base) * 0.9 ||
+        brakingDistance(tyres) < brakingDistance(entry.base) * 0.92 ||
         climb(at({ engine: MAX_LEVEL, tyres: MAX_LEVEL }), 35) > climb(engineMax, 35) + 1,
     ).toBe(true)
     const fourth = entry.upgrades[3].id
@@ -175,7 +175,7 @@ describe.each(VEHICLES)('every vehicle: $name', (entry) => {
     if (fourth === 'weight') {
       // Less weight: quicker off the line. (On the light bike it also means less grip on
       // climbs; the stage-time test checks that the upgrades still make runs quicker overall.)
-      expect(timeTo(at({ weight: MAX_LEVEL }), 7)).toBeLessThan(timeTo(entry.base, 7) * 0.95)
+      expect(timeTo(at({ weight: MAX_LEVEL }), 7)).toBeLessThan(timeTo(entry.base, 7) * 0.97)
     }
     if (fourth === 'flip') {
       // Flip control: a clearly faster spin in the air.

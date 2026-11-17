@@ -1,3 +1,5 @@
+import { airPedals } from '../src/sim/pilot'
+import { AIR_TOP } from '../src/sim/vehicle'
 import { describe, expect, it } from 'vitest'
 import { runabout, scrambler, scramblerFull, VEHICLES } from '../src/data/vehicles'
 import { flat, testHills } from '../src/sim/terrain'
@@ -66,17 +68,40 @@ describe('runabout handling', () => {
     expect(Math.abs(air(NONE))).toBeLessThan(0.05)
   })
 
-  it('reaches its air spin rate almost at once, then holds it', () => {
+  it('builds its air spin up gradually, easing off towards a soft top (no hard cap)', () => {
     const { spinRate } = runabout.airControl
     for (const input of [GAS, BRAKE]) {
       const dir = input.gas ? 1 : -1
       const sim = new Sim({ vehicle: runabout, height: flat, start: { x: 0, y: 200 } })
-      run(sim, input, 0.15)
-      expect(sim.vehicle.chassis.getAngularVelocity() * dir).toBeGreaterThan(spinRate * 0.8)
+      const w = () => sim.vehicle.chassis.getAngularVelocity() * dir
+      run(sim, input, 0.1)
+      // Not there at once...
+      expect(w()).toBeLessThan(spinRate * 0.5)
+      run(sim, input, 0.4)
+      const early = w()
+      run(sim, input, 0.5)
+      // ...still building after a second...
+      expect(w()).toBeGreaterThan(early)
+      expect(w()).toBeGreaterThan(spinRate)
       let peak = 0
-      run(sim, input, 3, () => (peak = Math.max(peak, sim.vehicle.chassis.getAngularVelocity() * dir)))
-      expect(peak).toBeLessThan(spinRate * 1.05)
+      run(sim, input, 3, () => (peak = Math.max(peak, w())))
+      // ...and easing off below the soft top.
+      expect(peak).toBeLessThan(spinRate * AIR_TOP)
+      expect(peak).toBeGreaterThan(spinRate * AIR_TOP * 0.9)
     }
+  })
+
+  it('braking in a backflip slows the backflip first, then turns it the other way', () => {
+    const sim = new Sim({ vehicle: runabout, height: flat, start: { x: 0, y: 200 } })
+    const w = () => sim.vehicle.chassis.getAngularVelocity()
+    run(sim, GAS, 1)
+    const flipping = w()
+    run(sim, BRAKE, 0.15)
+    // A moment of braking: still turning the same way, only slower.
+    expect(w()).toBeGreaterThan(0)
+    expect(w()).toBeLessThan(flipping)
+    run(sim, BRAKE, 1)
+    expect(w()).toBeLessThan(0)
   })
 
   it('keeps its spin when the pedal is released in the air', () => {
@@ -124,7 +149,7 @@ describe('runabout handling', () => {
       const s = sim.state()
       const pitch = s.chassis.angle
       worstPitch = Math.max(worstPitch, Math.abs(pitch))
-      if (s.airborne) sim.step({ gas: pitch < -0.15, brake: pitch > 0.15 })
+      if (s.airborne) sim.step(airPedals(pitch, sim.vehicle.chassis.getAngularVelocity()))
       else {
         // On the ground, judge the nose against the slope under the car.
         const x = s.chassis.x
