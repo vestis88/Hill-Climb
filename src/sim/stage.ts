@@ -1,3 +1,4 @@
+import { airPedals } from './pilot'
 import type { HeightFn, Input, VehicleSpec, PuddleFn } from './types'
 import { Sim, STEP } from './world'
 
@@ -37,7 +38,7 @@ export function stageTime(
       const slope = Math.atan((height(x + 1) - height(x - 1)) / 2)
       const pitch = s.chassis.angle
       const input: Input = s.airborne
-        ? { gas: pitch < slope - 0.12, brake: pitch > slope + 0.12 }
+        ? airPedals(pitch, sim.vehicle.chassis.getAngularVelocity(), slope)
         : { gas: pitch - slope < caution, brake: false }
       sim.step(input)
     }

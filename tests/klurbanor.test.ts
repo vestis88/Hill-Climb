@@ -33,7 +33,8 @@ describe('Klurbanor', () => {
     expect(run.status).toBe('crashed')
   }, 60000)
 
-  it('3 · Lågt i tak: rushing the tunnel bangs your head on the roof', () => {
+  it('3 · Lågt i tak: rushing the tunnel (6 m/s or more) bangs your head on the roof', () => {
+    expect(drivePlan(withPlan('k3', puzzleLevel('k3')!.plan.map((p, i) => (i === 1 ? { ...p, speed: 6 } : p)))).run.status).toBe('crashed')
     const { run } = drivePlan(withPlan('k3', [{ x: 150, speed: 16 }]))
     expect(run.status).toBe('crashed')
     expect(run.sim.state().chassis.x).toBeLessThan(92)
@@ -44,9 +45,9 @@ describe('Klurbanor', () => {
     expect(run.status).not.toBe('finished')
   }, 60000)
 
-  it('6 · Trappan: the first jump only works between 9 and 10 m/s', () => {
+  it('6 · Trappan: the first jump only works between 8.5 and 10.5 m/s', () => {
     const rest = puzzleLevel('k6')!.plan.slice(1)
-    for (const [speed, ok] of [[8.5, false], [9.5, true], [11, false]] as const) {
+    for (const [speed, ok] of [[8, false], [9.5, true], [11, false]] as const) {
       const { run } = drivePlan(withPlan('k6', [{ x: 20, speed }, ...rest]))
       expect(run.status === 'finished', `${speed} m/s`).toBe(ok)
     }
@@ -68,7 +69,7 @@ describe('Klurbanor', () => {
   it('8 · Nålsögat: each eye has a narrow speed window; flying past the island flag does not count', () => {
     const plan = puzzleLevel('k8')!.plan
     const at = (i: number, speed: number) => plan.map((p, j) => (j === i ? { ...p, speed } : p))
-    for (const [i, speed, ok] of [[0, 9, false], [0, 10.5, true], [0, 12, false], [1, 9, false], [1, 11.5, false], [2, 14, false]] as const) {
+    for (const [i, speed, ok] of [[0, 10.5, false], [0, 11, true], [0, 11.5, false], [1, 9.5, false], [1, 11, false], [2, 14, false]] as const) {
       const { run } = drivePlan(withPlan('k8', at(i, speed)))
       expect(run.status === 'finished', `jump ${i + 1} at ${speed} m/s`).toBe(ok)
     }
@@ -85,7 +86,7 @@ describe('Klurbanor', () => {
   it('10 · Mästarprovet: rushing the tunnel, or the last jump too fast, both fail', () => {
     const plan = puzzleLevel('k10')!.plan
     const at = (i: number, speed: number) => plan.map((p, j) => (j === i ? { ...p, speed } : p))
-    expect(drivePlan(withPlan('k10', at(4, 8))).run.status).toBe('crashed')
+    expect(drivePlan(withPlan('k10', at(4, 10))).run.status).toBe('crashed')
     expect(drivePlan(withPlan('k10', at(5, 10.5))).run.status).toBe('crashed')
   }, 120000)
 
@@ -114,16 +115,16 @@ describe('Klurbanor', () => {
     expect(ends('n14', at('n14', 0, -6.5))).toBe('crashed')
   }, 120000)
 
-  it('15 · Isbanan: the icy hump only works between 10.5 and 11.5 m/s (you must stop on its top)', () => {
-    for (const [speed, ok] of [[10, false], [11, true], [12, false]] as const) expect(ends('n15', at('n15', 2, speed)) === 'finished', `${speed} m/s`).toBe(ok)
+  it('15 · Isbanan: the icy hump only works between 10.5 and 12 m/s (you must stop on its top)', () => {
+    for (const [speed, ok] of [[10, false], [11, true], [12.5, false]] as const) expect(ends('n15', at('n15', 2, speed)) === 'finished', `${speed} m/s`).toBe(ok)
   }, 120000)
 
   it('16 · Rasbron: too slow over the first bridge and it falls under you', () => {
     expect(ends('n16', [{ x: 20, speed: 8 }, { x: 44, speed: 8 }, ...puzzleLevel('n16')!.plan.slice(2)])).toBe('crashed')
   }, 120000)
 
-  it('17 · Turbo: the needle needs 16 to 16.5 m/s after braking; landing on the last strip throws you off the cliff', () => {
-    for (const [speed, ok] of [[15.5, false], [16.25, true], [17, false]] as const) expect(ends('n17', at('n17', 1, speed)) === 'finished', `${speed} m/s`).toBe(ok)
+  it('17 · Turbo: the needle needs 15.5 to 16.5 m/s after braking; landing on the last strip throws you off the cliff', () => {
+    for (const [speed, ok] of [[15, false], [16.25, true], [17, false]] as const) expect(ends('n17', at('n17', 1, speed)) === 'finished', `${speed} m/s`).toBe(ok)
     expect(ends('n17', at('n17', 4, 7))).toBe('crashed')
   }, 120000)
 

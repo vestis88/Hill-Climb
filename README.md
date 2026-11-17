@@ -113,14 +113,14 @@ Each level opens when the one before is finished; the first time the family fini
   the goal island.
 - **6 · Trappan** (tough): stepping stones over a gorge, each at its own height and distance,
   with only a few metres to change speed between jumps. The first jump only works between
-  9 and 10 m/s (about 33-36 km/h); land too far along a stone and there is no room for the next.
+  8.5 and 10.5 m/s (about 31-38 km/h); land too far along a stone and there is no room for the next.
 - **7 · Fönstret** (tough): a jump under a hanging rock (only 11-12.5 m/s, about 40-45 km/h:
   slower falls short, faster hits your helmet), a drop into a low cave for a gem, out over a
   pit, and a full-speed upward jump through a narrow window between two rocks.
 
 - **8 · Nålsögat** (tough): over the first two gaps a gem hangs in a narrow eye between a rock
-  above and a pointed rock below, placed on the measured arc of one speed (10-11 m/s, then
-  9.5-10.75 m/s): too fast and your helmet hits the top rock, too slow and you hit the bottom
+  above and a pointed rock below, placed on the measured arc of one speed (11-11.25 m/s, then
+  10-10.5 m/s): too fast and your helmet hits the top rock, too slow and you hit the bottom
   one. Then land on a small island with the goal flag, which only counts once you have landed.
 - **9 · Avsatserna** (tough): up a cliff in three jumps, each onto a short ledge with a low roof
   over its front; the first jump only works between about 9.75 and 10.75 m/s.
@@ -155,11 +155,11 @@ The levels:
   (7-8 m/s), back off the shelf, and under it to the blue door.
 - **15 · Isbanan**: choose the speed before the ice: off the edge and down an icy valley and
   over a pit (too fast hits the rock over the slope). Then an icy hump with the goal on a patch
-  of gravel at its top, where you must stop: only 10.5-11.5 m/s gets you there and no further.
+  of gravel at its top, where you must stop: only 10.5-12 m/s gets you there and no further.
 - **16 · Rasbron**: across the first crumbling bridge without stopping (10 m/s or more). The
   gem is under the second: stop on it and ride a plank down. A trampoline back up, and the last
   bridge falls fast (12 m/s or more).
-- **17 · Turbo**: the strip throws you to 20 m/s; brake to 16-16.5 for the needle's eye over the
+- **17 · Turbo**: the strip throws you to 20 m/s; brake to 15.5-16.5 for the needle's eye over the
   canyon. A strip round the big loop. The last strip lies before a cliff with the goal at its
   edge: hop over it off the kicker (9-11 m/s) and stop by the flag.
 - **18 · Gruvan**: the key is down in the mine. Drop through the hole, back through the mine to
@@ -386,7 +386,11 @@ there to its best version. So when we tune:
 - The fully upgraded vehicle is tuned too, and has to feel great but
   still be beatable by the hardest terrain.
 - The skill of the game, balancing the car with the pedals in the air, is
-  not upgradable. Every upgrade level must make a measurable difference.
+  not upgradable. In the air the pedals turn the vehicle with a steady push: the spin builds
+  up the longer a pedal is held and eases off towards a soft top (1.5 times the vehicle's spin
+  rate, no hard cap), and the other pedal slows the spin before it can turn it the other way,
+  so braking in a backflip brakes the backflip (`src/sim/vehicle.ts`). Scripted drivers level
+  the car by steering the spin rate (`src/sim/pilot.ts`). Every upgrade level must make a measurable difference.
 
 ### Upgrades
 
@@ -416,7 +420,7 @@ Suspension are shared; the fourth is specific:
 | **Suspension** | Lands jumps cleanly, stays planted over bumps, harder to tip over | Spring damping, and a lower centre of weight |
 | **Drivetrain** | Steadier climbing, power on rough and slippery ground | Drive added at the front wheels |
 | **Lighter body** | Quicker off the line, livelier | Chassis mass |
-| **Flip control** | Rotates up to 50% faster in the air and reacts sooner | Air spin rate (2.4 to 3.6 rad/s) and how quickly it is reached |
+| **Flip control** | Spins up harder and to a higher top in the air | Air spin rate (2.4 to 3.6 rad/s, the soft top 1.5 times that) and the push behind it |
 
 Upgrades are bought separately per vehicle. There is deliberately no fuel
 upgrade: fuel stays the same for every car, so getting further comes from

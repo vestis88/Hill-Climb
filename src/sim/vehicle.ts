@@ -7,6 +7,11 @@ import type { Input, VehicleSpec } from './types'
  * Convention: the vehicle faces +x. Positive rotation is counter-clockwise,
  * so "nose up" is positive chassis torque and forward wheel spin is negative.
  */
+/** The air spin eases off towards this many times spinRate (a soft top, not a hard limit). */
+export const AIR_TOP = 1.5
+/** The air spin's angular acceleration from rest (rad/s²): spinRate × spinResponse / 4. */
+export const airAccel = (a: { spinRate: number; spinResponse: number }) => (a.spinRate * a.spinResponse) / 4
+
 export class Vehicle {
   readonly chassis: Body
   readonly wheels: Body[] = []
@@ -210,12 +215,15 @@ export class Vehicle {
         // On the ground: a light push that helps wheelies and nose-downs.
         if (spin * dir < airControl.spinRate) this.chassis.applyTorque(dir * airControl.groundTorque, true)
       } else {
-        // In the air: steer the spin towards a fixed rate. It responds almost at once
-        // and then holds that rate, instead of building up speed the longer the pedal is held.
-        const target = dir * airControl.spinRate
-        if ((target - spin) * dir > 0) {
-          this.chassis.applyTorque(this.rigInertia() * airControl.spinResponse * (target - spin), true)
-        }
+        // In the air: the pedal turns the vehicle with a steady push (an angular acceleration),
+        // so the spin builds up the longer it is held, easing off towards a top rate (no hard
+        // cap). Against the spin the same push slows it down first: braking in a backflip
+        // brakes the backflip, and only held long enough does it turn into a front flip.
+        const accel = airAccel(airControl)
+        const top = airControl.spinRate * AIR_TOP
+        const along = spin * dir
+        const push = along > 0 ? accel * Math.max(0, 1 - along / top) : accel
+        this.chassis.applyTorque(this.rigInertia() * push * dir, true)
       }
     }
   }

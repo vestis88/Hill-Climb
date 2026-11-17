@@ -1,3 +1,4 @@
+import { airPedals } from '../src/sim/pilot'
 /**
  * Economy simulation (task U2). Run with: npm run economy
  *
@@ -45,7 +46,7 @@ it('economy', () => {
       const pitch = s.chassis.angle
       const x = s.chassis.x
       const slope = Math.atan((height(x + 1) - height(x - 1)) / 2)
-      run.step(s.airborne ? { gas: pitch < slope - 0.15, brake: pitch > slope + 0.15 } : { gas: pitch - slope < caution, brake: false })
+      run.step(s.airborne ? airPedals(pitch, run.sim.vehicle.chassis.getAngularVelocity(), slope) : { gas: pitch - slope < caution, brake: false })
       steps++
     }
     const earned = run.totalCoins

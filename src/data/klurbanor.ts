@@ -175,7 +175,7 @@ const lagtITak: PuzzleLevel = {
     bottom: -30,
     polygons: [
       ground([[-14, WALL], [-12, WALL], [-12, 0], ...curve(0, 96, tunnelFloor), ...ramp(96, 0, 124, 8).slice(1), [150, 8], [150, WALL], [154, WALL]], -20),
-      roof(curve(22, 92, (x) => tunnelFloor(x) + 2.75), 14),
+      roof(curve(22, 92, (x) => tunnelFloor(x) + 2.6), 14),
     ],
   },
   start: { x: 0, y: 0 },
@@ -237,7 +237,7 @@ const loopenEllerGropen: PuzzleLevel = {
 /**
  * 6 · Trappan. Stepping stones over a bottomless gorge: short pillars at different heights,
  * each with its own gap, and only a few metres to change speed between jumps. Every jump has a
- * window of a m/s or two (the first one 9 to 10 m/s, about 33 to 36 km/h on the HUD): too slow
+ * window of a m/s or two (the first one 8.5 to 10.5 m/s, about 31 to 38 km/h on the HUD): too slow
  * falls short, too fast flies past the next stone or leaves no room on it for the next jump.
  */
 const trappan: PuzzleLevel = {
@@ -326,7 +326,7 @@ const nalsogat: PuzzleLevel = {
   gems: [{ x: 33, y: 3.3 }, { x: 66, y: 2.65 }, { x: 80, y: 0 }],
   goal: { x: 110.5, y: -3 },
   goalOnGround: true,
-  plan: [{ x: 25, speed: 10.5 }, { x: 62, speed: 10.25 }, { x: 96, speed: 11 }, { x: 110.5, speed: 1 }],
+  plan: [{ x: 25, speed: 11 }, { x: 62, speed: 10.25 }, { x: 96, speed: 11 }, { x: 110.5, speed: 1 }],
 }
 
 /**
@@ -357,7 +357,7 @@ const avsatserna: PuzzleLevel = {
   start: { x: 0, y: 0 },
   gems: [{ x: 37, y: 3.5 }, { x: 53, y: 5.8 }, { x: 78, y: 8 }],
   goal: { x: 86, y: 8 },
-  plan: [{ x: 25, speed: 10 }, { x: 42, speed: 12 }, { x: 58, speed: 12 }, { x: 86, speed: 6 }],
+  plan: [{ x: 25, speed: 10.5 }, { x: 42, speed: 9.5 }, { x: 58, speed: 9.5 }, { x: 86, speed: 11.5 }],
 }
 
 /** Level 10's long floor: flat, with rollers under the tunnel roof (x 94 to 112). */
@@ -521,7 +521,7 @@ const nyckeln: PuzzleLevel = {
   start: { x: 0, y: 0 },
   gems: [{ x: -26, y: 5 }, { x: 72, y: 7 }, { x: 54, y: 12 }],
   goal: { x: 100, y: 1 },
-  plan: [{ x: -26, speed: -3 }, { x: 45, speed: 7 }, { x: 73, speed: 7 }, { x: 61, speed: -2 }, { x: 100, speed: 5 }],
+  plan: [{ x: -26, speed: -3 }, { x: 45, speed: 7 }, { x: 73, speed: 7 }, { x: 61, speed: -3 }, { x: 100, speed: 5 }],
 }
 
 /**
@@ -594,7 +594,7 @@ const rasbron: PuzzleLevel = {
   start: { x: 0, y: 0 },
   gems: [{ x: 32, y: 1.5 }, { x: 72, y: -7 }, { x: 128, y: 1.5 }],
   goal: { x: 150, y: 1 },
-  plan: [{ x: 20, speed: 10 }, { x: 44, speed: 10 }, { x: 64, speed: 3 }, { x: 999, speed: 0, below: -5 }, { x: 110, speed: 5 }, { x: 150, speed: 14 }],
+  plan: [{ x: 20, speed: 10 }, { x: 44, speed: 10 }, { x: 64, speed: 4 }, { x: 999, speed: 0, below: -5 }, { x: 110, speed: 5 }, { x: 150, speed: 14 }],
 }
 
 /**
