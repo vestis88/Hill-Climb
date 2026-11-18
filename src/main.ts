@@ -551,6 +551,15 @@ function openGarage(justBought?: UpgradeId): void {
       }),
       canDrive,
       reward: PUZZLE_REWARD,
+      vehicles: VEHICLES.filter((x) => owned(x.id, x.price)).map((x) => ({
+        id: x.id, name: x.name, selected: x.id === vehicle.id,
+        preview: (c: HTMLCanvasElement) => drawVehiclePreview(c, x.base, playerColour(currentPlayer())),
+      })),
+      onVehicle: (id) => {
+        save.vehicleId = id
+        writeSave(save)
+        openGarage()
+      },
       onGo: (id) => {
         const l = puzzleLevel(id)
         if (!l) return

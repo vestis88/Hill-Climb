@@ -333,6 +333,9 @@ export interface PuzzlesView {
     times: { name: string; colour: string; time: string }[]
     preview(c: HTMLCanvasElement): void
   }[]
+  /** The vehicles the family owns, the one driven selected. */
+  vehicles: { id: string; name: string; selected: boolean; preview(c: HTMLCanvasElement): void }[]
+  onVehicle(id: string): void
   onGo(id: string): void
   onHome(): void
 }
@@ -342,6 +345,8 @@ export function showPuzzles(el: HTMLElement, v: PuzzlesView): void {
   el.innerHTML = `
     <div class="bar menu-bar"><button class="small back" data-act="home">‹ Hem</button><h2>Klurbanor</h2><span class="coins">● ${v.coins}</span></div>
     <div class="hint">Ta alla <b style="color:#d9a2ff">◆ stenar</b> och kör sen till målflaggan, så fort du kan. Välj väg med farten: för fort kan vara lika illa som för sakta. Alla kör med samma trimning. Första gången en bana klaras: ● ${v.reward}.</div>
+    <div class="label">Fordon</div>
+    <div class="tveh-row pz-vehicles">${v.vehicles.map((x) => `<button class="tveh ${x.selected ? 'on' : ''}" data-veh="${x.id}"><canvas data-thumb="veh:${x.id}"></canvas><span>${x.name}</span></button>`).join('')}</div>
     <div class="puzzles">${v.levels.map((l) => `
       <button class="pzcard ${l.open ? '' : 'locked'} ${l.done ? 'done' : ''}" data-go="${l.id}" ${l.open && v.canDrive ? '' : 'disabled'}>
         <canvas data-thumb="pz:${l.id}"></canvas>
@@ -349,11 +354,12 @@ export function showPuzzles(el: HTMLElement, v: PuzzlesView): void {
         <span class="pz-hint">${l.open ? l.hint : '🔒 Klara banan före först'}</span>
         <span class="pz-times">◆ ${l.gems}${l.times.map((t) => ` · <b style="color:${t.colour}">${t.name}</b> ${t.time}`).join('')}</span>
       </button>`).join('')}</div>`
-  drawThumbs(el, Object.fromEntries(v.levels.map((l) => [`pz:${l.id}`, l.preview])))
+  drawThumbs(el, Object.fromEntries([...v.levels.map((l) => [`pz:${l.id}`, l.preview] as const), ...v.vehicles.map((x) => [`veh:${x.id}`, x.preview] as const)]))
   el.onclick = (e) => {
     const b = (e.target as HTMLElement).closest('button')
     if (!b || b.disabled) return
     if (b.dataset.go) v.onGo(b.dataset.go)
+    else if (b.dataset.veh) v.onVehicle(b.dataset.veh)
     else if (b.dataset.act === 'home') v.onHome()
   }
 }
