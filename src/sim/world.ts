@@ -1,5 +1,5 @@
 import { Box, Chain, Edge, Polygon, RevoluteJoint, Vec2, World, type Body, type Fixture } from 'planck'
-import { padPolygon, type LevelGeom, type Pad } from './level'
+import { moverOffset, padPolygon, type LevelGeom, type Pad } from './level'
 import type { StuntObstacle } from './stunt'
 import { TerrainStreamer, TERRAIN_FRICTION } from './terrain'
 import type { HeightFn, Input, PuddleFn, SimState, VehicleSpec } from './types'
@@ -69,6 +69,8 @@ export class Sim {
   /** Klurbanor's doors (null once opened) and crumbling planks (with the step a wheel first touched each). */
   private doors: (Body | null)[] = []
   private crumbles: { body: Body | null; touched: number | null; falling: number | null }[] = []
+  /** Klurbanor's moving platforms (kinematic bodies). */
+  private movers: Body[] = []
   private lastRaw: number[] = []
 
   constructor(readonly options: SimOptions) {
@@ -92,6 +94,12 @@ export class Sim {
         const body = this.world.createBody({ userData: { track: true } })
         body.createFixture(new Chain(d.poly.map(([px, py]) => new Vec2(px, py)), true), { friction: options.groundFriction ?? TERRAIN_FRICTION })
         this.doors.push(body)
+      }
+      for (const m of options.level.movers ?? []) {
+        const o = moverOffset(m, 0)
+        const body = this.world.createBody({ type: 'kinematic', position: new Vec2((m.x0 + m.x1) / 2 + o.x, m.y - 0.225 + o.y), userData: { track: true } })
+        body.createFixture(new Box((m.x1 - m.x0) / 2, 0.225), { friction: options.groundFriction ?? TERRAIN_FRICTION })
+        this.movers.push(body)
       }
       for (const c of options.level.crumbles ?? []) {
         const body = this.world.createBody({ position: new Vec2((c.x0 + c.x1) / 2, c.y - 0.225), userData: { track: true } })
@@ -170,6 +178,7 @@ export class Sim {
     if (this.options.obstacles) this.updateObstacles(x)
     this.vehicle.applyInput(input)
     this.puddleDrag()
+    if (this.options.level) this.levelForces()
     this.world.step(STEP, 8, 3)
     if (this.options.level) this.levelPieces()
     this.vehicle.limitTravel()
@@ -270,6 +279,27 @@ export class Sim {
     })
   }
 
+  /**
+   * Before each step: moving platforms get the velocity that carries them exactly to where they
+   * should be next step (so a vehicle riding one is carried along), and air zones push the vehicle.
+   */
+  private levelForces(): void {
+    const level = this.options.level!
+    level.movers?.forEach((m, i) => {
+      const o = moverOffset(m, (this.steps + 1) * STEP)
+      const body = this.movers[i]
+      const p = body.getPosition()
+      body.setLinearVelocity(new Vec2(((m.x0 + m.x1) / 2 + o.x - p.x) / STEP, (m.y - 0.225 + o.y - p.y) / STEP))
+    })
+    if (level.zones) {
+      const c = this.vehicle.chassis.getPosition()
+      for (const z of level.zones) {
+        if (c.x < z.x0 || c.x > z.x1 || c.y < z.y0 || c.y > z.y1) continue
+        for (const b of [this.vehicle.chassis, ...this.vehicle.wheels]) b.applyForceToCenter(new Vec2(z.ax * b.getMass(), z.ay * b.getMass()), true)
+      }
+    }
+  }
+
   /** Open a door (its key gem was taken). */
   openDoor(i: number): void {
     const d = this.doors[i]
@@ -279,8 +309,9 @@ export class Sim {
   }
 
   /** Which doors are still shut, and where each crumbling plank is now (renderer, head checks). */
-  pieces(): { doors: boolean[]; crumbles: ({ x: number; y: number; angle: number; touched: boolean } | null)[] } {
+  pieces(): { doors: boolean[]; crumbles: ({ x: number; y: number; angle: number; touched: boolean } | null)[]; movers: { x: number; y: number }[] } {
     return {
+      movers: this.movers.map((b) => ({ x: b.getPosition().x, y: b.getPosition().y })),
       doors: this.doors.map((d) => d !== null),
       crumbles: this.crumbles.map((c) => {
         if (!c.body) return null

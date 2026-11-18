@@ -4,6 +4,7 @@ import { vehicleEntry } from '../data/vehicles'
 import { fixedPickups } from '../data/track'
 import { Run } from '../sim/run'
 import type { Input, VehicleSpec } from '../sim/types'
+import { moverOffset } from '../sim/level'
 import { airPedals } from '../sim/pilot'
 import { STEP } from '../sim/world'
 
@@ -31,6 +32,16 @@ export function puzzleRun(level: PuzzleLevel, vehicle: VehicleSpec, assist = fal
   })
 }
 
+/** How fast the moving platform under (x, y) moves sideways at time t, or 0 on solid ground. */
+function platformVx(level: PuzzleLevel, t: number, x: number, y: number): number {
+  for (const m of level.geom.movers ?? []) {
+    const o = moverOffset(m, t)
+    if (x < m.x0 + o.x - 1 || x > m.x1 + o.x + 1 || Math.abs(y - (m.y + o.y) - 0.9) > 1.2) continue
+    return (moverOffset(m, t + 0.05).x - moverOffset(m, t - 0.05).x) / 0.1
+  }
+  return 0
+}
+
 const wrap = (a: number) => a - 2 * Math.PI * Math.round(a / (2 * Math.PI))
 
 /**
@@ -47,7 +58,8 @@ export function drivePlan(level: PuzzleLevel, vehicleId = 'runabout', limit = 12
     const s = run.sim.state()
     const x = s.chassis.x
     let p = level.plan[k]
-    while (p && ((p.below !== undefined && s.chassis.y < p.below) || (p.speed >= 0 ? x >= p.x : x <= p.x))) p = level.plan[++k]
+    const t = i * STEP
+    while (p && ((p.below !== undefined && s.chassis.y < p.below) || (p.speed >= 0 ? x >= p.x : x <= p.x)) && (p.wait === undefined || t >= p.wait)) p = level.plan[++k]
     p ??= level.plan[level.plan.length - 1]
     const a = wrap(s.chassis.angle)
     const vx = run.sim.vehicle.chassis.getLinearVelocity().x
@@ -55,6 +67,11 @@ export function drivePlan(level: PuzzleLevel, vehicleId = 'runabout', limit = 12
     if (run.sim.inLoop) input = { gas: true, brake: false }
     else if (s.airborne) {
       input = airPedals(a, run.sim.vehicle.chassis.getAngularVelocity(), p.air ?? 0)
+    } else if (p.wait !== undefined && (p.speed >= 0 ? x >= p.x : x <= p.x)) {
+      // There, and waiting for the time (for a lift, say): stand still on whatever it stands on.
+      const rel = vx - platformVx(level, t, x, s.chassis.y)
+      // Nearly still: both pedals hold the wheels (so a ferry carries the car along).
+      input = Math.abs(rel) < 0.6 ? { gas: true, brake: true } : { gas: rel < 0, brake: rel > 0 }
     } else if (p.coast) {
       input = { gas: false, brake: false }
     } else if (p.pump && pumped < p.pump) {

@@ -144,4 +144,20 @@ describe('Klurbanor', () => {
   it('21 · Mästarverket: rolling onto the last ice too fast slides you over the edge', () => {
     expect(ends('n21', at('n21', 5, 4), 80)).not.toBe('finished')
   }, 120000)
+
+  it('22 · Hissen: rushing at the lift (it is up) drops you down the empty shaft', () => {
+    expect(ends('n22', [{ x: 124, speed: 6 }])).toBe('crashed')
+  }, 120000)
+
+  it('23 · Vinden: the headwind over the first gap needs nearly full speed', () => {
+    expect(ends('n23', at('n23', 0, 10))).toBe('crashed')
+  }, 120000)
+
+  it('24 · Månhoppet: too soft off the first kicker falls short of the rock', () => {
+    expect(ends('n24', at('n24', 0, 7))).toBe('crashed')
+  }, 120000)
+
+  it('25 · Färjorna: driving straight on falls into the chasm; waiting for each ferry works', () => {
+    expect(ends('n25', [{ x: 92, speed: 4 }])).toBe('crashed')
+  }, 120000)
 })

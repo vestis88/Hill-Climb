@@ -107,6 +107,12 @@ export function drawLevelPreview(canvas: HTMLCanvasElement, level: PuzzleLevel, 
   }
   ctx.fillStyle = '#a0522d'
   for (const c of level.geom.crumbles ?? []) ctx.fillRect(c.x0, c.y - 0.45, c.x1 - c.x0, 0.45)
+  ctx.fillStyle = '#8d99ae'
+  for (const m of level.geom.movers ?? []) ctx.fillRect(m.x0, m.y - 0.45, m.x1 - m.x0, 0.6)
+  for (const z of level.geom.zones ?? []) {
+    ctx.fillStyle = Math.abs(z.ax) > Math.abs(z.ay) ? 'rgba(150, 210, 255, 0.3)' : z.ay > 0 ? 'rgba(170, 255, 210, 0.3)' : 'rgba(220, 190, 255, 0.3)'
+    ctx.fillRect(z.x0, z.y0, z.x1 - z.x0, z.y1 - z.y0)
+  }
   level.gems.forEach((g, i) => {
     const door = level.geom.doors?.find((d) => d.key === i)
     ctx.fillStyle = door ? doorColour(level.geom, door.key) : '#b44cff'

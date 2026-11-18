@@ -25,8 +25,47 @@ export interface LevelGeom {
   doors?: { poly: Pt[]; key: number }[]
   /** Crumbling planks from x0 to x1 with their top at y: they fall `delay` seconds after a wheel first touches them. */
   crumbles?: { x0: number; x1: number; y: number; delay: number }[]
+  /**
+   * Moving platforms: a plank from x0 to x1 with its top at y, gliding to (dx, dy) and back
+   * every `period` seconds, waiting a while at each end. `phase` (0..1) shifts its start.
+   */
+  movers?: Mover[]
+  /**
+   * Air zones: inside the box the vehicle is pushed with an extra acceleration (ax, ay) in m/s²:
+   * wind (ax), an updraft (ay above gravity) or low gravity (ay below it).
+   */
+  zones?: { x0: number; x1: number; y0: number; y1: number; ax: number; ay: number }[]
   /** Below this the vehicle has fallen out of the level (the run ends). */
   bottom: number
+}
+
+export interface Mover {
+  x0: number
+  x1: number
+  y: number
+  dx: number
+  dy: number
+  period: number
+  phase?: number
+  /** Share of the period it waits at each end (default 0.25). */
+  dwell?: number
+}
+
+/**
+ * Where a moving platform's offset is at time t (s): it waits at the start, glides to (dx, dy),
+ * waits there, and glides back. Each wait is `dwell` of the period (default a quarter).
+ */
+export function moverOffset(m: Mover, t: number): { x: number; y: number } {
+  const d = m.dwell ?? 0.25
+  const u = (((t / m.period + (m.phase ?? 0)) % 1) + 1) % 1
+  const glide = 0.5 - d
+  const ease = (v: number) => v * v * (3 - 2 * v)
+  let k: number
+  if (u < d) k = 0
+  else if (u < 0.5) k = ease((u - d) / glide)
+  else if (u < 0.5 + d) k = 1
+  else k = 1 - ease((u - 0.5 - d) / glide)
+  return { x: m.dx * k, y: m.dy * k }
 }
 
 export interface Pad {

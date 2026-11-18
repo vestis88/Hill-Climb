@@ -34,9 +34,10 @@ export interface PuzzleLevel {
    * to reverse) until the vehicle passes it; `air` keeps the nose at that angle when airborne;
    * `pump` rocks back and forth (gas going forwards, brake to roll back) for up to that many
    * seconds while trying to get past x; `coast` touches neither pedal (on the ground); `below`
-   * also ends the step once the vehicle has dropped below that height.
+   * also ends the step once the vehicle has dropped below that height; `wait` holds the step
+   * (coasting, once at x) until that many seconds into the run (for a moving platform).
    */
-  plan: { x: number; speed: number; air?: number; pump?: number; coast?: boolean; below?: number }[]
+  plan: { x: number; speed: number; air?: number; pump?: number; coast?: boolean; below?: number; wait?: number }[]
 }
 
 /** A surface from left to right, filled down to `bottom`. */
@@ -782,7 +783,140 @@ const mastarverket: PuzzleLevel = {
   plan: [{ x: 18, speed: 20 }, { x: 34, speed: 16.25 }, { x: 96, speed: 12 }, { x: 128, speed: 5 }, { x: 150, speed: 4 }, { x: 176, speed: 2 }, { x: 188, speed: 2, coast: true }, { x: 999, speed: 0 }],
 }
 
-const LEVELS_RAW: PuzzleLevel[] = [tvaVagar, stopp, lagtITak, gungan, loopenEllerGropen, trappan, fonstret, nalsogat, avsatserna, mastarprovet, gungbradan, dubbelloopen, studsmattan, nyckeln, isbanan, rasbron, turbo, gruvan, raset, bergOchDal, mastarverket]
+/**
+ * 22 · Hissen. Lifts and a ferry, all on their own clocks. A lift at the foot of a cliff: drive
+ * on when it is down (if it is up, the shaft is empty) and off at the top. A ferry across a
+ * chasm, with a gem hanging over its path. Last a lift down into a dark shaft, to the tunnel
+ * with the goal: wait for it at the top, and ride it down.
+ */
+const hissen: PuzzleLevel = {
+  id: 'n22',
+  name: 'Hissen',
+  hint: 'Hissar och en färja, var och en på sin egen klocka. Vänta in dem.',
+  theme: 'stunt',
+  geom: {
+    bottom: -30,
+    polygons: [
+      // The start, the lift shaft (open below), the cliff top.
+      [[-14, WALL], [-12, WALL], [-12, 0], [20, 0], [20, -40], [-14, -40]],
+      [[26, -40], [26, 10], [50, 10], [50, -40]],
+      // Over the chasm: the far ledge, the shaft down, and the tunnel with the goal.
+      [[74, -40], [74, 10], [92, 10], [92, -40]],
+      [[98, -40], [98, -2], [130, -2], [130, WALL], [134, WALL], [134, -40]],
+      block(98, 1.2, 130, 10),
+    ],
+    movers: [
+      // Down at the start from 5 s to 9 s, at the top from 13 s to 17 s, every 16 s.
+      { x0: 20.5, x1: 25.5, y: 0, dx: 0, dy: 10, period: 16, phase: 0.6875 },
+      // At this side from 20 s to 23 s, across from 30 s to 33 s, every 20 s.
+      { x0: 50.5, x1: 56.5, y: 10, dx: 17, dy: 0, period: 20, dwell: 0.15 },
+      // At the top from 34 s to 38.5 s, at the bottom from 43 s to 47.5 s, every 18 s.
+      { x0: 92.5, x1: 97.5, y: 10, dx: 0, dy: -12, period: 18, phase: 0.111 },
+    ],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 40, y: 11 }, { x: 62, y: 12.5 }, { x: 112, y: -1 }],
+  goal: { x: 124, y: -1 },
+  plan: [{ x: 16, speed: 4, wait: 5.3 }, { x: 22.5, speed: 3 }, { x: 22.5, speed: 0, wait: 13.2 }, { x: 47, speed: 5, wait: 20.2 }, { x: 52.5, speed: 3 }, { x: 52.5, speed: 0, wait: 30.2 }, { x: 89, speed: 4, wait: 34.3 }, { x: 95, speed: 3 }, { x: 95, speed: 0, wait: 43.2 }, { x: 124, speed: 5 }],
+}
+
+/**
+ * 23 · Vinden. Air that pushes. A headwind over the first gap eats your speed in the air. An
+ * updraft at the foot of a high wall lifts you up it, if you drift through it slowly enough
+ * to rise. A tailwind over the last gaps carries you further than you think: take the
+ * kickers gently to land on the little island, and then on the goal ledge.
+ */
+const vinden: PuzzleLevel = {
+  id: 'n23',
+  name: 'Vinden',
+  hint: 'Motvind, uppvind och medvind. Känn efter vart luften vill.',
+  theme: 'dunes',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [16, 0], ...kicker(16, 0, 4, 1.2).slice(1), [20, -40], [-14, -40]],
+      // After the headwind gap: ground to the updraft, the high wall, its top.
+      [[28, -40], [28, 0], [57.5, 0], [57.5, 10], [80, 10], ...kicker(80, 10, 3, 0.8).slice(1), [83, -40]],
+      // The island in the tailwind (a kicker at its end), and the goal ledge.
+      [[93, -40], [93, 8], [96, 8], ...kicker(96, 8, 2, 0.6).slice(1), [98, -40]],
+      [[112, -40], [112, 5], [118, 5], [118, -40]],
+      [[132, -40], [132, WALL], [136, WALL], [136, -40]],
+    ],
+    zones: [
+      { x0: 20, x1: 28, y0: -10, y1: 10, ax: -4, ay: 0 },
+      { x0: 49, x1: 57, y0: 0, y1: 13, ax: 2.5, ay: 11.5 },
+      { x0: 83, x1: 112, y0: -10, y1: 24, ax: 6, ay: 0 },
+    ],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 25, y: 4 }, { x: 57.5, y: 14 }, { x: 94.5, y: 9 }],
+  goal: { x: 115, y: 6 },
+  goalOnGround: true,
+  plan: [{ x: 20, speed: 13 }, { x: 49, speed: 2 }, { x: 80, speed: 5 }, { x: 96, speed: 6 }, { x: 115, speed: 7.5 }],
+}
+
+/**
+ * 24 · Månhoppet. A crater where gravity is weak (a quarter of normal): every jump floats for
+ * seconds. Hop onto two small rocks, each a little higher (too soft and you fall short, and
+ * the first is only just long enough to land on), with gems at the top of each arc; then a
+ * long floating drop to the goal far below, keeping the car level all the way down.
+ */
+const manhoppet: PuzzleLevel = {
+  id: 'n24',
+  name: 'Månhoppet',
+  hint: 'Svag tyngdkraft: varje hopp svävar länge. Hoppa lagom, och landa rätt.',
+  theme: 'crater',
+  geom: {
+    bottom: -40,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [20, 0], ...kicker(20, 0, 3, 0.8).slice(1), [23, -50], [-14, -50]],
+      pillar(42, 48, 2, -50, { len: 2, h: 0.6 }),
+      pillar(66, 71, 5, -50, { len: 2, h: 0.6 }),
+      // The goal far below.
+      [[96, -50], [96, -14], [104, -14], [104, WALL], [108, WALL], [108, -50]],
+    ],
+    zones: [{ x0: 23, x1: 104, y0: -30, y1: 60, ax: 0, ay: 7 }],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 35, y: 5.2 }, { x: 59, y: 7.6 }, { x: 88, y: 4 }],
+  goal: { x: 100, y: -13 },
+  goalOnGround: true,
+  plan: [{ x: 23, speed: 9 }, { x: 48, speed: 8 }, { x: 71, speed: 7 }, { x: 100, speed: 2 }],
+}
+
+/**
+ * 25 · Färjorna. Three ferries in a row over a chasm, each shuttling back and forth. They meet
+ * edge to edge in turn, for a few seconds: drive from one to the next while they wait, and
+ * hold still while they glide (both pedals hold the wheels). Drive on too fast and you roll
+ * off the far side of a ferry; too early or too late and there is nothing there. A gem hangs
+ * over each ferry's way.
+ */
+const farjorna: PuzzleLevel = {
+  id: 'n25',
+  name: 'Färjorna',
+  hint: 'Byt färja när de möts. Håll i dig medan de glider (båda pedalerna).',
+  theme: 'canyon',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [20, 0], [20, -40], [-14, -40]],
+      [[82, -40], [82, 0], [100, 0], [100, WALL], [104, WALL], [104, -40]],
+    ],
+    // Each glides 14 m in 6 s and waits 4 s at each end, every 20 s; neighbours are half a
+    // period apart, so one waits at its far end while the next waits at its near end.
+    movers: [
+      { x0: 20.5, x1: 26.5, y: 0, dx: 14, dy: 0, period: 20, dwell: 0.2 },
+      { x0: 41, x1: 47, y: 0, dx: 14, dy: 0, period: 20, dwell: 0.2, phase: 0.5 },
+      { x0: 61.5, x1: 67.5, y: 0, dx: 14, dy: 0, period: 20, dwell: 0.2 },
+    ],
+  },
+  start: { x: 8, y: 0 },
+  gems: [{ x: 31, y: 2 }, { x: 51, y: 2 }, { x: 72, y: 2 }],
+  goal: { x: 92, y: 1 },
+  plan: [{ x: 16, speed: 6 }, { x: 22.5, speed: 3 }, { x: 22.5, speed: 0, wait: 10.2 }, { x: 43.5, speed: 3 }, { x: 43.5, speed: 0, wait: 20.2 }, { x: 64, speed: 3 }, { x: 64, speed: 0, wait: 30.2 }, { x: 92, speed: 4 }],
+}
+
+const LEVELS_RAW: PuzzleLevel[] = [tvaVagar, stopp, lagtITak, gungan, loopenEllerGropen, trappan, fonstret, nalsogat, avsatserna, mastarprovet, gungbradan, dubbelloopen, studsmattan, nyckeln, isbanan, rasbron, turbo, gruvan, raset, bergOchDal, mastarverket, hissen, vinden, manhoppet, farjorna]
 
 /** Every Klurbana, in order (each one opens when the one before is done). */
 export const LEVELS: PuzzleLevel[] = [...LEVELS_RAW]
