@@ -428,6 +428,48 @@ export class Sound {
     this.pulses = {}
   }
 
+  /**
+   * Silence the engine at once (cancelling any fade still running), e.g. on leaving a run or
+   * when the game goes to the background, where no more frames come to turn it down.
+   */
+  hush(): void {
+    if (!this.ctx) return
+    const now = this.ctx.currentTime
+    const outs: GainNode[] = []
+    if (this.eng) outs.push(this.eng.out)
+    for (const g of Object.values(this.pulses)) if (g) outs.push(g.out)
+    for (const g of outs) {
+      g.gain.cancelScheduledValues(now)
+      g.gain.setValueAtTime(0, now)
+    }
+    // Back to idle revs too, so the next run does not start with the last run's revs gliding down.
+    const idle = this.voice.idle
+    for (const g of Object.values(this.pulses)) {
+      if (!g) continue
+      for (const src of [g.on, g.off]) {
+        src.playbackRate.cancelScheduledValues(now)
+        src.playbackRate.setValueAtTime(idle / 100, now)
+      }
+    }
+    if (this.eng) {
+      for (const [o, k] of [[this.eng.oscA, 1], [this.eng.oscB, 1.005], [this.eng.sub, 0.5]] as const) {
+        o.frequency.cancelScheduledValues(now)
+        o.frequency.setValueAtTime(idle * k, now)
+      }
+    }
+    this.lastRevs = 0
+    this.lastGas = false
+  }
+
+  /** Pause all sound while the game is in the background (unlock or resume() starts it again). */
+  suspend(): void {
+    if (this.ctx && !this.offline && this.ctx.state === 'running') (this.ctx as AudioContext).suspend().catch(() => undefined)
+  }
+
+  resume(): void {
+    if (this.ctx && !this.offline && this.ctx.state === 'suspended') (this.ctx as AudioContext).resume().catch(() => undefined)
+  }
+
   /** Switch the engine voice to suit a vehicle. */
   setVehicle(id: string): void {
     this.vehicleId = id

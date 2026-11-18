@@ -334,6 +334,9 @@ function show(m: Mode): void {
   pausedEl.classList.add('hidden')
   paused = false
   document.body.classList.toggle('playing', m === 'driving' || m === 'ending' || m === 'duel')
+  // Leaving a run: the engine goes quiet now, not a frame later (and the next run's revs start
+  // from idle, not from where the last one ended).
+  if (m !== 'driving' && m !== 'duel') sound.hush()
   controls.reset()
   showUpdateIfReady()
   applyMusic()
@@ -1430,6 +1433,15 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyH' && (mode === 'driving' || mode === 'duel')) honk(0)
   if ((e.code === 'Enter' || e.code === 'Space') && mode === 'garage') startRound()
 })
+// In the background no frames run, so nothing would turn the engine down: hush it, and pause
+// all sound until the game is back.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    sound.hush()
+    duel?.voices.forEach((v) => v?.hush())
+    sound.suspend()
+  } else sound.resume()
+})
 // Bank the run's coins if the page is closed or hidden mid-run.
 document.addEventListener('visibilitychange', () => {
   // Interrupted (a call, the home button): pause rather than end the run.
@@ -1641,7 +1653,7 @@ document.addEventListener('visibilitychange', () => {
 backup.soon(5000)
 
 // Development only: lets screenshot scripts trigger effects without playing to them.
-if (import.meta.env.DEV) (window as unknown as { __game: unknown }).__game = { renderer, get run() { return run }, set atmosphere(a: Atmosphere) { atmosphere = a } }
+if (import.meta.env.DEV) (window as unknown as { __game: unknown }).__game = { renderer, sound, get duel() { return duel }, get run() { return run }, set atmosphere(a: Atmosphere) { atmosphere = a } }
 
 // Offline play and home-screen install (published builds only).
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
