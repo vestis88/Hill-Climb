@@ -1417,6 +1417,7 @@ export class GameRenderer {
       this.outlinedText(lv.gems.length ? `Ta alla stenar, sen målflaggan${lv.rule === 'still' ? ' (stanna där)' : lv.rule === 'ground' ? ' (landa där)' : ''}` : lv.rule === 'still' ? 'Stanna vid målflaggan!' : lv.rule === 'ground' ? 'Landa vid målflaggan!' : 'Till målflaggan!', x0 + w + 12, y0 + 33, 15, lv.gems.length ? '#ffffff' : '#ffd23f')
       // Speed, for learning what each jump needs.
       this.outlinedText(`${Math.round(Math.abs(view.next.speed) * 3.6)} km/h`, x0, y0 + 58, 17, '#ffffff')
+      if (view.showPedals) this.drawPedals(view.input, view.swapPedals)
       return
     }
     // Fuel gauge with a small can icon
