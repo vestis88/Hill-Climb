@@ -84,7 +84,7 @@ export interface View {
     /** The flag only counts once landed by it, or stopped by it. */
     rule?: 'ground' | 'still'
     /** Doors still shut, and where the crumbling planks are (sim.pieces()). */
-    pieces?: { doors: boolean[]; crumbles: ({ x: number; y: number; angle: number; touched: boolean } | null)[] }
+    pieces?: { doors: boolean[]; crumbles: ({ x: number; y: number; angle: number; touched: boolean } | null)[]; movers?: { x: number; y: number }[] }
   }
   /** Stuntbanan: each seesaw's plank angle by id (from the sim; at rest when missing). */
   seesaws?: Map<string, number>
@@ -709,6 +709,74 @@ export class GameRenderer {
         ctx.globalAlpha = 0.5
         ctx.stroke()
       }
+      ctx.restore()
+    })
+    // Air zones: a faint tint with streaks drifting the way they push.
+    for (const z of g.zones ?? []) {
+      if (z.x1 < left - 1 || z.x0 > right + 1) continue
+      const up = z.ay > 0
+      const tint = Math.abs(z.ax) > Math.abs(z.ay) ? '150, 210, 255' : up ? '170, 255, 210' : '220, 190, 255'
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(z.x0, z.y0, z.x1 - z.x0, z.y1 - z.y0)
+      ctx.fillStyle = `rgba(${tint}, 0.13)`
+      ctx.fill()
+      ctx.clip()
+      const len = Math.hypot(z.ax, z.ay) || 1
+      const ux = z.ax / len
+      const uy = z.ay / len
+      ctx.strokeStyle = `rgba(${tint}, 0.55)`
+      ctx.lineWidth = 0.07
+      ctx.lineCap = 'round'
+      const w = z.x1 - z.x0
+      const hgt = z.y1 - z.y0
+      for (let i = 0; i < Math.ceil((w * hgt) / 6); i++) {
+        // Spread the streaks over the box and move them along the push, wrapping round.
+        const fx = ((i * 0.618) % 1) * w
+        const fy = ((i * 0.381 + 0.17) % 1) * hgt
+        const travel = (this.time * Math.min(6, 1 + len * 0.35) + i * 1.7) % (w + hgt)
+        const px = z.x0 + ((((fx + ux * travel) % w) + w) % w)
+        const py = z.y0 + ((((fy + uy * travel) % hgt) + hgt) % hgt)
+        ctx.beginPath()
+        ctx.moveTo(px, py)
+        ctx.lineTo(px + ux * 0.9, py + uy * 0.9)
+        ctx.stroke()
+      }
+      ctx.restore()
+    }
+    // Moving platforms: steel plates with yellow and black ends, their path dotted.
+    ;(g.movers ?? []).forEach((m, i) => {
+      const hw = (m.x1 - m.x0) / 2
+      const rest = { x: (m.x0 + m.x1) / 2, y: m.y - 0.225 }
+      const q = lv.pieces?.movers?.[i] ?? rest
+      if (Math.max(q.x, rest.x + m.dx) + hw < left - 1 || Math.min(q.x, rest.x + m.dx) - hw > right + 1) return
+      ctx.save()
+      ctx.setLineDash([0.25, 0.3])
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)'
+      ctx.lineWidth = 0.06
+      ctx.beginPath()
+      ctx.moveTo(rest.x, rest.y)
+      ctx.lineTo(rest.x + m.dx, rest.y + m.dy)
+      ctx.stroke()
+      ctx.setLineDash([])
+      ctx.translate(q.x, q.y)
+      ctx.fillStyle = '#8d99ae'
+      ctx.fillRect(-hw, -0.225, hw * 2, 0.45)
+      for (const side of [-1, 1]) {
+        for (let k = 0; k < 3; k++) {
+          ctx.fillStyle = k % 2 ? '#1d2433' : '#ffd23f'
+          ctx.fillRect(side > 0 ? hw - 0.6 + k * 0.2 : -hw + k * 0.2, -0.225, 0.2, 0.45)
+        }
+      }
+      ctx.fillStyle = '#5c677d'
+      for (let x = -hw + 0.9; x < hw - 0.7; x += 0.8) {
+        ctx.beginPath()
+        ctx.arc(x, 0, 0.06, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      ctx.lineWidth = 0.06
+      ctx.strokeStyle = OUTLINE
+      ctx.strokeRect(-hw, -0.225, hw * 2, 0.45)
       ctx.restore()
     })
     ;(g.crumbles ?? []).forEach((c, i) => {

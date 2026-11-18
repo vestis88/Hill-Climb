@@ -394,7 +394,7 @@ export class Run {
   /** Klurbanor: the closed doors and the crumbling planks where they are now (the head hits them too). */
   private solidPieces(): [number, number][][] {
     const geom = this.options.level?.geom
-    if (!geom?.doors && !geom?.crumbles) return []
+    if (!geom?.doors && !geom?.crumbles && !geom?.movers) return []
     const p = this.sim.pieces()
     const out: [number, number][][] = (geom.doors ?? []).filter((_, i) => p.doors[i]).map((d) => d.poly)
     geom.crumbles?.forEach((c, i) => {
@@ -404,6 +404,11 @@ export class Run {
       const cos = Math.cos(q.angle)
       const sin = Math.sin(q.angle)
       out.push(([[-hw, 0.225], [hw, 0.225], [hw, -0.225], [-hw, -0.225]] as const).map(([lx, ly]) => [q.x + lx * cos - ly * sin, q.y + lx * sin + ly * cos]))
+    })
+    geom.movers?.forEach((m, i) => {
+      const q = p.movers[i]
+      const hw = (m.x1 - m.x0) / 2
+      out.push([[q.x - hw, q.y + 0.225], [q.x + hw, q.y + 0.225], [q.x + hw, q.y - 0.225], [q.x - hw, q.y - 0.225]])
     })
     return out
   }

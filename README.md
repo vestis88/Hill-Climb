@@ -145,6 +145,10 @@ From 13 on, each level is built around a new piece (drawn so you can tell them a
 - **Dörr och nyckel**: a door opens when you take the gem of its colour.
 - **Rasplanka** (wood): falls a moment after a wheel first touches it, and breaks up soon after.
 - Some flags only count once you have **stopped** by them.
+- **Hiss och färja** (steel plates with yellow-and-black ends, their path dotted): moving
+  platforms on their own clocks, waiting a few seconds at each end. Both pedals hold the wheels
+  while you ride.
+- **Luft** (a faint tinted area with drifting streaks): wind, an updraft, or weak gravity.
 
 The levels:
 
@@ -173,6 +177,15 @@ The levels:
 - **21 · Mästarverket**: everything at once: strip and needle's eye, crumbling bridge, icy
   hump, trampoline to the key, the door, and an icy slope to a little gravel patch at the cliff
   edge (roll onto the ice at 2 m/s or less, then stop by the flag).
+- **22 · Hissen**: a lift up a cliff (drive on while it waits at the bottom; rush it and the
+  shaft is empty), a ferry over a chasm, and a lift down into the tunnel with the goal.
+- **23 · Vinden**: a headwind over the first gap (nearly full speed), an updraft that lifts you
+  up a wall if you drift into it slowly, and a tailwind that carries you to a little island and
+  on to the goal ledge.
+- **24 · Månhoppet**: a crater with a quarter of normal gravity: long floating hops onto two
+  small rocks (tight speeds: about 9, then 8, then 6-7 m/s) and a long drop to the goal.
+- **25 · Färjorna**: three ferries in a row over a chasm, meeting edge to edge in turn: change
+  ferry while they wait, hold still while they glide.
 
 Klurbanor show the speed in km/h under the gem counter, for learning what each jump needs, and
 after finishing one a **Nästa: …** button goes straight on to the next level.
