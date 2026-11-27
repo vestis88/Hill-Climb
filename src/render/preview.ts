@@ -110,7 +110,7 @@ export function drawLevelPreview(canvas: HTMLCanvasElement, level: PuzzleLevel, 
   ctx.fillStyle = '#8d99ae'
   for (const m of level.geom.movers ?? []) ctx.fillRect(m.x0, m.y - 0.45, m.x1 - m.x0, 0.6)
   for (const z of level.geom.zones ?? []) {
-    ctx.fillStyle = Math.abs(z.ax) > Math.abs(z.ay) ? 'rgba(150, 210, 255, 0.3)' : z.ay > 0 ? 'rgba(170, 255, 210, 0.3)' : 'rgba(220, 190, 255, 0.3)'
+    ctx.fillStyle = Math.abs(z.ax) > Math.abs(z.ay) ? 'rgba(150, 210, 255, 0.3)' : z.ay > 12 ? 'rgba(255, 140, 220, 0.35)' : z.ay > 0 ? 'rgba(170, 255, 210, 0.3)' : 'rgba(220, 190, 255, 0.3)'
     ctx.fillRect(z.x0, z.y0, z.x1 - z.x0, z.y1 - z.y0)
   }
   level.gems.forEach((g, i) => {

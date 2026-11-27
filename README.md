@@ -148,7 +148,9 @@ From 13 on, each level is built around a new piece (drawn so you can tell them a
 - **Hiss och färja** (steel plates with yellow-and-black ends, their path dotted): moving
   platforms on their own clocks, waiting a few seconds at each end. Both pedals hold the wheels
   while you ride.
-- **Luft** (a faint tinted area with drifting streaks): wind, an updraft, or weak gravity.
+- **Luft** (a faint tinted area with drifting streaks): wind, an updraft, or weak gravity; in a
+  pink zone gravity is turned round, so you fall up and drive on the ceiling (where the pedals
+  feel back to front).
 
 The levels:
 
@@ -186,6 +188,17 @@ The levels:
   small rocks (tight speeds: about 9, then 8, then 6-7 m/s) and a long drop to the goal.
 - **25 · Färjorna**: three ferries in a row over a chasm, meeting edge to edge in turn: change
   ferry while they wait, hold still while they glide.
+- **26 · Upp och ner**: in the pink shaft you fall up: turn the car over on the way to land on
+  the ceiling, drive along it (gas takes you left, reverse right), and turn back over as you drop
+  out the far end.
+- **27 · Takdans**: floor, ceiling, floor, ceiling: gravity turns round in every other stretch,
+  so you flip in each fall; gems hang halfway up each fall (a calm 3-4 m/s collects them).
+- **28 · Rasvind**: a crumbling bridge into a headwind (full speed or into the gorge), then ice
+  with the wind at your back to a short gravel patch at a cliff edge, where you must stop: brake
+  to 5 m/s or less before the ice.
+- **29 · Nyckelhissen**: a lift up a tower to the yellow key, the yellow door, then two lifts in
+  a pit, down one and up the other (changing at the bottom when both are there), to the blue key
+  and door.
 
 Klurbanor show the speed in km/h under the gem counter, for learning what each jump needs, and
 after finishing one a **Nästa: …** button goes straight on to the next level.

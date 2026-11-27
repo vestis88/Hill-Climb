@@ -39,6 +39,11 @@ export interface LevelGeom {
   bottom: number
 }
 
+/** True where an air zone pulls upwards harder than gravity pulls down (you stand on the ceiling there). */
+export function upsideDownAt(level: LevelGeom, x: number, y: number, gravity: number): boolean {
+  return (level.zones ?? []).some((z) => x >= z.x0 && x <= z.x1 && y >= z.y0 && y <= z.y1 && z.ay > gravity)
+}
+
 export interface Mover {
   x0: number
   x1: number

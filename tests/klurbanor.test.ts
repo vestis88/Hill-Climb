@@ -160,4 +160,23 @@ describe('Klurbanor', () => {
   it('25 · Färjorna: driving straight on falls into the chasm; waiting for each ferry works', () => {
     expect(ends('n25', [{ x: 92, speed: 4 }])).toBe('crashed')
   }, 120000)
+
+  it('26 · Upp och ner: falling up without turning the car over lands it on its roof', () => {
+    const plan = puzzleLevel('n26')!.plan.map((p) => ({ ...p, air: 0 }))
+    expect(ends('n26', plan)).not.toBe('finished')
+  }, 120000)
+
+  it('27 · Takdans: rushing through flies past the gems in the falls', () => {
+    const plan = puzzleLevel('n27')!.plan.map((p) => ({ ...p, speed: 8 }))
+    expect(ends('n27', plan)).not.toBe('finished')
+  }, 120000)
+
+  it('28 · Rasvind: too slow over the bridge into the wind falls; onto the ice too fast slides off the cliff', () => {
+    expect(ends('n28', at('n28', 0, 11))).toBe('crashed')
+    expect(ends('n28', at('n28', 1, 7))).toBe('crashed')
+  }, 120000)
+
+  it('29 · Nyckelhissen: driving onto the tower lift while it is up drops you down the shaft', () => {
+    expect(ends('n29', [{ x: 14, speed: 4, wait: 10 }, ...puzzleLevel('n29')!.plan.slice(1)])).toBe('crashed')
+  }, 120000)
 })

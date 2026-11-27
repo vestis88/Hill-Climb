@@ -66,7 +66,8 @@ export function drivePlan(level: PuzzleLevel, vehicleId = 'runabout', limit = 12
     let input: Input
     if (run.sim.inLoop) input = { gas: true, brake: false }
     else if (s.airborne) {
-      input = airPedals(a, run.sim.vehicle.chassis.getAngularVelocity(), p.air ?? 0)
+      // Turn the shorter way round to the target angle (upside down is π either way).
+      input = airPedals(0, run.sim.vehicle.chassis.getAngularVelocity(), wrap((p.air ?? 0) - a))
     } else if (p.wait !== undefined && (p.speed >= 0 ? x >= p.x : x <= p.x)) {
       // There, and waiting for the time (for a lift, say): stand still on whatever it stands on.
       const rel = vx - platformVx(level, t, x, s.chassis.y)
@@ -79,6 +80,10 @@ export function drivePlan(level: PuzzleLevel, vehicleId = 'runabout', limit = 12
       pumped += STEP
       // Coast back (the reverse gear is slower than a good backswing), gas forwards.
       input = vx >= 0 ? { gas: !(a > 0.9), brake: false } : { gas: false, brake: vx > -2 }
+    } else if (p.flip) {
+      // On a ceiling (upside down): the gas drives the car the other way round, so the pedals
+      // swap to keep to the plan's direction.
+      input = { gas: vx > p.speed + 0.3, brake: vx < p.speed - 0.3 }
     } else if (p.speed >= 0) {
       const lift = a > 0.55
       input = { gas: vx < p.speed - 0.3 && !lift, brake: vx > p.speed + 1.2 }
