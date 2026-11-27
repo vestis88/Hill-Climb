@@ -199,6 +199,25 @@ The levels:
 - **29 · Nyckelhissen**: a lift up a tower to the yellow key, the yellow door, then two lifts in
   a pit, down one and up the other (changing at the bottom when both are there), to the blue key
   and door.
+- **30 · Studstornet**: up a tower: a trampoline to the first ledge, an updraft to the second
+  (drift into it slowly, about 2 m/s), and a trampoline to the top (6-8 m/s onto it).
+- **31 · Isloopen**: down an icy slope (the pedals do nothing) straight into a loop: floor it
+  as soon as the wheels grip in the loop, then over a gap and stop on a little island.
+- **32 · Tunga hoppet**: a speed strip, then a jump through air twice as heavy (do not brake
+  after the strip), then an updraft that floats you up to the goal ledge.
+- **33 · Spegelvägen**: fall up onto a ceiling road, and jump the hole in it off an upside-down
+  kicker (8 m/s or more, or you fall up into the pit), then flip back over to land.
+- **34 · Byvind**: three island jumps, the wind over each gap blowing its own way: full speed
+  into the headwinds, gently (6-10 m/s) with the tailwind, or you fly over the low gem.
+- **35 · Rasgropen**: the key lies under the plank bridge: stop on it and let it fall, back up
+  for the key, and a trampoline throws you back up past the bridge to the door.
+- **36 · Studsstegen**: a row of trampolines with spikes between: each bounce lasts the same, so
+  the speed (about 7.5-8 m/s) alone sets the hop length.
+- **37 · Tyngdlöst**: a weightless band where you fly in a straight line: off the kicker at
+  10-11 m/s to aim through a window in a wall.
+- **38 · Klättringen**: three lifts up a cliff, zigzag (forward, back, forward), on one clock.
+- **39 · Finalen**: full speed over a crumbling bridge, brake for the trampoline, crawl into the
+  updraft, then wait for the ferry over the last chasm.
 
 Klurbanor show the speed in km/h under the gem counter, for learning what each jump needs, and
 after finishing one a **Nästa: …** button goes straight on to the next level.
@@ -210,7 +229,7 @@ ground below a point). Loops are the same physics loops as Stuntbanan's. Each le
 `plan` for a scripted driver (`src/game/klurbot.ts`); `tests/klurbanor.test.ts` drives every
 level to the goal with it, and checks that the wrong approach fails (too fast on level 1, too
 slow on level 2, rushing level 3, driving straight at the wall on level 4, and the speed windows
-and wrong routes of levels 6 to 21). The special pieces are in `src/sim/level.ts` (pads, doors,
+and wrong routes of the levels after). The special pieces are in `src/sim/level.ts` (pads, doors,
 crumbles, ice) and `src/sim/world.ts` (`levelPieces`, `openDoor`); the run opens a door when its
 key gem is taken. The plan can also `coast`, and wait to drop `below` a height (riding a plank
 down).
