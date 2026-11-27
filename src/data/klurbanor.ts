@@ -1064,7 +1064,317 @@ const nyckelhissen: PuzzleLevel = {
   ],
 }
 
-const LEVELS_RAW: PuzzleLevel[] = [tvaVagar, stopp, lagtITak, gungan, loopenEllerGropen, trappan, fonstret, nalsogat, avsatserna, mastarprovet, gungbradan, dubbelloopen, studsmattan, nyckeln, isbanan, rasbron, turbo, gruvan, raset, bergOchDal, mastarverket, hissen, vinden, manhoppet, farjorna, uppOchNer, takdans, rasvind, nyckelhissen]
+/**
+ * 30 · Studstornet. Up a tower in three lifts: a trampoline onto the first ledge, an updraft
+ * up to the second (drift into it slowly), and a stronger trampoline to the top with the goal.
+ * Each ledge is short: come in too fast and you fly off its far side.
+ */
+const studstornet: PuzzleLevel = {
+  id: 'n30',
+  name: 'Studstornet',
+  hint: 'Studsmatta, uppvind, studsmatta. Uppåt hela vägen.',
+  theme: 'woods',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [28, 0], [28, 10], [40, 10], [40, -40], [-14, -40]],
+      [[46, -40], [46, 20], [62, 20], [62, -40]],
+      [[66, -40], [66, 31], [80, 31], [80, WALL], [84, WALL], [84, -40]],
+    ],
+    pads: [
+      { kind: 'bounce', x0: 19, x1: 25, y: 0, power: 16 },
+      { kind: 'bounce', x0: 56, x1: 61, y: 20, power: 16 },
+    ],
+    zones: [{ x0: 40, x1: 47, y0: 10, y1: 23, ax: 2, ay: 11.5 }],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 23, y: 11 }, { x: 43, y: 20 }, { x: 60, y: 31 }],
+  goal: { x: 74, y: 32 },
+  plan: [{ x: 26, speed: 5 }, { x: 40, speed: 2 }, { x: 62, speed: 6 }, { x: 74, speed: 3 }],
+}
+
+/**
+ * 31 · Isloopen. Down an icy slope straight into a loop and out over a gap to a small island.
+ * On the ice the pedals do nothing: just keep the car straight. The slope gives you the speed
+ * for the loop, but not enough to get round it: the moment the wheels grip again, in the loop,
+ * floor it, or you roll back down. Then stop on the little island.
+ */
+const isloopen: PuzzleLevel = {
+  id: 'n31',
+  name: 'Isloopen',
+  hint: 'Isbacke rakt in i en loop. Gasa i loopen, och stanna på ön.',
+  theme: 'frost',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 10], [20, 10], [20, -40], [-14, -40]],
+      [[60, -40], [60, 0], [80, 0], ...kicker(80, 0, 4, 1).slice(1), [84, -40]],
+      pillar(96, 101, -2),
+      ground([[118, WALL], [122, WALL]], -40),
+    ],
+    ice: [[[20, 10], ...ramp(20, 10, 44, 0).slice(1), [60, 0], [60, -40], [20, -40]]],
+    loops: [{ cx: 66, cy: 4, r: 4 }],
+  },
+  start: { x: 0, y: 10 },
+  gems: [{ x: 66, y: 7 }, { x: 90, y: 2.5 }, { x: 98.5, y: -1 }],
+  goal: { x: 98.5, y: -1 },
+  goalOnGround: true,
+  plan: [{ x: 20, speed: 4 }, { x: 60, speed: 4, coast: true }, { x: 84, speed: 13 }, { x: 98.5, speed: 1 }],
+}
+
+/**
+ * 32 · Tunga hoppet. A jump through air twice as heavy (the dark band): the arc drops fast in
+ * it. The speed strip gives you just enough, if you take the kicker without braking. Then an
+ * updraft over the next gap floats you up to the goal ledge: drift into it, do not rush it.
+ */
+const tungaHoppet: PuzzleLevel = {
+  id: 'n32',
+  name: 'Tunga hoppet',
+  hint: 'Tung luft drar ner dig fort, uppvinden lyfter. Ta rätt fart.',
+  theme: 'crater',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [28, 0], ...kicker(28, 0, 4, 1.4).slice(1), [32, -40], [-14, -40]],
+      [[56, -40], [56, -3], [80, -3], [80, -40]],
+      [[92, -40], [92, 6], [110, 6], [110, WALL], [114, WALL], [114, -40]],
+    ],
+    pads: [{ kind: 'boost', x0: 10, x1: 18, y: 0, power: 19 }],
+    zones: [
+      { x0: 38, x1: 48, y0: -20, y1: 20, ax: 0, ay: -6 },
+      { x0: 80, x1: 92, y0: -20, y1: 9, ax: 2, ay: 12 },
+    ],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 38, y: 5 }, { x: 70, y: -2 }, { x: 90, y: 10 }],
+  goal: { x: 100, y: 7 },
+  plan: [{ x: 18, speed: 19 }, { x: 32, speed: 19 }, { x: 80, speed: 8 }, { x: 100, speed: 4 }],
+}
+
+/**
+ * 33 · Spegelvägen. Fall up onto a ceiling road and drive it upside down. It ends in an
+ * upside-down kicker over a hole in the ceiling: too slow and you fall up into the pit above.
+ * Past the last ceiling, gravity turns back: flip over again before you land.
+ */
+const spegelvagen: PuzzleLevel = {
+  id: 'n33',
+  name: 'Spegelvägen',
+  hint: 'Kör i taket, hoppa över hålet i taket, och vänd tillbaka i slutet.',
+  theme: 'stunt',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [30, 0], [30, -40], [-14, -40]],
+      [[24, 10], ...kicker(54, 10, 5, -1.2).slice(0), [59, 16], [24, 16]],
+      block(65, 10, 104, 16),
+      // The pit over the hole: fall up in there and you are stuck.
+      [[55, 16], [59, 16], [59, 26], [65, 26], [65, 16], [69, 16], [69, 30], [55, 30]],
+      [[96, -40], [96, 0], [130, 0], [130, WALL], [134, WALL], [134, -40]],
+    ],
+    zones: [{ x0: 30, x1: 100, y0: -30, y1: 30, ax: 0, ay: 19 }],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 40, y: 9 }, { x: 62, y: 8.5 }, { x: 110, y: 1 }],
+  goal: { x: 120, y: 1 },
+  plan: [
+    { x: 30, speed: 4 }, { x: 34, speed: 4, air: Math.PI },
+    { x: 59, speed: 9, flip: true, air: Math.PI }, { x: 100, speed: 5, flip: true, air: Math.PI },
+    { x: 120, speed: 4 },
+  ],
+}
+
+/**
+ * 34 · Byvind. Three jumps between small islands, and the wind over each gap blows its own
+ * way: against you over the first, with you over the second (the island after it is short:
+ * jump softly), and hard against you over the last. Read the arrows and pick each speed.
+ */
+const byvind: PuzzleLevel = {
+  id: 'n34',
+  name: 'Byvind',
+  hint: 'Vinden byter håll över varje lucka. Full fart i motvind, lugnt i medvind.',
+  theme: 'coast',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [20, 0], ...kicker(20, 0, 4, 1.4).slice(1), [24, -40], [-14, -40]],
+      pillar(32, 48, 0, -40, { len: 3, h: 0.8 }),
+      // A short island: a flat top to land on, then downhill to build speed for the last jump.
+      [[62, -40], [62, -3], [67, -3], ...ramp(67, -3, 76, -5.5).slice(1), ...kicker(76, -5.5, 3, 1).slice(1), [79, -40]],
+      [[85, -40], [85, -7], [110, -7], [110, WALL], [114, WALL], [114, -40]],
+    ],
+    zones: [
+      { x0: 24, x1: 32, y0: -30, y1: 20, ax: -2.5, ay: 0 },
+      { x0: 48, x1: 62, y0: -30, y1: 20, ax: 7, ay: 0 },
+      { x0: 79, x1: 85, y0: -30, y1: 20, ax: -3, ay: 0 },
+    ],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 28, y: 4 }, { x: 55, y: 1 }, { x: 82, y: -3 }],
+  goal: { x: 98, y: -6 },
+  plan: [{ x: 24, speed: 12 }, { x: 48, speed: 9 }, { x: 79, speed: 12 }, { x: 98, speed: 4 }],
+}
+
+/**
+ * 35 · Rasgropen. The key to the door lies down under the plank bridge, so the bridge has to
+ * go: stop on it and let it fall with you. Back up for the key, then the trampoline throws you
+ * back up beyond the bridge. Drive straight over and you stand at a locked door with the bridge
+ * gone behind you.
+ */
+const rasgropen: PuzzleLevel = {
+  id: 'n35',
+  name: 'Rasgropen',
+  hint: 'Nyckeln ligger under bron. Låt bron rasa.',
+  theme: 'canyon',
+  geom: {
+    bottom: -30,
+    polygons: [
+      // The start is a shelf: the pit runs on in under it, and the key lies in there.
+      [[-14, WALL], [-12, WALL], [-12, 6], [20, 6], [20, 4], [8, 4], [8, -40], [-14, -40]],
+      [[8, -40], [8, -6], [32, -6], [32, -40]],
+      [[32, -40], [32, 6], [96, 6], [96, WALL], [100, WALL], [100, -40]],
+    ],
+    crumbles: [{ x0: 20, x1: 32, y: 6, delay: 0.6 }],
+    pads: [{ kind: 'bounce', x0: 25, x1: 29.5, y: -6, power: 18 }],
+    doors: [{ poly: block(60, 6, 61, 20), key: 0 }],
+  },
+  start: { x: 0, y: 6 },
+  gems: [{ x: 12, y: -5 }, { x: 32, y: 10 }, { x: 76, y: 7 }],
+  goal: { x: 86, y: 7 },
+  plan: [
+    { x: 21, speed: 2 }, { x: 21, speed: 0, wait: 7 }, { x: 12, speed: -3 },
+    { x: 32, speed: 5 }, { x: 86, speed: 4 },
+  ],
+}
+
+/**
+ * 36 · Studsstegen. A row of trampolines on little pillars, with spikes in between. Every
+ * bounce lasts as long as the last, so how far each hop goes is set by your speed alone: find
+ * the speed that matches the spacing and keep it. Keep the car level in the air too.
+ */
+const studsstegen: PuzzleLevel = {
+  id: 'n36',
+  name: 'Studsstegen',
+  hint: 'Studsmattor i rad. Hitta farten som passar avståndet, och håll den.',
+  theme: 'stunt',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [20, 0], [20, -40], [-14, -40]],
+      spike(20, 28, -6), pillar(28, 33, 0), spike(33, 41, -6), pillar(41, 46, 0), spike(46, 54, -6), pillar(54, 59, 0),
+      spike(59, 67, -6),
+      [[67, -40], [67, 0], [90, 0], [90, WALL], [94, WALL], [94, -40]],
+    ],
+    pads: [
+      { kind: 'bounce', x0: 15, x1: 20, y: 0, power: 10 },
+      { kind: 'bounce', x0: 28, x1: 33, y: 0, power: 10 },
+      { kind: 'bounce', x0: 41, x1: 46, y: 0, power: 10 },
+      { kind: 'bounce', x0: 54, x1: 59, y: 0, power: 10 },
+    ],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 24, y: 5 }, { x: 37, y: 5 }, { x: 50, y: 5 }, { x: 63, y: 5 }],
+  goal: { x: 78, y: 1 },
+  plan: [{ x: 15, speed: 7.5 }, { x: 78, speed: 7.5 }],
+}
+
+/**
+ * 37 · Tyngdlöst. In the green band gravity is gone: whatever way you are moving when you
+ * enter it, you keep moving, in a straight line. Off the kicker, the slower you go the more
+ * the drop before the band bends you down. Aim for the window in the wall: too slow and you
+ * drift down into the wall below it, too fast and you sail up over it, out of the band.
+ */
+const tyngdlost: PuzzleLevel = {
+  id: 'n37',
+  name: 'Tyngdlöst',
+  hint: 'Ingen tyngdkraft i det gröna: du far rakt fram. Sikta på hålet i väggen.',
+  theme: 'crater',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [20, 0], ...kicker(19, 0, 5, 1).slice(1), [24, -40], [-14, -40]],
+      block(46, -40, 48, 5),
+      block(46, 10, 48, WALL),
+      [[54, -40], [54, 3], [80, 3], [80, WALL], [84, WALL], [84, -40]],
+    ],
+    zones: [{ x0: 26, x1: 54, y0: -30, y1: 30, ax: 0, ay: 9.5 }],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 36, y: 6 }, { x: 47, y: 7.7 }, { x: 64, y: 4 }],
+  goal: { x: 70, y: 4 },
+  plan: [{ x: 24, speed: 11 }, { x: 70, speed: 4 }],
+}
+
+/**
+ * 38 · Klättringen. Up a cliff by three lifts, zigzag: forward onto the first, back the other
+ * way along the shelf to the second, forward again to the third. All three run on the same
+ * clock (down for 3 s, up, top for 3 s, down), so the trick is being at the next one in time.
+ */
+const klattringen: PuzzleLevel = {
+  id: 'n38',
+  name: 'Klättringen',
+  hint: 'Tre hissar i sicksack: fram, bak, fram. Var där när hissen är nere.',
+  theme: 'canyon',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [20, 0], [20, -40], [-14, -40]],
+      block(4, 6.5, 20, 8),
+      block(4, 14.5, 30, 16),
+      [[36, -40], [36, 24], [56, 24], [56, WALL], [60, WALL], [60, -40]],
+    ],
+    // Every 12 s: down for 3 s, 3 s up, at the top for 3 s, 3 s down.
+    movers: [
+      { x0: 20.5, x1: 25.5, y: 0, dx: 0, dy: 8, period: 12 },
+      { x0: -1.5, x1: 3.5, y: 8, dx: 0, dy: 8, period: 12 },
+      { x0: 30.5, x1: 35.5, y: 16, dx: 0, dy: 8, period: 12 },
+    ],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 12, y: 9 }, { x: 18, y: 17 }, { x: 45, y: 25 }],
+  goal: { x: 50, y: 25 },
+  plan: [
+    { x: 16, speed: 4, wait: 12.2 }, { x: 23, speed: 3 }, { x: 23, speed: 0, wait: 18.2 },
+    { x: 7, speed: -4, wait: 24.2 }, { x: 1, speed: -3 }, { x: -5, speed: 0, wait: 30.2 },
+    { x: 27, speed: 4, wait: 36.2 }, { x: 33, speed: 3 }, { x: 33, speed: 0, wait: 42.2 },
+    { x: 50, speed: 4 },
+  ],
+}
+
+/**
+ * 39 · Finalen. Everything at once, and each part wants a different speed: race over the
+ * crumbling bridge, brake hard for the trampoline up to the first ledge, crawl into the
+ * updraft that lifts you to the second, and then wait for the ferry over the last chasm.
+ */
+const finalen: PuzzleLevel = {
+  id: 'n39',
+  name: 'Finalen',
+  hint: 'Full fart, tvärbroms, krypfart, vänta. Allt på en gång.',
+  theme: 'canyon',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [30, 0], [30, -40], [-14, -40]],
+      [[46, -40], [46, 0], [64, 0], [64, 10], [80, 10], [80, -40]],
+      [[86, -40], [86, 20], [102, 20], [102, -40]],
+      [[123, -40], [123, 20], [144, 20], [144, WALL], [148, WALL], [148, -40]],
+    ],
+    crumbles: planks(30, 4, 0, 0.45),
+    pads: [{ kind: 'bounce', x0: 55, x1: 61, y: 0, power: 16 }],
+    zones: [{ x0: 80, x1: 87, y0: 10, y1: 23, ax: 2, ay: 11.5 }],
+    // Every 16 s: at this side from 0 s to 4 s, across from 8 s to 12 s.
+    movers: [{ x0: 102.5, x1: 108.5, y: 20, dx: 14, dy: 0, period: 16 }],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 38, y: 2 }, { x: 59, y: 11 }, { x: 83, y: 20 }, { x: 115, y: 22 }],
+  goal: { x: 134, y: 21 },
+  plan: [
+    { x: 46, speed: 10 }, { x: 62, speed: 5 }, { x: 80, speed: 2 },
+    { x: 99, speed: 3, wait: 32.2 }, { x: 105, speed: 3 }, { x: 105, speed: 0, wait: 40.2 },
+    { x: 134, speed: 4 },
+  ],
+}
+
+const LEVELS_RAW: PuzzleLevel[] = [tvaVagar, stopp, lagtITak, gungan, loopenEllerGropen, trappan, fonstret, nalsogat, avsatserna, mastarprovet, gungbradan, dubbelloopen, studsmattan, nyckeln, isbanan, rasbron, turbo, gruvan, raset, bergOchDal, mastarverket, hissen, vinden, manhoppet, farjorna, uppOchNer, takdans, rasvind, nyckelhissen, studstornet, isloopen, tungaHoppet, spegelvagen, byvind, rasgropen, studsstegen, tyngdlost, klattringen, finalen]
 
 /** Every Klurbana, in order (each one opens when the one before is done). */
 export const LEVELS: PuzzleLevel[] = [...LEVELS_RAW]

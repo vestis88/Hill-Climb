@@ -179,4 +179,46 @@ describe('Klurbanor', () => {
   it('29 · Nyckelhissen: driving onto the tower lift while it is up drops you down the shaft', () => {
     expect(ends('n29', [{ x: 14, speed: 4, wait: 10 }, ...puzzleLevel('n29')!.plan.slice(1)])).toBe('crashed')
   }, 120000)
+  it('30 · Studstornet: rushing into the updraft blows you past the ledge; too slow off the top trampoline falls short', () => {
+    expect(ends('n30', at('n30', 0, 6))).toBe('crashed')
+    expect(ends('n30', at('n30', 2, 4.5))).toBe('crashed')
+  }, 120000)
+
+  it('31 · Isloopen: easing off in the loop rolls you back out of it', () => {
+    expect(ends('n31', at('n31', 2, 6))).not.toBe('finished')
+  }, 120000)
+
+  it('32 · Tunga hoppet: braking after the speed strip drops you in the heavy air', () => {
+    expect(ends('n32', at('n32', 1, 5))).toBe('crashed')
+  }, 120000)
+
+  it('33 · Spegelvägen: too slow off the upside-down kicker falls up into the pit', () => {
+    expect(ends('n33', at('n33', 2, 5))).not.toBe('finished')
+  }, 120000)
+
+  it('34 · Byvind: full speed with the wind flies over the low gem', () => {
+    expect(ends('n34', at('n34', 1, 12))).not.toBe('finished')
+  }, 120000)
+
+  it('35 · Rasgropen: driving straight over the bridge leaves you at a locked door', () => {
+    expect(ends('n35', [{ x: 86, speed: 9 }])).not.toBe('finished')
+  }, 120000)
+
+  it('36 · Studsstegen: too slow or too fast between the trampolines lands on the spikes', () => {
+    expect(ends('n36', [{ x: 78, speed: 5 }])).not.toBe('finished')
+    expect(ends('n36', [{ x: 78, speed: 12 }])).not.toBe('finished')
+  }, 120000)
+
+  it('37 · Tyngdlöst: too slow drifts into the wall under the window', () => {
+    expect(ends('n37', at('n37', 0, 8))).toBe('crashed')
+  }, 120000)
+
+  it('38 · Klättringen: driving onto the first lift while it is up drops you down the shaft', () => {
+    expect(ends('n38', [{ x: 23, speed: 3 }, ...puzzleLevel('n38')!.plan.slice(2)])).toBe('crashed')
+  }, 120000)
+
+  it('39 · Finalen: too slow over the bridge falls with it', () => {
+    expect(ends('n39', at('n39', 0, 8))).toBe('crashed')
+  }, 120000)
 })
+
