@@ -6,7 +6,7 @@ import { DriverSway, Ragdoll } from './driver'
 import type { HeightFn, Input, SimState, VehicleSpec } from './types'
 import { Sim, STEP } from './world'
 import { featureNear, stuntFallLine, stuntObstacles, type StuntObstacle } from './stunt'
-import { circleHits, groundBelow, type LevelGeom } from './level'
+import { circleHits, groundBelow, type LevelGeom, upsideDownAt } from './level'
 
 /** Run rules, from README "The run". */
 export const RULES = {
@@ -367,6 +367,12 @@ export class Run {
   /** Stuntbanan and Klurbanor: lying still upside down for a second and a half ends the run. */
   private stuckOnRoof(s: SimState): boolean {
     if (this.options.stunt === undefined && !this.options.level) return false
+    // Where gravity is turned round (an upside-down zone), standing on the ceiling is the right way up.
+    const level = this.options.level?.geom
+    if (level && upsideDownAt(level, s.chassis.x, s.chassis.y, this.options.gravity ?? 10)) {
+      this.roofSteps = 0
+      return false
+    }
     const upside = Math.abs(wrapAngle(s.chassis.angle - this.slopeAngle(s.chassis.x))) > 2.2
     this.roofSteps = upside && Math.abs(s.speed) < 1 ? this.roofSteps + 1 : 0
     return this.roofSteps * STEP > 1.5

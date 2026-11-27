@@ -715,7 +715,8 @@ export class GameRenderer {
     for (const z of g.zones ?? []) {
       if (z.x1 < left - 1 || z.x0 > right + 1) continue
       const up = z.ay > 0
-      const tint = Math.abs(z.ax) > Math.abs(z.ay) ? '150, 210, 255' : up ? '170, 255, 210' : '220, 190, 255'
+      // Wind blue, updrafts and weak gravity green, upside down (stronger than gravity) pink.
+      const tint = Math.abs(z.ax) > Math.abs(z.ay) ? '150, 210, 255' : z.ay > 12 ? '255, 140, 220' : up ? '170, 255, 210' : '220, 190, 255'
       ctx.save()
       ctx.beginPath()
       ctx.rect(z.x0, z.y0, z.x1 - z.x0, z.y1 - z.y0)

@@ -35,9 +35,10 @@ export interface PuzzleLevel {
    * `pump` rocks back and forth (gas going forwards, brake to roll back) for up to that many
    * seconds while trying to get past x; `coast` touches neither pedal (on the ground); `below`
    * also ends the step once the vehicle has dropped below that height; `wait` holds the step
-   * (coasting, once at x) until that many seconds into the run (for a moving platform).
+   * (coasting, once at x) until that many seconds into the run (for a moving platform); `flip`
+   * swaps the pedals' direction (driving upside down on a ceiling).
    */
-  plan: { x: number; speed: number; air?: number; pump?: number; coast?: boolean; below?: number; wait?: number }[]
+  plan: { x: number; speed: number; air?: number; pump?: number; coast?: boolean; below?: number; wait?: number; flip?: boolean }[]
 }
 
 /** A surface from left to right, filled down to `bottom`. */
@@ -916,7 +917,154 @@ const farjorna: PuzzleLevel = {
   plan: [{ x: 16, speed: 6 }, { x: 22.5, speed: 3 }, { x: 22.5, speed: 0, wait: 10.2 }, { x: 43.5, speed: 3 }, { x: 43.5, speed: 0, wait: 20.2 }, { x: 64, speed: 3 }, { x: 64, speed: 0, wait: 30.2 }, { x: 92, speed: 4 }],
 }
 
-const LEVELS_RAW: PuzzleLevel[] = [tvaVagar, stopp, lagtITak, gungan, loopenEllerGropen, trappan, fonstret, nalsogat, avsatserna, mastarprovet, gungbradan, dubbelloopen, studsmattan, nyckeln, isbanan, rasbron, turbo, gruvan, raset, bergOchDal, mastarverket, hissen, vinden, manhoppet, farjorna]
+/**
+ * 26 · Upp och ner. In the pink shaft gravity is turned round: drive off the edge and you
+ * fall up, onto the ceiling. Turn the car over on the way up to land on its wheels, then drive
+ * along the ceiling, where the pedals feel back to front (the gas takes you left, reverse right).
+ * Past the shaft gravity is normal again: drop off the ceiling, turning back over, onto the floor.
+ */
+const uppOchNer: PuzzleLevel = {
+  id: 'n26',
+  name: 'Upp och ner',
+  hint: 'Här faller du uppåt. Vänd bilen i luften, och kör i taket.',
+  theme: 'stunt',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [30, 0], [30, -40], [-14, -40]],
+      // The ceiling over the shaft (and on past it), and the floor beyond.
+      block(24, 10, 92, 16),
+      [[70, -40], [70, 0], [110, 0], [110, WALL], [114, WALL], [114, -40]],
+    ],
+    zones: [{ x0: 30, x1: 70, y0: -30, y1: 10, ax: 0, ay: 19 }],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 40, y: 9 }, { x: 60, y: 9 }, { x: 80, y: 3 }],
+  goal: { x: 100, y: 1 },
+  plan: [{ x: 30, speed: 4 }, { x: 34, speed: 4, air: Math.PI }, { x: 70, speed: 4, flip: true, air: Math.PI }, { x: 100, speed: 4 }],
+}
+
+/**
+ * 27 · Takdans. A corridor of floor and ceiling pieces, gravity turned round in every other
+ * stretch: off the end of the floor you fall up onto the ceiling, off the end of the ceiling
+ * you fall back down. Turn the car over in each fall, and change pedal direction each time.
+ * The pieces get shorter and the falls quicker; gems hang halfway up each fall.
+ */
+const takdans: PuzzleLevel = {
+  id: 'n27',
+  name: 'Takdans',
+  hint: 'Golv, tak, golv, tak. Vänd i varje fall, och byt håll på pedalerna.',
+  theme: 'stunt',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [20, 0], [20, -40], [-14, -40]],
+      // Ceilings (y 9 underside) and floors (y 0) in turn.
+      block(20, 9, 44, 14),
+      pillar(40, 58, 0),
+      block(54, 9, 70, 14),
+      pillar(66, 80, 0),
+      block(76, 9, 90, 14),
+      [[86, -40], [86, 0], [112, 0], [112, WALL], [116, WALL], [116, -40]],
+    ],
+    zones: [
+      { x0: 20, x1: 40, y0: -30, y1: 9, ax: 0, ay: 19 },
+      { x0: 58, x1: 66, y0: -30, y1: 9, ax: 0, ay: 19 },
+      { x0: 80, x1: 86, y0: -30, y1: 9, ax: 0, ay: 19 },
+    ],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 23, y: 4.5 }, { x: 42.5, y: 4.5 }, { x: 60, y: 4.5 }, { x: 68, y: 4.5 }, { x: 83, y: 4.5 }],
+  goal: { x: 104, y: 1 },
+  plan: [
+    { x: 20, speed: 4 }, { x: 24, speed: 4, air: Math.PI },
+    { x: 40, speed: 4, flip: true, air: Math.PI }, { x: 44, speed: 4 },
+    { x: 58, speed: 4 }, { x: 62, speed: 4, air: Math.PI },
+    { x: 66, speed: 4, flip: true, air: Math.PI }, { x: 70, speed: 4 },
+    { x: 80, speed: 4 }, { x: 83, speed: 4, air: Math.PI },
+    { x: 86, speed: 4, flip: true, air: Math.PI }, { x: 104, speed: 4 },
+  ],
+}
+
+/**
+ * 28 · Rasvind. A crumbling bridge in a headwind: the planks fall behind you and the wind
+ * holds you back, so it is full speed or into the gorge. Then ice with the wind at your back
+ * towards a short patch of gravel at a cliff edge, with the goal where you must stop: you
+ * cannot brake on the ice and the wind keeps pushing, so roll onto it as slowly as you dare.
+ */
+const rasvind: PuzzleLevel = {
+  id: 'n28',
+  name: 'Rasvind',
+  hint: 'Full fart mot vinden över bron. Sen medvind på isen: rulla på sakta.',
+  theme: 'frost',
+  geom: {
+    bottom: -30,
+    polygons: [
+      [[-14, WALL], [-12, WALL], [-12, 0], [20, 0], [20, -40], [-14, -40]],
+      [[60, -40], [60, 0], [106, 0], [106, -40]],
+      [[120, -40], [120, WALL], [124, WALL], [124, -40]],
+    ],
+    crumbles: planks(20, 10, 0, 0.45),
+    pads: [{ kind: 'ice', x0: 74, x1: 99.7, y: 0 }],
+    zones: [
+      { x0: 20, x1: 60, y0: -10, y1: 10, ax: -4, ay: 0 },
+      { x0: 74, x1: 104, y0: -10, y1: 10, ax: 0.6, ay: 0 },
+    ],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 30, y: 1.5 }, { x: 50, y: 1.5 }, { x: 87, y: 1.5 }],
+  goal: { x: 103, y: 1 },
+  goalStill: true,
+  plan: [{ x: 60, speed: 16 }, { x: 74, speed: 1 }, { x: 100, speed: 1, coast: true }, { x: 999, speed: 0 }],
+}
+
+/**
+ * 29 · Nyckelhissen. Two locked doors, each key reached by lift. The yellow key is on top of a
+ * tower: ride the lift beside it up, take the key and drive off the tower's far side. Past the
+ * yellow door, the blue key waits at the bottom of a pit: one lift down on its near side, one up
+ * on its far side, and you change from one to the other at the bottom, when both are there.
+ */
+const nyckelhissen: PuzzleLevel = {
+  id: 'n29',
+  name: 'Nyckelhissen',
+  hint: 'Nycklarna nås med hiss. Byt hiss på botten när båda är där.',
+  theme: 'canyon',
+  geom: {
+    bottom: -30,
+    polygons: [
+      // Start, the first lift's shaft, the tower with the yellow key.
+      [[-14, WALL], [-12, WALL], [-12, 0], [18, 0], [18, -40], [-14, -40]],
+      [[23.5, -40], [23.5, 7], [31, 7], [31, -40]],
+      // Below the tower, the yellow door's tunnel, on to the pit.
+      [[31, -40], [31, 0], [52, 0], [52, -40]],
+      block(36, 2.9, 44, WALL),
+      // The pit: two lift shafts and the floor between them.
+      [[57.5, -40], [57.5, -10], [60.5, -10], [60.5, -40]],
+      // Past the pit: the blue door's tunnel and the goal.
+      [[66, -40], [66, 0], [96, 0], [96, WALL], [100, WALL], [100, -40]],
+      block(72, 2.9, 80, WALL),
+    ],
+    movers: [
+      // Up the tower: down at the start 3-6.5 s, at the top 10-13.5 s, every 14 s.
+      { x0: 18.5, x1: 23.5, y: 0, dx: 0, dy: 7, period: 14, phase: 0.786 },
+      // Down into the pit (near side): at the top 0-4 s, at the bottom 8-12 s, every 16 s. Up out
+      // of it (far side): at the bottom 8-12 s (with the other), at the top 16-20 s.
+      { x0: 52.5, x1: 57.5, y: 0, dx: 0, dy: -10, period: 16 },
+      { x0: 60.5, x1: 65.5, y: -10, dx: 0, dy: 10, period: 16, phase: 0.5 },
+    ],
+    doors: [{ poly: block(39, 0, 40, 2.9), key: 0 }, { poly: block(75, 0, 76, 2.9), key: 1 }],
+  },
+  start: { x: 0, y: 0 },
+  gems: [{ x: 27, y: 8 }, { x: 59, y: -9 }, { x: 88, y: 1 }],
+  goal: { x: 90, y: 1 },
+  plan: [
+    { x: 14, speed: 4, wait: 3.1 }, { x: 21, speed: 3 }, { x: 21, speed: 0, wait: 10.1 },
+    { x: 47, speed: 4 }, { x: 55, speed: 3 }, { x: 55, speed: 0, wait: 24.2 },
+    { x: 63, speed: 3 }, { x: 63, speed: 0, wait: 32.2 }, { x: 90, speed: 4 },
+  ],
+}
+
+const LEVELS_RAW: PuzzleLevel[] = [tvaVagar, stopp, lagtITak, gungan, loopenEllerGropen, trappan, fonstret, nalsogat, avsatserna, mastarprovet, gungbradan, dubbelloopen, studsmattan, nyckeln, isbanan, rasbron, turbo, gruvan, raset, bergOchDal, mastarverket, hissen, vinden, manhoppet, farjorna, uppOchNer, takdans, rasvind, nyckelhissen]
 
 /** Every Klurbana, in order (each one opens when the one before is done). */
 export const LEVELS: PuzzleLevel[] = [...LEVELS_RAW]
